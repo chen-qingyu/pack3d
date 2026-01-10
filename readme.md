@@ -84,11 +84,12 @@ If the `orients` field is not specified, the default is `["XYZ", "YXZ"]`, which 
 
 #### Input
 
-| Field Name        | Type  | Description                       |
-| ----------------- | ----- | --------------------------------- |
-| `container_types` | array | List of available container types |
-| `box_types`       | array | List of available box types       |
-| `boxes`           | array | List of boxes to be packed        |
+| Field Name        | Type   | Description                                               |
+| ----------------- | ------ | --------------------------------------------------------- |
+| `container_types` | array  | List of available container types                         |
+| `box_types`       | array  | List of available box types                               |
+| `boxes`           | array  | List of boxes to be packed                                |
+| `support_rate`    | number | Minimum support rate for boxes (optional, default is 0.7) |
 
 For an example input, please refer to [demo.json](data/demo.json).
 

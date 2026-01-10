@@ -187,6 +187,13 @@ pub struct Input {
     pub container_types: Vec<ContainerType>,
     /// 箱子列表
     pub boxes: Vec<Box>,
+    /// 箱子最小支撑比例，默认0.7
+    #[serde(default = "default_support_rate")]
+    pub support_rate: f64,
+}
+
+fn default_support_rate() -> f64 {
+    0.7
 }
 
 /// 输出数据结构

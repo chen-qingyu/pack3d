@@ -14,6 +14,8 @@ pub struct Algorithm {
     packed_boxes: Vec<Box>,
     /// 装箱结果
     output: Output,
+    /// 箱子最小支撑比例
+    support_rate: f64,
 }
 
 impl Algorithm {
@@ -41,6 +43,7 @@ impl Algorithm {
                 containers: Vec::new(),
                 unpacked_boxes: Vec::new(),
             },
+            support_rate: input.support_rate,
         }
     }
 
@@ -118,7 +121,7 @@ impl Algorithm {
         candidates.dedup();
 
         // 创建约束检查器
-        let constraint = Constraint::new(&self.container, &self.packed_boxes);
+        let constraint = Constraint::new(&self.container, &self.packed_boxes, self.support_rate);
 
         // 尝试每个允许的方向
         for orient in item.box_type.orients.clone() {

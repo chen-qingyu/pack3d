@@ -84,11 +84,12 @@ _Pack All~_
 
 #### Input (输入数据)
 
-| 字段名            | 类型  | 描述               |
-| ----------------- | ----- | ------------------ |
-| `container_types` | array | 可用的容器类型列表 |
-| `box_types`       | array | 可用的箱型列表     |
-| `boxes`           | array | 待装载的箱子列表   |
+| 字段名            | 类型   | 描述                               |
+| ----------------- | ------ | ---------------------------------- |
+| `container_types` | array  | 可用的容器类型列表                 |
+| `box_types`       | array  | 可用的箱型列表                     |
+| `boxes`           | array  | 待装载的箱子列表                   |
+| `support_rate`    | number | 箱子最小支撑比例（可选，默认 0.7） |
 
 示例输入请参考 [demo.json](data/demo.json)
 

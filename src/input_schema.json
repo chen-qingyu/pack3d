@@ -49,6 +49,11 @@
           "weight": { "type": "number", "exclusiveMinimum": 0.0 }
         }
       }
+    },
+    "support_rate": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
     }
   }
 }

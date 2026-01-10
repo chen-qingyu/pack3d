@@ -6,14 +6,17 @@ pub struct Constraint<'a> {
     container: &'a Container,
     /// 已装载箱子的引用
     packed_boxes: &'a [Box],
+    /// 箱子最小支撑比例
+    support_rate: f64,
 }
 
 impl<'a> Constraint<'a> {
     /// 创建新的约束检查器
-    pub fn new(container: &'a Container, packed_boxes: &'a [Box]) -> Self {
+    pub fn new(container: &'a Container, packed_boxes: &'a [Box], support_rate: f64) -> Self {
         Constraint {
             container,
             packed_boxes,
+            support_rate,
         }
     }
 
@@ -57,8 +60,8 @@ impl<'a> Constraint<'a> {
         let y = item.y.unwrap();
         let z = item.z.unwrap();
 
-        // 如果箱子直接放在容器底面上，则认为有支撑
-        if z == 0 {
+        // 如果箱子直接放在容器底面上，或者支撑比例为0，则认为有支撑
+        if z == 0 || self.support_rate == 0.0 {
             return true;
         }
 
@@ -85,8 +88,8 @@ impl<'a> Constraint<'a> {
             }
         }
 
-        // 要求底面被完全支撑
-        support_area >= item.lx * item.ly
+        // 要求底面被支撑的比例达到设定的最小支撑比例
+        (support_area as f64) >= (item.lx * item.ly) as f64 * self.support_rate
     }
 
     /// 约束4：箱子总重量不能超过容器载重（若输入存在载重限制）

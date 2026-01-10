@@ -32,7 +32,7 @@ fn test_output() {
             for (i, item) in container.boxes.iter().enumerate() {
                 let mut boxes = container.boxes.clone();
                 boxes.remove(i);
-                let constraint = Constraint::new(container, &boxes);
+                let constraint = Constraint::new(container, &boxes, 0.7);
                 assert!(constraint.check_constraints(item));
             }
         }

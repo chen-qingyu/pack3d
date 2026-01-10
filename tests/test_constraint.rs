@@ -53,7 +53,7 @@ fn fixtures() -> (Container, Rc<BoxType>, Vec<Box>, Box, Box, Box) {
 #[rstest]
 fn test_check_bound(fixtures: (Container, Rc<BoxType>, Vec<Box>, Box, Box, Box)) {
     let (container, box_type, boxes, box_x, box_y, box_z) = fixtures;
-    let constraint = Constraint::new(&container, &boxes);
+    let constraint = Constraint::new(&container, &boxes, 1.0);
 
     let box_bad = make_box("bad", Rc::clone(&box_type), 10.0, 0, 0, 6); // Exceeds container height
     assert!(constraint.check_bound(&box_x));
@@ -65,7 +65,7 @@ fn test_check_bound(fixtures: (Container, Rc<BoxType>, Vec<Box>, Box, Box, Box))
 #[rstest]
 fn test_check_overlap(fixtures: (Container, Rc<BoxType>, Vec<Box>, Box, Box, Box)) {
     let (container, box_type, boxes, box_x, box_y, box_z) = fixtures;
-    let constraint = Constraint::new(&container, &boxes);
+    let constraint = Constraint::new(&container, &boxes, 1.0);
 
     let box_bad = make_box("bad", Rc::clone(&box_type), 10.0, 0, 0, 4); // Overlaps with origin box
     assert!(constraint.check_overlap(&box_x));
@@ -77,7 +77,7 @@ fn test_check_overlap(fixtures: (Container, Rc<BoxType>, Vec<Box>, Box, Box, Box
 #[rstest]
 fn test_check_support(fixtures: (Container, Rc<BoxType>, Vec<Box>, Box, Box, Box)) {
     let (container, box_type, boxes, box_x, box_y, box_z) = fixtures;
-    let constraint = Constraint::new(&container, &boxes);
+    let constraint = Constraint::new(&container, &boxes, 1.0);
 
     let box_bad = make_box("bad", Rc::clone(&box_type), 10.0, 5, 0, 1); // Not properly supported
     assert!(constraint.check_support(&box_x));
@@ -89,7 +89,7 @@ fn test_check_support(fixtures: (Container, Rc<BoxType>, Vec<Box>, Box, Box, Box
 #[rstest]
 fn test_check_weight(fixtures: (Container, Rc<BoxType>, Vec<Box>, Box, Box, Box)) {
     let (container, box_type, boxes, box_x, box_y, box_z) = fixtures;
-    let constraint = Constraint::new(&container, &boxes);
+    let constraint = Constraint::new(&container, &boxes, 1.0);
 
     let box_bad = make_box("bad", Rc::clone(&box_type), 100.0, 5, 0, 0); // Exceeds weight limit
     assert!(constraint.check_weight(&box_x));
