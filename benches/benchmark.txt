@@ -13,81 +13,106 @@ running 0 tests
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
 
-br00_001.json           time:   [889.73 µs 891.51 µs 893.34 µs]
-Found 8 outliers among 100 measurements (8.00%)
-  2 (2.00%) high mild
-  6 (6.00%) high severe
-
-br01_001.json           time:   [664.97 µs 666.68 µs 668.62 µs]
-Found 10 outliers among 100 measurements (10.00%)
-  6 (6.00%) high mild
-  4 (4.00%) high severe
-
-br02_001.json           time:   [337.33 µs 339.23 µs 341.20 µs]
+br00_001.json           time:   [926.28 µs 932.38 µs 939.65 µs]
+                        change: [+2.6842% +3.7331% +4.7741%] (p = 0.00 < 0.05)
+                        Performance has regressed.
 Found 5 outliers among 100 measurements (5.00%)
-  3 (3.00%) high mild
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+
+br01_001.json           time:   [668.92 µs 670.97 µs 673.39 µs]
+                        change: [+1.2250% +2.1814% +3.2368%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+
+br02_001.json           time:   [341.14 µs 343.46 µs 346.03 µs]
+                        change: [+0.9506% +2.2952% +3.7247%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+
+br03_001.json           time:   [470.26 µs 472.02 µs 474.10 µs]
+                        change: [−6.3368% −5.3255% −4.1597%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+br04_001.json           time:   [546.51 µs 549.07 µs 552.09 µs]
+                        change: [+5.8176% +7.0519% +8.5716%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) high mild
   2 (2.00%) high severe
 
-br03_001.json           time:   [504.31 µs 506.60 µs 509.03 µs]
-Found 5 outliers among 100 measurements (5.00%)
+br05_001.json           time:   [594.40 µs 596.50 µs 599.04 µs]
+                        change: [+0.1809% +1.1825% +2.2917%] (p = 0.02 < 0.05)
+                        Change within noise threshold.
+Found 2 outliers among 100 measurements (2.00%)
   1 (1.00%) high mild
-  4 (4.00%) high severe
+  1 (1.00%) high severe
 
-br04_001.json           time:   [525.21 µs 526.69 µs 528.27 µs]
-Found 6 outliers among 100 measurements (6.00%)
-  4 (4.00%) high mild
-  2 (2.00%) high severe
-
-br05_001.json           time:   [595.48 µs 596.57 µs 597.68 µs]
-Found 6 outliers among 100 measurements (6.00%)
-  1 (1.00%) high mild
-  5 (5.00%) high severe
-
-br06_001.json           time:   [1.0931 ms 1.0952 ms 1.0973 ms]
-Found 8 outliers among 100 measurements (8.00%)
-  4 (4.00%) high mild
-  4 (4.00%) high severe
-
-br07_001.json           time:   [854.99 µs 856.31 µs 857.74 µs]
-Found 7 outliers among 100 measurements (7.00%)
-  4 (4.00%) high mild
-  3 (3.00%) high severe
-
-br08_001.json           time:   [1.3151 ms 1.3173 ms 1.3196 ms]
-Found 7 outliers among 100 measurements (7.00%)
-  4 (4.00%) high mild
-  3 (3.00%) high severe
-
-br09_001.json           time:   [1.6592 ms 1.6631 ms 1.6692 ms]
-Found 5 outliers among 100 measurements (5.00%)
-  5 (5.00%) high severe
-
-br10_001.json           time:   [1.6440 ms 1.6464 ms 1.6487 ms]
-Found 9 outliers among 100 measurements (9.00%)
-  3 (3.00%) high mild
-  6 (6.00%) high severe
-
-br11_001.json           time:   [1.4257 ms 1.4324 ms 1.4445 ms]
-Found 5 outliers among 100 measurements (5.00%)
-  5 (5.00%) high severe
-
-br12_001.json           time:   [1.6028 ms 1.6050 ms 1.6072 ms]
-Found 6 outliers among 100 measurements (6.00%)
-  1 (1.00%) high mild
-  5 (5.00%) high severe
-
-br13_001.json           time:   [1.5000 ms 1.5037 ms 1.5078 ms]
+br06_001.json           time:   [971.58 µs 973.82 µs 976.53 µs]
+                        change: [−10.934% −10.282% −9.5786%] (p = 0.00 < 0.05)
+                        Performance has improved.
 Found 11 outliers among 100 measurements (11.00%)
-  5 (5.00%) high mild
-  6 (6.00%) high severe
+  11 (11.00%) high mild
 
-br14_001.json           time:   [1.2566 ms 1.2598 ms 1.2638 ms]
-Found 9 outliers among 100 measurements (9.00%)
+br07_001.json           time:   [841.53 µs 843.54 µs 845.98 µs]
+                        change: [−0.7042% +0.1488% +1.0159%] (p = 0.74 > 0.05)
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+
+br08_001.json           time:   [1.6380 ms 1.6406 ms 1.6439 ms]
+                        change: [+25.462% +26.347% +27.382%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 11 outliers among 100 measurements (11.00%)
+  8 (8.00%) high mild
+  3 (3.00%) high severe
+
+br09_001.json           time:   [1.5211 ms 1.5245 ms 1.5285 ms]
+                        change: [−7.7661% −6.8910% −5.9299%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 5 outliers among 100 measurements (5.00%)
   3 (3.00%) high mild
-  6 (6.00%) high severe
+  2 (2.00%) high severe
 
-br15_001.json           time:   [1.2959 ms 1.2983 ms 1.3009 ms]
-Found 9 outliers among 100 measurements (9.00%)
-  5 (5.00%) high mild
-  4 (4.00%) high severe
+br10_001.json           time:   [1.5766 ms 1.5817 ms 1.5877 ms]
+                        change: [−4.9838% −3.8321% −2.9487%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+br11_001.json           time:   [1.5038 ms 1.5098 ms 1.5189 ms]
+                        change: [+6.4143% +7.5364% +9.0424%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 3 outliers among 100 measurements (3.00%)
+  1 (1.00%) high mild
+  2 (2.00%) high severe
+
+br12_001.json           time:   [1.5540 ms 1.5598 ms 1.5670 ms]
+                        change: [−2.3139% −1.4028% −0.5601%] (p = 0.00 < 0.05)
+                        Change within noise threshold.
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high severe
+
+br13_001.json           time:   [1.3739 ms 1.3777 ms 1.3824 ms]
+                        change: [−8.1625% −6.8638% −5.3653%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high severe
+
+br14_001.json           time:   [1.1938 ms 1.1975 ms 1.2019 ms]
+                        change: [−4.8468% −4.0072% −3.1866%] (p = 0.00 < 0.05)
+                        Performance has improved.
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+
+br15_001.json           time:   [1.2747 ms 1.2777 ms 1.2811 ms]
+                        change: [−1.1914% −0.3781% +0.6603%] (p = 0.42 > 0.05)
+                        No change in performance detected.
+Found 5 outliers among 100 measurements (5.00%)
+  2 (2.00%) high mild
+  3 (3.00%) high severe
 

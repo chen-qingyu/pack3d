@@ -80,6 +80,7 @@ def parse_br_file(file):
             "container_types": [container_type],
             "box_types": box_types,
             "boxes": boxes,
+            "support_rate": 0.0,
         }
         results.append((problem_num, result))
 
