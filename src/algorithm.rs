@@ -70,12 +70,6 @@ impl Algorithm {
                 break;
             }
 
-            info!(
-                "Packed {} boxes in container \"{}\".",
-                self.packed_boxes.len(),
-                self.container.container_type.id
-            );
-
             // 更新剩余箱子列表
             self.unpacked_boxes
                 .retain(|b| !self.packed_boxes.iter().any(|pb| pb.id == b.id));
@@ -85,6 +79,14 @@ impl Algorithm {
             self.container.volume_rate = self.calculate_volume_rate();
             self.container.weight_rate = self.calculate_weight_rate();
             self.output.containers.push(self.container.clone());
+
+            info!(
+                "Container \"{}\": packed {}, left {}, volume rate: {:.2}%.",
+                self.container.container_type.id,
+                self.packed_boxes.len(),
+                self.unpacked_boxes.len(),
+                self.container.volume_rate * 100.0
+            );
         }
 
         if !self.unpacked_boxes.is_empty() {
