@@ -38,7 +38,7 @@ fn test_output() {
         }
 
         // 4. 校验输出数据JSON格式
-        let schema = serde_json::from_str(include_str!("output_schema.json")).unwrap();
+        let schema = serde_json::from_str(include_str!("../data/output_schema.json")).unwrap();
         let result = serde_json::to_value(output).unwrap();
         assert!(jsonschema::is_valid(&schema, &result));
     }

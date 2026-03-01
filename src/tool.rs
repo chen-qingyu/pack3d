@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 /// 校验JSON输入数据格式
 fn validate_schema(input_json: &serde_json::Value) {
-    let schema = include_str!("input_schema.json");
+    let schema = include_str!("../data/input_schema.json");
     let schema = serde_json::from_str(schema).unwrap();
     if let Err(error) = jsonschema::validate(&schema, input_json) {
         error!("JSON schema validation failed: {}", error);
