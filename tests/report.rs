@@ -4,6 +4,7 @@ use peak_alloc::PeakAlloc;
 use std::fs;
 use std::io::Write;
 use std::time::Instant;
+use sysinfo;
 
 #[global_allocator]
 static PEAK_ALLOC: PeakAlloc = PeakAlloc;
@@ -67,7 +68,7 @@ fn report() {
         );
     }
 
-    // 写入CSV
+    // 写入详细数据到CSV
     let mut csv = fs::File::create("tests/report.csv").unwrap();
     writeln!(csv, "filename,volume_rate(%),duration(s),memory(KB)").unwrap();
     for result in &report {
@@ -78,4 +79,21 @@ fn report() {
         )
         .unwrap();
     }
+
+    // 写入统计结论到TXT
+    let avg_rate = report.iter().map(|r| r.rate).sum::<f64>() / report.len() as f64;
+    let avg_duration = report.iter().map(|r| r.duration).sum::<f64>() / report.len() as f64;
+    let avg_memory = report.iter().map(|r| r.memory).sum::<f32>() / report.len() as f32;
+    let sys = sysinfo::System::new_all();
+    let cpu = sys.cpus().first().unwrap();
+    let mut txt = fs::File::create("tests/report.txt").unwrap();
+    writeln!(txt, "Packing Algorithm Performance Report").unwrap();
+    writeln!(txt, "").unwrap();
+    writeln!(txt, "Total Files Tested: {}", report.len()).unwrap();
+    writeln!(txt, "Average Volume Rate: {:.2}%", avg_rate).unwrap();
+    writeln!(txt, "Average Duration: {:.3} s", avg_duration).unwrap();
+    writeln!(txt, "Average Memory Usage: {:.0} KB", avg_memory).unwrap();
+    writeln!(txt, "").unwrap();
+    writeln!(txt, "CPU: {}", cpu.brand()).unwrap();
+    writeln!(txt, "CPU Speed: {} MHz", cpu.frequency()).unwrap();
 }

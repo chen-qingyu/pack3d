@@ -20,3 +20,4 @@ jsonschema = "0.38"
 [dev-dependencies]
 rstest = "0.26"
 peak_alloc = "0.3"
+sysinfo = "0.38"
