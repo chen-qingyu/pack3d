@@ -22,7 +22,7 @@ _Pack All~_
 2. Run the program, specifying the input file path via parameters.
 3. The program will generate a JSON output file, which can be visualized using `scripts/draw.py`.
 
-![](result-br01_001.png)
+![](docs/result-br01_001.png)
 
 ## 4. Input and Output
 

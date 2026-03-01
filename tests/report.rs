@@ -69,7 +69,7 @@ fn report() {
     }
 
     // 写入详细数据到CSV
-    let mut csv = fs::File::create("tests/report.csv").unwrap();
+    let mut csv = fs::File::create("docs/report.csv").unwrap();
     writeln!(csv, "filename,volume_rate(%),duration(s),memory(KB)").unwrap();
     for result in &report {
         writeln!(
@@ -86,7 +86,7 @@ fn report() {
     let avg_memory = report.iter().map(|r| r.memory).sum::<f32>() / report.len() as f32;
     let sys = sysinfo::System::new_all();
     let cpu = sys.cpus().first().unwrap();
-    let mut txt = fs::File::create("tests/report.txt").unwrap();
+    let mut txt = fs::File::create("docs/report.txt").unwrap();
     writeln!(txt, "Packing Algorithm Performance Report").unwrap();
     writeln!(txt, "").unwrap();
     writeln!(txt, "Total Files Tested: {}", report.len()).unwrap();

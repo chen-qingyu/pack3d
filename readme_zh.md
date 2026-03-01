@@ -22,7 +22,7 @@ _Pack All~_
 2. 运行程序，通过参数指定输入文件路径
 3. 程序将生成 JSON 输出文件，可以用 `scripts/draw.py` 画图展示
 
-![](result-br01_001.png)
+![](docs/result-br01_001.png)
 
 ## 4. 输入输出
 
