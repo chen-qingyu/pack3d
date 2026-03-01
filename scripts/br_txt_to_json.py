@@ -91,7 +91,10 @@ def main():
     """处理所有BR文件"""
     # https://people.brunel.ac.uk/~mastjjb/jeb/orlib/thpackinfo.html
 
+    os.chdir(os.path.dirname(os.path.dirname(__file__)))  # 切换到项目所在根目录
+
     if os.path.exists('data/br_json'):
+        print("data/br_json/ already exists.")
         return  # 若已存在则跳过处理
 
     os.makedirs('data/br_json')

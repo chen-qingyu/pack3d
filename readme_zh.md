@@ -20,7 +20,7 @@ _Pack All~_
 
 1. 按照下述输入格式准备 JSON 输入文件
 2. 运行程序，通过参数指定输入文件路径
-3. 程序将生成 JSON 输出文件，可以用 `draw.py` 画图展示
+3. 程序将生成 JSON 输出文件，可以用 `scripts/draw.py` 画图展示
 
 ![](result-br01_001.png)
 
