@@ -16,8 +16,13 @@ struct FileResult {
     memory: f32,      // 内存占用(KB)
 }
 
-fn main() {
+#[test]
+fn report() {
     colog::init();
+    if fs::exists("data/br_json/").unwrap() == false {
+        log::info!("data/br_json/ not found, skipping report test.");
+        return; // 若输入数据不存在则跳过测试
+    }
 
     // 单线程顺序处理每个文件，避免多线程导致内存统计不准
     let mut report = Vec::new();
@@ -63,7 +68,7 @@ fn main() {
     }
 
     // 写入CSV
-    let mut csv = fs::File::create("report.csv").unwrap();
+    let mut csv = fs::File::create("tests/report.csv").unwrap();
     writeln!(csv, "filename,volume_rate(%),duration(s),memory(KB)").unwrap();
     for result in &report {
         writeln!(
