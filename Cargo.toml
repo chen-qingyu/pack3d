@@ -18,10 +18,5 @@ colog = "1.4"
 jsonschema = "0.38"
 
 [dev-dependencies]
-criterion = "0.8"
 rstest = "0.26"
 peak_alloc = "0.3"
-
-[[bench]]
-name = "benchmark"
-harness = false
