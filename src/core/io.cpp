@@ -418,6 +418,10 @@ nlohmann::json solution_to_json(const Solution& sol) noexcept
 
         cj["id"] = cs.id;
         cj["type_id"] = cs.type_id;
+        cj["inner_size"] = {
+            {"x", cs.inner_size.x},
+            {"y", cs.inner_size.y},
+            {"z", cs.inner_size.z}};
 
         nlohmann::json ls;
         ls["used_volume"] = cs.used_volume;

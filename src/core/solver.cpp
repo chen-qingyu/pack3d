@@ -765,6 +765,10 @@ Solution SolverEngine::build_solution(const SearchState& state,
         ContainerSummary cs;
         cs.id = load.instance_id;
         cs.type_id = load.type_id;
+        if (load.type)
+        {
+            cs.inner_size = load.type->inner_size;
+        }
         cs.used_volume = load.used_volume;
         cs.total_volume = load.total_volume();
         cs.volume_rate = load.volume_rate();

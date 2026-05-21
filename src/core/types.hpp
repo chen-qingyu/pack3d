@@ -234,6 +234,7 @@ struct ContainerSummary
 {
     std::string id;
     std::string type_id;
+    Size inner_size; // 容器内部尺寸，绘图所需
     int64_t used_volume = 0;
     int64_t total_volume = 0;
     double volume_rate = 0.0;
