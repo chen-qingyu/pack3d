@@ -397,12 +397,28 @@ nlohmann::json solution_to_json(const Solution& sol) noexcept
 
     if (sol.objective.has_value())
     {
-        nlohmann::json ov;
-        ov["min_container_count"] = sol.objective->container_count;
-        ov["min_platforms_per_container"] = sol.objective->total_platforms;
-        ov["max_avg_volume_rate"] = sol.objective->avg_volume_rate;
-        ov["min_group_split"] = sol.objective->group_split_sum;
-        summary["objective_vector"] = std::move(ov);
+        // 按 objective_keys 顺序输出，支持自定义顺序
+        auto val = nlohmann::json::array();
+        for (const auto& key : sol.objective_keys)
+        {
+            if (key == "min_container_count")
+            {
+                val.push_back(sol.objective->container_count);
+            }
+            else if (key == "min_platforms_per_container")
+            {
+                val.push_back(sol.objective->total_platforms);
+            }
+            else if (key == "max_avg_volume_rate")
+            {
+                val.push_back(sol.objective->avg_volume_rate);
+            }
+            else if (key == "min_group_split")
+            {
+                val.push_back(sol.objective->group_split_sum);
+            }
+        }
+        summary["objective_vector"] = std::move(val);
     }
 
     j["summary"] = std::move(summary);

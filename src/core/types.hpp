@@ -262,6 +262,9 @@ struct Solution
     /// 输出 JSON 自包含所需的箱子类型定义
     std::vector<BoxType> box_types;
 
+    /// 实际使用的目标键顺序（输入决定或默认）
+    std::vector<std::string> objective_keys;
+
     std::vector<Violation> violations;
 };
 

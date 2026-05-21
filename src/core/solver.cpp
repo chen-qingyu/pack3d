@@ -786,6 +786,7 @@ Solution SolverEngine::build_solution(const SearchState& state,
     }
 
     sol.box_types = problem_.box_types;
+    sol.objective_keys = resolve_objective_keys(problem_.objective_keys);
 
     return sol;
 }
