@@ -39,11 +39,4 @@ namespace hypercube
 [[nodiscard]] std::string_view status_to_string(Status s) noexcept;
 [[nodiscard]] std::optional<Status> status_from_string(const std::string& s) noexcept;
 
-// =============================================================
-// 统一入口（CLI 和未来 Python 绑定共用）
-// =============================================================
-
-/// 解析 JSON 输入、运行求解器、返回 JSON 输出字符串
-[[nodiscard]] std::string run_solver(const std::string& json_input, bool debug = false) noexcept;
-
 } // namespace hypercube

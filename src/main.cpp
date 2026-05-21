@@ -8,7 +8,7 @@
 #include <argparse/argparse.hpp>
 #include <spdlog/spdlog.h>
 
-#include "core/io.hpp"
+#include "core/app.hpp"
 
 namespace fs = std::filesystem;
 
@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 
     // 运行求解器
     auto t0 = std::chrono::steady_clock::now();
-    std::string json_output = hypercube::run_solver(json_input, debug);
+    auto json_output = hypercube::run_solver(json_input, debug).dump(2);
     auto t1 = std::chrono::steady_clock::now();
 
     // 构建输出路径: result/<input_stem>.json
