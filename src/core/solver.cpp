@@ -395,195 +395,101 @@ bool SolverEngine::open_new_container(SearchState& state)
 }
 
 // =============================================================
-// place_next_box — 选择最优的箱子 × 容器 × 极点 × 朝向组合
+// place_next_box — 逐个试放，先到先得
 // =============================================================
 bool SolverEngine::place_next_box(SearchState& state)
 {
-    struct ScoredCandidate
+    for (size_t bi = 0; bi < state.remaining_boxes.size(); ++bi)
     {
-        size_t box_index;
-        Candidate cand;
-    };
-
-    std::vector<ScoredCandidate> all_candidates;
-
-    for (size_t i = 0; i < state.remaining_boxes.size(); ++i)
-    {
-        auto placements = enumerate_placements(state, state.remaining_boxes[i]);
-        for (auto& p : placements)
+        const auto& box = state.remaining_boxes[bi];
+        auto* bt = resolve_box_type(box.box_type_id, box_type_map_);
+        if (!bt)
         {
-            all_candidates.push_back({i, std::move(p)});
+            continue;
         }
-    }
 
-    if (all_candidates.empty())
-    {
-        return false;
-    }
-
-    // 按投影目标排序（最优在前）
-    std::sort(all_candidates.begin(), all_candidates.end(),
-              [](const ScoredCandidate& a, const ScoredCandidate& b)
-              {
-                  int cmp = compare_objectives(a.cand.projected_objective,
-                                               b.cand.projected_objective);
-                  if (cmp != 0)
-                  {
-                      return cmp < 0;
-                  }
-                  // 平局 1：优先大箱子（体积利用率）
-                  if (a.cand.volume_utilization_delta != b.cand.volume_utilization_delta)
-                  {
-                      return a.cand.volume_utilization_delta > b.cand.volume_utilization_delta;
-                  }
-                  // 平局 2：优先紧凑位置（Y, Z, X）
-                  const auto& pa = a.cand.position;
-                  const auto& pb = b.cand.position;
-                  if (pa.y != pb.y)
-                  {
-                      return pa.y < pb.y;
-                  }
-                  if (pa.z != pb.z)
-                  {
-                      return pa.z < pb.z;
-                  }
-                  return pa.x < pb.x;
-              });
-
-    // 应用最优候选
-    auto best = all_candidates.front();
-    apply_placement(state, best.cand);
-
-    // 从剩余列表中移除已放置的箱子
-    state.remaining_boxes.erase(state.remaining_boxes.begin() +
-                                static_cast<ptrdiff_t>(best.box_index));
-
-    return true;
-}
-
-// =============================================================
-// enumerate_placements — 枚举箱子的所有有效放置
-// =============================================================
-std::vector<Candidate> SolverEngine::enumerate_placements(
-    SearchState& state, const Box& box)
-{
-    auto* bt = resolve_box_type(box.box_type_id, box_type_map_);
-    if (!bt)
-    {
-        return {};
-    }
-
-    std::vector<Candidate> candidates;
-
-    for (auto& container : state.open_containers)
-    {
-        // 极点排序：低 Y（地板）优先，再低 Z（左侧），再低 X（门）
-        std::sort(container.extreme_points.begin(), container.extreme_points.end(),
-                  [](const Position& a, const Position& b) noexcept
-                  {
-                      if (a.y != b.y)
-                      {
-                          return a.y < b.y;
-                      }
-                      if (a.z != b.z)
-                      {
-                          return a.z < b.z;
-                      }
-                      return a.x < b.x;
-                  });
-
-        // 平台数量限制预检
-        if (problem_.platform_limit.has_value() && !box.platform.empty())
+        for (auto& container : state.open_containers)
         {
-            auto result = check_platform_limit_constraint(
-                container, box.platform, problem_.platform_limit.value());
-            if (!result.ok)
+            // 极点排序：低 Y 优先，再低 Z，再低 X
+            std::sort(container.extreme_points.begin(), container.extreme_points.end(),
+                      [](const Position& a, const Position& b) noexcept
+                      {
+                          if (a.y != b.y)
+                          {
+                              return a.y < b.y;
+                          }
+                          if (a.z != b.z)
+                          {
+                              return a.z < b.z;
+                          }
+                          return a.x < b.x;
+                      });
+
+            // 平台数量限制预检
+            if (problem_.platform_limit.has_value() && !box.platform.empty())
             {
-                continue;
+                auto pr = check_platform_limit_constraint(
+                    container, box.platform, problem_.platform_limit.value());
+                if (!pr.ok)
+                {
+                    continue;
+                }
             }
-        }
 
-        for (const auto& ep : container.extreme_points)
-        {
-            for (auto orient : bt->allowed_orientations)
+            size_t ep_limit = std::min(container.extreme_points.size(), size_t(200));
+            for (size_t ei = 0; ei < ep_limit; ++ei)
             {
-                OrientedSize osize = orient_size(bt->size, orient);
-
-                // 边界检查
-                auto boundResult = check_boundary_constraint(container, ep, osize);
-                if (!boundResult.ok)
+                const auto& ep = container.extreme_points[ei];
+                for (auto orient : bt->allowed_orientations)
                 {
-                    continue;
-                }
+                    OrientedSize osize = orient_size(bt->size, orient);
 
-                // 重叠检查
-                auto overlapResult = check_overlap_constraint(
-                    container, ep, osize, box_type_map_);
-                if (!overlapResult.ok)
-                {
-                    continue;
-                }
-
-                // 重量检查
-                auto weightResult = check_weight_constraint(container, osize, box.weight);
-                if (!weightResult.ok)
-                {
-                    continue;
-                }
-
-                // 支撑检查
-                auto supportResult = check_support_constraint(
-                    container, ep, osize, problem_.support_rate, box_type_map_);
-                if (!supportResult.ok)
-                {
-                    continue;
-                }
-
-                // 路线顺序检查
-                if (problem_.route.has_value() && !box.platform.empty())
-                {
-                    auto routeResult = check_route_order_constraint(
-                        container, box.platform, ep, osize, problem_.route.value());
-                    if (!routeResult.ok)
+                    if (!check_boundary_constraint(container, ep, osize).ok)
                     {
                         continue;
                     }
-                }
-
-                // 此放置有效——创建候选
-                Candidate cand;
-                cand.box_id = box.id;
-                cand.container_instance_id = container.instance_id;
-                cand.position = ep;
-                cand.orientation = orient;
-                cand.osize = osize;
-                cand.volume_utilization_delta = static_cast<double>(osize.volume());
-
-                bool is_new_platform = !box.platform.empty() &&
-                                       !container.platforms.count(box.platform);
-
-                bool group_touches_new_container = false;
-                if (!box.group.empty())
-                {
-                    auto gs_it = state.group_spread.find(box.group);
-                    if (gs_it == state.group_spread.end() ||
-                        !gs_it->second.count(container.instance_id))
+                    if (!check_overlap_constraint(container, ep, osize, box_type_map_).ok)
                     {
-                        group_touches_new_container = true;
+                        continue;
                     }
+                    if (!check_weight_constraint(container, osize, box.weight).ok)
+                    {
+                        continue;
+                    }
+                    if (!check_support_constraint(container, ep, osize, problem_.support_rate, box_type_map_).ok)
+                    {
+                        continue;
+                    }
+
+                    if (problem_.route.has_value() && !box.platform.empty())
+                    {
+                        auto rr = check_route_order_constraint(
+                            container, box.platform, ep, osize, problem_.route.value());
+                        if (!rr.ok)
+                        {
+                            continue;
+                        }
+                    }
+
+                    // 找到有效放置，直接应用
+                    Candidate cand;
+                    cand.box_id = box.id;
+                    cand.container_instance_id = container.instance_id;
+                    cand.position = ep;
+                    cand.orientation = orient;
+                    cand.osize = osize;
+
+                    apply_placement(state, cand);
+
+                    state.remaining_boxes.erase(state.remaining_boxes.begin() +
+                                                static_cast<ptrdiff_t>(bi));
+                    return true;
                 }
-
-                cand.projected_objective = project_objective(
-                    state.current_objective, container,
-                    false, is_new_platform,
-                    box.group, group_touches_new_container);
-
-                candidates.push_back(std::move(cand));
             }
         }
     }
 
-    return candidates;
+    return false;
 }
 
 // =============================================================
@@ -670,40 +576,45 @@ Position SolverEngine::compactify_placement(const ContainerLoad& container,
                                             Position pos,
                                             const OrientedSize& osize) const
 {
-    const int32_t step = 1;
-
-    // Y-（重力方向）
-    for (int32_t ty = pos.y - step; ty >= 0; ty -= step)
+    // 指数步长快速逼近碰撞边界，再 step=1 细调
+    using MakePos = std::function<Position(int32_t)>;
+    auto slide = [&](int32_t start, int32_t limit, MakePos make_pos) -> int32_t
     {
-        Position tp{pos.x, ty, pos.z};
-        if (check_overlap_any(tp, osize, container.placements, box_type_map_))
+        if (start <= limit)
         {
-            break;
+            return start;
         }
-        pos.y = ty;
-    }
+        int32_t cur = start;
+        int32_t step = 1;
+        while (cur - step > limit)
+        {
+            auto tp = make_pos(cur - step);
+            if (check_overlap_any(tp, osize, container.placements, box_type_map_))
+            {
+                break;
+            }
+            cur -= step;
+            step = std::min(step * 2, cur - limit);
+        }
+        // 细调最后一段
+        for (int32_t t = cur - 1; t >= limit; --t)
+        {
+            auto tp = make_pos(t);
+            if (check_overlap_any(tp, osize, container.placements, box_type_map_))
+            {
+                break;
+            }
+            cur = t;
+        }
+        return cur;
+    };
 
-    // Z-（左壁方向）
-    for (int32_t tz = pos.z - step; tz >= 0; tz -= step)
-    {
-        Position tp{pos.x, pos.y, tz};
-        if (check_overlap_any(tp, osize, container.placements, box_type_map_))
-        {
-            break;
-        }
-        pos.z = tz;
-    }
-
-    // X-（朝向门方向）
-    for (int32_t tx = pos.x - step; tx >= 0; tx -= step)
-    {
-        Position tp{tx, pos.y, pos.z};
-        if (check_overlap_any(tp, osize, container.placements, box_type_map_))
-        {
-            break;
-        }
-        pos.x = tx;
-    }
+    pos.y = slide(pos.y, 0, [&](int32_t v)
+                  { return Position{pos.x, v, pos.z}; });
+    pos.z = slide(pos.z, 0, [&](int32_t v)
+                  { return Position{pos.x, pos.y, v}; });
+    pos.x = slide(pos.x, 0, [&](int32_t v)
+                  { return Position{v, pos.y, pos.z}; });
 
     return pos;
 }

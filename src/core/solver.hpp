@@ -102,9 +102,6 @@ private:
     bool open_new_container(SearchState& state);
     bool place_next_box(SearchState& state);
 
-    std::vector<Candidate> enumerate_placements(
-        SearchState& state, const Box& box);
-
     void apply_placement(SearchState& state, Candidate& cand);
     bool check_time(const SearchState& state) const;
     void update_best(SearchState& state);
