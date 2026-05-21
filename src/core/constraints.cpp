@@ -40,20 +40,6 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
 {
     std::vector<Violation> out;
 
-    // --- 结构性空值 ---
-    if (problem.container_types.empty())
-    {
-        out.push_back({"empty_input", {}, "container_types missing"});
-    }
-    if (problem.box_types.empty())
-    {
-        out.push_back({"empty_input", {}, "box_types missing"});
-    }
-    if (problem.boxes.empty())
-    {
-        out.push_back({"empty_input", {}, "boxes missing"});
-    }
-
     // --- 重复 ID ---
     auto dup_ct = check_duplicate_ids(problem.container_types, "container_type");
     out.insert(out.end(), dup_ct.begin(), dup_ct.end());
@@ -63,43 +49,6 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
 
     auto dup_bx = check_duplicate_ids(problem.boxes, "box");
     out.insert(out.end(), dup_bx.begin(), dup_bx.end());
-
-    // --- 正数尺寸与重量 ---
-    for (const auto& ct : problem.container_types)
-    {
-        if (ct.inner_size.x <= 0 || ct.inner_size.y <= 0 || ct.inner_size.z <= 0)
-        {
-            out.push_back({"container_size", {ct.id}, reason::k_invalid_range});
-        }
-        if (ct.max_weight <= 0)
-        {
-            out.push_back({"container_weight", {ct.id}, reason::k_invalid_range});
-        }
-        if (ct.quantity_limit.has_value() && ct.quantity_limit.value() <= 0)
-        {
-            out.push_back({"container_quantity", {ct.id}, reason::k_invalid_range});
-        }
-    }
-
-    for (const auto& bt : problem.box_types)
-    {
-        if (bt.size.x <= 0 || bt.size.y <= 0 || bt.size.z <= 0)
-        {
-            out.push_back({"box_type_size", {bt.id}, reason::k_invalid_range});
-        }
-        if (bt.allowed_orientations.empty())
-        {
-            out.push_back({"box_type_orientation", {bt.id}, reason::k_invalid_orientation});
-        }
-    }
-
-    for (const auto& bx : problem.boxes)
-    {
-        if (bx.weight <= 0)
-        {
-            out.push_back({"box_weight", {bx.id}, reason::k_invalid_range});
-        }
-    }
 
     // --- box_type_id 引用校验 ---
     std::set<std::string> bt_ids;
@@ -113,24 +62,6 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
         {
             out.push_back({"unknown_box_type", {bx.id, bx.box_type_id}, "unknown_box_type"});
         }
-    }
-
-    // --- 约束范围 ---
-    if (problem.time_limit_seconds <= 0)
-    {
-        out.push_back({"time_limit", {}, reason::k_invalid_range});
-    }
-    if (problem.support_rate < 0.0 || problem.support_rate > 1.0)
-    {
-        out.push_back({"support_rate", {}, reason::k_invalid_range});
-    }
-    if (problem.platform_limit.has_value() && problem.platform_limit.value() <= 0)
-    {
-        out.push_back({"platform_limit", {}, reason::k_invalid_range});
-    }
-    if (problem.tender_limit.has_value() && problem.tender_limit.value() <= 0)
-    {
-        out.push_back({"tender_limit", {}, reason::k_invalid_range});
     }
 
     // --- 路线检查 ---

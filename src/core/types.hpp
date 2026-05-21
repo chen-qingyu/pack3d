@@ -288,9 +288,6 @@ inline constexpr const char* k_final_check = "final_check";
 inline constexpr const char* k_invalid_range = "invalid_range";
 inline constexpr const char* k_duplicate_id = "duplicate_id";
 inline constexpr const char* k_route_missing_platform = "route_missing_platform";
-inline constexpr const char* k_invalid_orientation = "invalid_orientation";
-inline constexpr const char* k_unsupported_objective = "unsupported_objective";
-
 } // namespace reason
 
 } // namespace hypercube

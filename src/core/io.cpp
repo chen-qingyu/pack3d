@@ -317,42 +317,8 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
         {
             Solution s;
             s.status = Status::InvalidInput;
-            bool has_route = false, has_range = false, has_dup = false, has_orient = false;
-            for (const auto& v : violations)
-            {
-                if (v.details == reason::k_route_missing_platform)
-                {
-                    has_route = true;
-                }
-                else if (v.details == reason::k_invalid_range)
-                {
-                    has_range = true;
-                }
-                else if (v.details == reason::k_duplicate_id)
-                {
-                    has_dup = true;
-                }
-                else if (v.details == reason::k_invalid_orientation)
-                {
-                    has_orient = true;
-                }
-            }
-            if (has_route)
-            {
-                s.reason = reason::k_route_missing_platform;
-            }
-            else if (has_dup)
-            {
-                s.reason = reason::k_duplicate_id;
-            }
-            else if (has_orient)
-            {
-                s.reason = reason::k_invalid_orientation;
-            }
-            else
-            {
-                s.reason = reason::k_invalid_range;
-            }
+            // 用首个违规的 details 作为 reason（仅含 schema 无法表达的跨字段校验）
+            s.reason = violations.empty() ? reason::k_invalid_range : violations[0].details;
             s.violations = std::move(violations);
             return s;
         }

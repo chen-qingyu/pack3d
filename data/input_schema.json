@@ -4,6 +4,7 @@
   "description": "3D 装箱问题输入的 JSON Schema",
   "type": "object",
   "required": ["container_types", "box_types", "boxes"],
+  "additionalProperties": false,
   "properties": {
     "container_types": {
       "type": "array",
@@ -12,11 +13,13 @@
       "items": {
         "type": "object",
         "required": ["id", "inner_size", "max_weight"],
+        "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
           "inner_size": {
             "type": "object",
             "required": ["x", "y", "z"],
+            "additionalProperties": false,
             "properties": {
               "x": { "type": "integer", "minimum": 1 },
               "y": { "type": "integer", "minimum": 1 },
@@ -35,11 +38,13 @@
       "items": {
         "type": "object",
         "required": ["id", "size", "allowed_orientations"],
+        "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
           "size": {
             "type": "object",
             "required": ["x", "y", "z"],
+            "additionalProperties": false,
             "properties": {
               "x": { "type": "integer", "minimum": 1 },
               "y": { "type": "integer", "minimum": 1 },
@@ -64,6 +69,7 @@
       "items": {
         "type": "object",
         "required": ["id", "box_type_id", "weight"],
+        "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
           "box_type_id": { "type": "string" },
@@ -76,6 +82,7 @@
     "constraints": {
       "type": "object",
       "description": "约束配置",
+      "additionalProperties": false,
       "properties": {
         "time_limit_seconds": {
           "type": "number",
@@ -113,9 +120,11 @@
     "solver": {
       "type": "object",
       "description": "求解器配置",
+      "additionalProperties": false,
       "properties": {
         "strategy": {
           "type": "string",
+          "enum": ["constructive_multi_active"],
           "default": "constructive_multi_active"
         },
         "active_container_limit": {
