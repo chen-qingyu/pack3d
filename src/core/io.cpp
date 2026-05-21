@@ -1,0 +1,480 @@
+#include "io.hpp"
+
+#include <variant>
+
+#include <spdlog/spdlog.h>
+
+#include "constraints.hpp"
+#include "solver.hpp"
+
+namespace hypercube
+{
+
+// =============================================================
+// Status 字符串互转
+// =============================================================
+std::string_view status_to_string(Status s) noexcept
+{
+    switch (s)
+    {
+        case Status::Success:
+            return "success";
+        case Status::Timeout:
+            return "timeout";
+        case Status::FailedConstraint:
+            return "failed_constraint";
+        case Status::InvalidInput:
+            return "invalid_input";
+    }
+    return "unknown";
+}
+
+std::optional<Status> status_from_string(const std::string& s) noexcept
+{
+    if (s == "success")
+    {
+        return Status::Success;
+    }
+    if (s == "timeout")
+    {
+        return Status::Timeout;
+    }
+    if (s == "failed_constraint")
+    {
+        return Status::FailedConstraint;
+    }
+    if (s == "invalid_input")
+    {
+        return Status::InvalidInput;
+    }
+    return std::nullopt;
+}
+
+// =============================================================
+// Orientation 字符串互转
+// =============================================================
+namespace
+{
+
+std::string_view orientation_to_string(Orientation o) noexcept
+{
+    switch (o)
+    {
+        case Orientation::XYZ:
+            return "xyz";
+        case Orientation::XZY:
+            return "xzy";
+        case Orientation::YXZ:
+            return "yxz";
+        case Orientation::YZX:
+            return "yzx";
+        case Orientation::ZXY:
+            return "zxy";
+        case Orientation::ZYX:
+            return "zyx";
+    }
+    return "xyz";
+}
+
+std::optional<Orientation> orientation_from_string(const std::string& s) noexcept
+{
+    if (s == "xyz")
+    {
+        return Orientation::XYZ;
+    }
+    if (s == "xzy")
+    {
+        return Orientation::XZY;
+    }
+    if (s == "yxz")
+    {
+        return Orientation::YXZ;
+    }
+    if (s == "yzx")
+    {
+        return Orientation::YZX;
+    }
+    if (s == "zxy")
+    {
+        return Orientation::ZXY;
+    }
+    if (s == "zyx")
+    {
+        return Orientation::ZYX;
+    }
+    return std::nullopt;
+}
+
+// 从 JSON 中获取可选的 int，null 视为空 optional
+std::optional<int> json_opt_int(const nlohmann::json& j, const char* key)
+{
+    auto it = j.find(key);
+    if (it == j.end() || it->is_null())
+    {
+        return std::nullopt;
+    }
+    return it->get<int>();
+}
+
+// 从 JSON 中获取可选的 double
+std::optional<double> json_opt_double(const nlohmann::json& j, const char* key)
+{
+    auto it = j.find(key);
+    if (it == j.end() || it->is_null())
+    {
+        return std::nullopt;
+    }
+    return it->get<double>();
+}
+
+} // anonymous namespace
+
+// =============================================================
+// problem_from_json
+// =============================================================
+std::optional<Problem> problem_from_json(const nlohmann::json& j) noexcept
+{
+    try
+    {
+        Problem p;
+
+        // --- container_types ---
+        if (j.contains("container_types") && j["container_types"].is_array())
+        {
+            for (const auto& item : j["container_types"])
+            {
+                ContainerType ct;
+                ct.id = item["id"].get<std::string>();
+                ct.inner_size.x = item["inner_size"]["x"].get<int32_t>();
+                ct.inner_size.y = item["inner_size"]["y"].get<int32_t>();
+                ct.inner_size.z = item["inner_size"]["z"].get<int32_t>();
+                ct.max_weight = item["max_weight"].get<double>();
+                ct.quantity_limit = json_opt_int(item, "quantity_limit");
+                p.container_types.push_back(std::move(ct));
+            }
+        }
+
+        // --- box_types ---
+        if (j.contains("box_types") && j["box_types"].is_array())
+        {
+            for (const auto& item : j["box_types"])
+            {
+                BoxType bt;
+                bt.id = item["id"].get<std::string>();
+                bt.size.x = item["size"]["x"].get<int32_t>();
+                bt.size.y = item["size"]["y"].get<int32_t>();
+                bt.size.z = item["size"]["z"].get<int32_t>();
+                if (item.contains("allowed_orientations") &&
+                    item["allowed_orientations"].is_array())
+                {
+                    for (const auto& o_str : item["allowed_orientations"])
+                    {
+                        auto o = orientation_from_string(o_str.get<std::string>());
+                        if (o.has_value())
+                        {
+                            bt.allowed_orientations.push_back(o.value());
+                        }
+                    }
+                }
+                p.box_types.push_back(std::move(bt));
+            }
+        }
+
+        // --- boxes ---
+        if (j.contains("boxes") && j["boxes"].is_array())
+        {
+            for (const auto& item : j["boxes"])
+            {
+                Box bx;
+                bx.id = item["id"].get<std::string>();
+                bx.box_type_id = item["box_type_id"].get<std::string>();
+                bx.weight = item["weight"].get<double>();
+                bx.group = item.value("group", std::string());
+                bx.platform = item.value("platform", std::string());
+                p.boxes.push_back(std::move(bx));
+            }
+        }
+
+        // --- constraints ---
+        if (j.contains("constraints"))
+        {
+            const auto& c = j["constraints"];
+            p.time_limit_seconds = c.value("time_limit_seconds", 120.0);
+            p.support_rate = c.value("support_rate", 0.0);
+            p.platform_limit = json_opt_int(c, "platform_limit");
+            p.tender_limit = json_opt_int(c, "tender_limit");
+
+            if (c.contains("route") && c["route"].is_array())
+            {
+                RouteOrder route;
+                for (const auto& plat : c["route"])
+                {
+                    std::string pname = plat.get<std::string>();
+                    route.index_of[pname] = route.platform_order.size();
+                    route.platform_order.push_back(std::move(pname));
+                }
+                p.route = std::move(route);
+            }
+        }
+
+        // --- objectives ---
+        if (j.contains("objectives") && j["objectives"].is_array())
+        {
+            for (const auto& obj : j["objectives"])
+            {
+                p.objective_keys.push_back(obj.get<std::string>());
+            }
+        }
+
+        // --- solver ---
+        if (j.contains("solver"))
+        {
+            const auto& s = j["solver"];
+            p.solver_config.strategy = s.value("strategy", "constructive_multi_active");
+            p.solver_config.active_container_limit = s.value("active_container_limit", 3);
+            p.solver_config.random_seed = s.value("random_seed", 42);
+        }
+
+        return p;
+    }
+    catch (const std::exception&)
+    {
+        return std::nullopt;
+    }
+}
+
+// =============================================================
+// parse_json — 入口
+// =============================================================
+std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcept
+{
+    try
+    {
+        auto j = nlohmann::json::parse(json_text);
+        auto problem = problem_from_json(j);
+        if (!problem.has_value())
+        {
+            Solution s;
+            s.status = Status::InvalidInput;
+            s.reason = reason::k_invalid_range;
+            s.violations.push_back({"json_parse", {}, "failed_to_parse_json_structure"});
+            return s;
+        }
+
+        // 运行预校验
+        auto violations = pre_validate_input(problem.value());
+        if (!violations.empty())
+        {
+            Solution s;
+            s.status = Status::InvalidInput;
+            bool has_route = false, has_range = false, has_dup = false, has_orient = false;
+            for (const auto& v : violations)
+            {
+                if (v.details == reason::k_route_missing_platform)
+                {
+                    has_route = true;
+                }
+                else if (v.details == reason::k_invalid_range)
+                {
+                    has_range = true;
+                }
+                else if (v.details == reason::k_duplicate_id)
+                {
+                    has_dup = true;
+                }
+                else if (v.details == reason::k_invalid_orientation)
+                {
+                    has_orient = true;
+                }
+            }
+            if (has_route)
+            {
+                s.reason = reason::k_route_missing_platform;
+            }
+            else if (has_dup)
+            {
+                s.reason = reason::k_duplicate_id;
+            }
+            else if (has_orient)
+            {
+                s.reason = reason::k_invalid_orientation;
+            }
+            else
+            {
+                s.reason = reason::k_invalid_range;
+            }
+            s.violations = std::move(violations);
+            return s;
+        }
+
+        return problem.value();
+    }
+    catch (const nlohmann::json::parse_error& e)
+    {
+        Solution s;
+        s.status = Status::InvalidInput;
+        s.reason = reason::k_invalid_range;
+        s.violations.push_back({"json_syntax", {}, e.what()});
+        return s;
+    }
+    catch (const std::exception& e)
+    {
+        Solution s;
+        s.status = Status::InvalidInput;
+        s.reason = reason::k_invalid_range;
+        s.violations.push_back({"json_parse", {}, e.what()});
+        return s;
+    }
+}
+
+// =============================================================
+// solution_to_json
+// =============================================================
+nlohmann::json solution_to_json(const Solution& sol) noexcept
+{
+    nlohmann::json j;
+
+    // --- status & reason ---
+    j["status"] = std::string(status_to_string(sol.status));
+    j["reason"] = sol.reason;
+
+    // --- summary ---
+    nlohmann::json summary;
+    summary["elapsed_second"] = sol.elapsed_second;
+    summary["packed_box_count"] = sol.packed_box_count;
+    summary["unpacked_box_count"] = sol.unpacked_box_count;
+    summary["container_count"] = sol.container_count;
+
+    if (sol.objective.has_value())
+    {
+        nlohmann::json ov;
+        ov["min_container_count"] = sol.objective->container_count;
+        ov["min_platforms_per_container"] = sol.objective->total_platforms;
+        ov["max_avg_volume_rate"] = sol.objective->avg_volume_rate;
+        ov["min_group_split"] = sol.objective->group_split_sum;
+        summary["objective_vector"] = std::move(ov);
+    }
+
+    j["summary"] = std::move(summary);
+
+    // --- result ---
+    nlohmann::json result;
+
+    nlohmann::json containers_json = nlohmann::json::array();
+    for (size_t i = 0; i < sol.container_summaries.size(); ++i)
+    {
+        const auto& cs = sol.container_summaries[i];
+        nlohmann::json cj;
+
+        cj["id"] = cs.id;
+        cj["type_id"] = cs.type_id;
+
+        nlohmann::json ls;
+        ls["used_volume"] = cs.used_volume;
+        ls["total_volume"] = cs.total_volume;
+        ls["volume_rate"] = cs.volume_rate;
+        ls["total_weight"] = cs.total_weight;
+        ls["platforms"] = cs.platforms;
+        ls["groups"] = cs.groups;
+        cj["load_summary"] = std::move(ls);
+
+        nlohmann::json placements_json = nlohmann::json::array();
+        if (i < sol.container_placements.size())
+        {
+            for (const auto& pl : sol.container_placements[i])
+            {
+                nlohmann::json pj;
+                pj["box_id"] = pl.box_id;
+                pj["box_type_id"] = pl.box_type_id;
+                pj["position"] = {
+                    {"x", pl.position.x},
+                    {"y", pl.position.y},
+                    {"z", pl.position.z}};
+                pj["orientation"] = std::string(orientation_to_string(pl.orientation));
+                placements_json.push_back(std::move(pj));
+            }
+        }
+        cj["placements"] = std::move(placements_json);
+
+        containers_json.push_back(std::move(cj));
+    }
+    result["containers"] = std::move(containers_json);
+
+    // box_types — 使输出自包含
+    nlohmann::json box_types_json = nlohmann::json::array();
+    for (const auto& bt : sol.box_types)
+    {
+        nlohmann::json bj;
+        bj["id"] = bt.id;
+        bj["size"] = {{"x", bt.size.x}, {"y", bt.size.y}, {"z", bt.size.z}};
+        nlohmann::json orients = nlohmann::json::array();
+        for (auto o : bt.allowed_orientations)
+        {
+            orients.push_back(std::string(orientation_to_string(o)));
+        }
+        bj["allowed_orientations"] = std::move(orients);
+        box_types_json.push_back(std::move(bj));
+    }
+    result["box_types"] = std::move(box_types_json);
+
+    result["unpacked_boxes"] = sol.unpacked_boxes;
+
+    j["result"] = std::move(result);
+
+    // --- violations（仅在非空时输出）---
+    if (!sol.violations.empty())
+    {
+        nlohmann::json violations_json = nlohmann::json::array();
+        for (const auto& v : sol.violations)
+        {
+            nlohmann::json vj;
+            vj["kind"] = v.kind;
+            vj["subject_ids"] = v.subject_ids;
+            vj["details"] = v.details;
+            violations_json.push_back(std::move(vj));
+        }
+        j["violations"] = std::move(violations_json);
+    }
+
+    return j;
+}
+
+// =============================================================
+// solution_to_json_string
+// =============================================================
+std::string solution_to_json_string(const Solution& sol, int indent) noexcept
+{
+    return solution_to_json(sol).dump(indent);
+}
+
+// =============================================================
+// run_solver — 统一入口
+// =============================================================
+std::string run_solver(const std::string& json_input, bool debug) noexcept
+{
+    auto parsed = parse_json(json_input);
+
+    if (std::holds_alternative<Solution>(parsed))
+    {
+        Solution error_solution = std::get<Solution>(std::move(parsed));
+        if (!debug)
+        {
+            error_solution.violations.clear();
+        }
+        return solution_to_json_string(error_solution);
+    }
+
+    Problem problem = std::get<Problem>(std::move(parsed));
+
+    SolverEngine engine(problem);
+    Solution solution = engine.solve();
+
+    if (!debug)
+    {
+        solution.violations.clear();
+    }
+
+    return solution_to_json_string(solution);
+}
+
+} // namespace hypercube

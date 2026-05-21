@@ -1,0 +1,49 @@
+#pragma once
+
+#include <optional>
+#include <string>
+#include <variant>
+
+#include <nlohmann/json.hpp>
+
+#include "types.hpp"
+
+namespace hypercube
+{
+
+// =============================================================
+// JSON 反序列化（输入）
+// =============================================================
+
+/// 将 JSON 字符串解析为 Problem。成功返回 Problem，
+/// 失败返回 status=InvalidInput 的 Solution
+[[nodiscard]] std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcept;
+
+/// 从 nlohmann::json 对象反序列化 Problem
+/// 不执行语义校验（需单独调用 pre_validate_input）
+[[nodiscard]] std::optional<Problem> problem_from_json(const nlohmann::json& j) noexcept;
+
+// =============================================================
+// JSON 序列化（输出）
+// =============================================================
+
+/// 将 Solution 转换为 nlohmann::json 对象
+[[nodiscard]] nlohmann::json solution_to_json(const Solution& sol) noexcept;
+
+/// 将 Solution 序列化为美化打印的 JSON 字符串
+[[nodiscard]] std::string solution_to_json_string(const Solution& sol, int indent = 2) noexcept;
+
+// =============================================================
+// Status / reason 与字符串互转
+// =============================================================
+[[nodiscard]] std::string_view status_to_string(Status s) noexcept;
+[[nodiscard]] std::optional<Status> status_from_string(const std::string& s) noexcept;
+
+// =============================================================
+// 统一入口（CLI 和未来 Python 绑定共用）
+// =============================================================
+
+/// 解析 JSON 输入、运行求解器、返回 JSON 输出字符串
+[[nodiscard]] std::string run_solver(const std::string& json_input, bool debug = false) noexcept;
+
+} // namespace hypercube
