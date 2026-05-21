@@ -5,11 +5,11 @@ set_languages("cxx20")
 set_encodings("utf-8")
 
 add_rules("mode.debug", "mode.release")
-add_requires("nlohmann_json 3.12", "spdlog 1.17", "catch2 3.14", "argparse 3.2")
+add_requires("nlohmann_json 3.12", "spdlog 1.17", "catch2 3.14", "argparse 3.2", "json-schema-validator 2.4")
 
 target("hypercube-lib")
     set_kind("static")
-    add_packages("nlohmann_json", "spdlog", {public = true})
+    add_packages("nlohmann_json", "spdlog", "json-schema-validator", {public = true})
     add_files("src/core/*.cpp")
     add_includedirs("src", {public = true})
     if is_plat("linux") then

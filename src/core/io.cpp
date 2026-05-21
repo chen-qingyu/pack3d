@@ -1,7 +1,12 @@
 #include "io.hpp"
 
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <string>
 #include <variant>
 
+#include <nlohmann/json-schema.hpp>
 #include <spdlog/spdlog.h>
 
 #include "constraints.hpp"
@@ -244,6 +249,39 @@ std::optional<Problem> problem_from_json(const nlohmann::json& j) noexcept
 }
 
 // =============================================================
+// 从 data/input_schema.json 读取 schema 并校验 JSON
+// =============================================================
+namespace
+{
+
+std::vector<Violation> validate_schema(const nlohmann::json& j) noexcept
+{
+    std::vector<Violation> out;
+    try
+    {
+        std::ifstream ifs("data/input_schema.json");
+        if (!ifs.is_open())
+        {
+            out.push_back({"schema_internal", {}, "cannot open data/input_schema.json"});
+            return out;
+        }
+        std::stringstream buf;
+        buf << ifs.rdbuf();
+        auto schema = nlohmann::json::parse(buf.str());
+        nlohmann::json_schema::json_validator validator;
+        validator.set_root_schema(schema);
+        validator.validate(j);
+    }
+    catch (const std::exception& e)
+    {
+        out.push_back({"schema_validation", {}, e.what()});
+    }
+    return out;
+}
+
+} // anonymous namespace
+
+// =============================================================
 // parse_json — 入口
 // =============================================================
 std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcept
@@ -251,6 +289,18 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
     try
     {
         auto j = nlohmann::json::parse(json_text);
+
+        // schema 校验
+        auto schema_errors = validate_schema(j);
+        if (!schema_errors.empty())
+        {
+            Solution s;
+            s.status = Status::InvalidInput;
+            s.reason = reason::k_invalid_range;
+            s.violations = std::move(schema_errors);
+            return s;
+        }
+
         auto problem = problem_from_json(j);
         if (!problem.has_value())
         {

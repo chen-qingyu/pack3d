@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hypercube Input Schema",
+  "description": "3D 装箱问题输入的 JSON Schema",
+  "type": "object",
+  "required": ["container_types", "box_types", "boxes"],
+  "properties": {
+    "container_types": {
+      "type": "array",
+      "description": "容器类型列表",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "inner_size", "max_weight"],
+        "properties": {
+          "id": { "type": "string" },
+          "inner_size": {
+            "type": "object",
+            "required": ["x", "y", "z"],
+            "properties": {
+              "x": { "type": "integer", "minimum": 1 },
+              "y": { "type": "integer", "minimum": 1 },
+              "z": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "max_weight": { "type": "number", "exclusiveMinimum": 0 },
+          "quantity_limit": { "type": ["integer", "null"], "minimum": 1 }
+        }
+      }
+    },
+    "box_types": {
+      "type": "array",
+      "description": "箱子类型列表",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "size", "allowed_orientations"],
+        "properties": {
+          "id": { "type": "string" },
+          "size": {
+            "type": "object",
+            "required": ["x", "y", "z"],
+            "properties": {
+              "x": { "type": "integer", "minimum": 1 },
+              "y": { "type": "integer", "minimum": 1 },
+              "z": { "type": "integer", "minimum": 1 }
+            }
+          },
+          "allowed_orientations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "enum": ["xyz", "xzy", "yxz", "yzx", "zxy", "zyx"]
+            }
+          }
+        }
+      }
+    },
+    "boxes": {
+      "type": "array",
+      "description": "箱子实例列表",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "box_type_id", "weight"],
+        "properties": {
+          "id": { "type": "string" },
+          "box_type_id": { "type": "string" },
+          "weight": { "type": "number", "exclusiveMinimum": 0 },
+          "group": { "type": "string" },
+          "platform": { "type": "string" }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "description": "约束配置",
+      "properties": {
+        "time_limit_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 120
+        },
+        "support_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0
+        },
+        "platform_limit": { "type": ["integer", "null"], "minimum": 1 },
+        "tender_limit": { "type": ["integer", "null"], "minimum": 1 },
+        "route": {
+          "type": "array",
+          "description": "路线顺序：按装卸顺序排列的平台 ID",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "objectives": {
+      "type": "array",
+      "description": "目标函数键列表（按优先级排序）",
+      "items": {
+        "type": "string",
+        "enum": [
+          "min_container_count",
+          "min_platforms_per_container",
+          "max_avg_volume_rate",
+          "min_group_split"
+        ]
+      }
+    },
+    "solver": {
+      "type": "object",
+      "description": "求解器配置",
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "default": "constructive_multi_active"
+        },
+        "active_container_limit": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3
+        },
+        "random_seed": { "type": "integer", "default": 42 }
+      }
+    }
+  }
+}
