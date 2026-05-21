@@ -1,0 +1,6 @@
+Packing Algorithm Performance Report
+
+Total Files Tested: 1600
+Average Volume Rate: 82.13%
+Average Duration: 0.149 s
+Average Memory Usage: 283 KB
