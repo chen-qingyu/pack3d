@@ -131,10 +131,25 @@ Solution SolverEngine::solve()
         return sol;
     }
 
-    // 尚无可行解：尝试多起点
+    // 尚无可行解：若还有容器类型可用则尝试多起点
     if (check_time(state))
     {
-        multi_start_solve(state);
+        // 检查是否还有未耗尽的容器类型，没有的话多起点也是白费功夫
+        bool can_open_any = false;
+        for (const auto& ct : problem_.container_types)
+        {
+            auto it = state.container_type_usage.find(ct.id);
+            int used = (it != state.container_type_usage.end()) ? it->second : 0;
+            if (!ct.quantity_limit.has_value() || used < ct.quantity_limit.value())
+            {
+                can_open_any = true;
+                break;
+            }
+        }
+        if (can_open_any)
+        {
+            multi_start_solve(state);
+        }
     }
 
     if (state.best_feasible.has_value())
