@@ -205,6 +205,10 @@ struct ObjectiveVector
     /// 字典序比较：当 *this 严格优于 rhs 时返回 true
     bool is_better_than(const ObjectiveVector& rhs) const noexcept;
 
+    /// 带目标键的版本：只比较 keys 指定的维度
+    bool is_better_than(const ObjectiveVector& rhs,
+                        const std::vector<std::string>& keys) const noexcept;
+
     bool operator==(const ObjectiveVector& rhs) const noexcept;
     bool operator!=(const ObjectiveVector& rhs) const noexcept
     {

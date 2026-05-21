@@ -25,7 +25,13 @@ std::vector<std::string> resolve_objective_keys(
 // =============================================================
 bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs) const noexcept
 {
-    return compare_objectives(*this, rhs) < 0;
+    return compare_objectives(*this, rhs, default_objective_keys()) < 0;
+}
+
+bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs,
+                                     const std::vector<std::string>& keys) const noexcept
+{
+    return compare_objectives(*this, rhs, keys) < 0;
 }
 
 bool ObjectiveVector::operator==(const ObjectiveVector& rhs) const noexcept
@@ -121,48 +127,56 @@ ObjectiveVector project_objective(
 // compare_objectives — 字典序比较
 // =============================================================
 int compare_objectives(const ObjectiveVector& a,
-                       const ObjectiveVector& b) noexcept
+                       const ObjectiveVector& b,
+                       const std::vector<std::string>& keys) noexcept
 {
-    // v1: min_container_count（越小越好）
-    if (a.container_count < b.container_count)
+    for (const auto& key : keys)
     {
-        return -1;
+        if (key == "min_container_count")
+        {
+            if (a.container_count < b.container_count)
+            {
+                return -1;
+            }
+            if (a.container_count > b.container_count)
+            {
+                return 1;
+            }
+        }
+        else if (key == "min_platforms_per_container")
+        {
+            if (a.total_platforms < b.total_platforms)
+            {
+                return -1;
+            }
+            if (a.total_platforms > b.total_platforms)
+            {
+                return 1;
+            }
+        }
+        else if (key == "max_avg_volume_rate")
+        {
+            if (a.avg_volume_rate > b.avg_volume_rate + 1e-12)
+            {
+                return -1;
+            }
+            if (b.avg_volume_rate > a.avg_volume_rate + 1e-12)
+            {
+                return 1;
+            }
+        }
+        else if (key == "min_group_split")
+        {
+            if (a.group_split_sum < b.group_split_sum)
+            {
+                return -1;
+            }
+            if (a.group_split_sum > b.group_split_sum)
+            {
+                return 1;
+            }
+        }
     }
-    if (a.container_count > b.container_count)
-    {
-        return 1;
-    }
-
-    // v2: min_platforms_per_container -> total_platforms（越小越好）
-    if (a.total_platforms < b.total_platforms)
-    {
-        return -1;
-    }
-    if (a.total_platforms > b.total_platforms)
-    {
-        return 1;
-    }
-
-    // v3: max_avg_volume_rate（越大越好）
-    if (a.avg_volume_rate > b.avg_volume_rate + 1e-12)
-    {
-        return -1;
-    }
-    if (b.avg_volume_rate > a.avg_volume_rate + 1e-12)
-    {
-        return 1;
-    }
-
-    // v4: min_group_split（越小越好）
-    if (a.group_split_sum < b.group_split_sum)
-    {
-        return -1;
-    }
-    if (a.group_split_sum > b.group_split_sum)
-    {
-        return 1;
-    }
-
     return 0; // 相等
 }
 

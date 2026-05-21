@@ -46,9 +46,10 @@ namespace hypercube
 // 字典序比较辅助
 // =============================================================
 
-/// 比较两个目标向量，按各维度的优化方向进行字典序比较
+/// 比较两个目标向量，按 keys 指定维度和顺序进行字典序比较
 /// 返回 -1 若 a < b（a 更优），0 若相等，1 若 a > b（b 更优）
 [[nodiscard]] int compare_objectives(const ObjectiveVector& a,
-                                     const ObjectiveVector& b) noexcept;
+                                     const ObjectiveVector& b,
+                                     const std::vector<std::string>& keys) noexcept;
 
 } // namespace hypercube

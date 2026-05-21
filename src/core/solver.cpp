@@ -185,6 +185,7 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
     s.time_limit_seconds = problem_.time_limit_seconds;
     s.config = &problem_.solver_config;
     s.problem = &problem_;
+    s.objective_keys = resolve_objective_keys(problem_.objective_keys);
 
     switch (order)
     {
@@ -731,7 +732,8 @@ void SolverEngine::update_best(SearchState& state)
     }
     else
     {
-        if (ov.is_better_than(state.best_feasible->objective.value_or(ObjectiveVector{})))
+        if (ov.is_better_than(state.best_feasible->objective.value_or(ObjectiveVector{}),
+                              state.objective_keys))
         {
             state.best_feasible = build_solution(state, Status::Success, reason::k_feasible);
             state.best_feasible->objective = ov;
@@ -786,7 +788,7 @@ Solution SolverEngine::build_solution(const SearchState& state,
     }
 
     sol.box_types = problem_.box_types;
-    sol.objective_keys = resolve_objective_keys(problem_.objective_keys);
+    sol.objective_keys = state.objective_keys;
 
     return sol;
 }
@@ -839,7 +841,8 @@ void SolverEngine::multi_start_solve(SearchState& state)
 
                 if (!state.best_feasible.has_value() ||
                     cand_ov.is_better_than(
-                        state.best_feasible->objective.value_or(ObjectiveVector{})))
+                        state.best_feasible->objective.value_or(ObjectiveVector{}),
+                        fresh.objective_keys))
                 {
                     Solution& cand = fresh.best_feasible.value();
                     state.best_feasible = std::move(cand);

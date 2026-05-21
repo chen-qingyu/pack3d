@@ -61,6 +61,9 @@ struct SearchState
     std::chrono::steady_clock::time_point start_time;
     double time_limit_seconds = 120.0;
 
+    /// 用户指定的目标键顺序（或默认），比较时只关注这些维度
+    std::vector<std::string> objective_keys;
+
     const SolverConfig* config = nullptr;
     const Problem* problem = nullptr;
 };
