@@ -10,7 +10,7 @@
 namespace hypercube
 {
 
-nlohmann::json run_solver(const std::string& json_input, bool debug) noexcept
+json run_solver(const std::string& json_input, bool debug) noexcept
 {
     auto parsed = parse_json(json_input);
 

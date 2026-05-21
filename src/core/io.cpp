@@ -111,7 +111,7 @@ std::optional<Orientation> orientation_from_string(const std::string& s) noexcep
 }
 
 // 从 JSON 中获取可选的 int，null 视为空 optional
-std::optional<int> json_opt_int(const nlohmann::json& j, const char* key)
+std::optional<int> json_opt_int(const json& j, const char* key)
 {
     auto it = j.find(key);
     if (it == j.end() || it->is_null())
@@ -122,7 +122,7 @@ std::optional<int> json_opt_int(const nlohmann::json& j, const char* key)
 }
 
 // 从 JSON 中获取可选的 double
-std::optional<double> json_opt_double(const nlohmann::json& j, const char* key)
+std::optional<double> json_opt_double(const json& j, const char* key)
 {
     auto it = j.find(key);
     if (it == j.end() || it->is_null())
@@ -137,7 +137,7 @@ std::optional<double> json_opt_double(const nlohmann::json& j, const char* key)
 // =============================================================
 // problem_from_json
 // =============================================================
-std::optional<Problem> problem_from_json(const nlohmann::json& j) noexcept
+std::optional<Problem> problem_from_json(const json& j) noexcept
 {
     try
     {
@@ -254,7 +254,7 @@ std::optional<Problem> problem_from_json(const nlohmann::json& j) noexcept
 namespace
 {
 
-std::vector<Violation> validate_schema(const nlohmann::json& j) noexcept
+std::vector<Violation> validate_schema(const json& j) noexcept
 {
     std::vector<Violation> out;
     try
@@ -267,7 +267,7 @@ std::vector<Violation> validate_schema(const nlohmann::json& j) noexcept
         }
         std::stringstream buf;
         buf << ifs.rdbuf();
-        auto schema = nlohmann::json::parse(buf.str());
+        auto schema = json::parse(buf.str());
         nlohmann::json_schema::json_validator validator;
         validator.set_root_schema(schema);
         validator.validate(j);
@@ -288,7 +288,7 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
 {
     try
     {
-        auto j = nlohmann::json::parse(json_text);
+        auto j = json::parse(json_text);
 
         // schema 校验
         auto schema_errors = validate_schema(j);
@@ -359,7 +359,7 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
 
         return problem.value();
     }
-    catch (const nlohmann::json::parse_error& e)
+    catch (const json::parse_error& e)
     {
         Solution s;
         s.status = Status::InvalidInput;
@@ -380,16 +380,14 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
 // =============================================================
 // solution_to_json
 // =============================================================
-nlohmann::json solution_to_json(const Solution& sol) noexcept
+json solution_to_json(const Solution& sol) noexcept
 {
-    nlohmann::json j;
+    json j;
 
-    // --- status & reason ---
     j["status"] = std::string(status_to_string(sol.status));
     j["reason"] = sol.reason;
 
-    // --- summary ---
-    nlohmann::json summary;
+    json summary;
     summary["elapsed_second"] = sol.elapsed_second;
     summary["packed_box_count"] = sol.packed_box_count;
     summary["unpacked_box_count"] = sol.unpacked_box_count;
@@ -397,49 +395,47 @@ nlohmann::json solution_to_json(const Solution& sol) noexcept
 
     if (sol.objective.has_value())
     {
-        // 按 objective_keys 顺序输出，支持自定义顺序
-        auto val = nlohmann::json::array();
+        // 按 objective_keys 顺序输出（ordered_json 保留插入顺序）
+        json ov = json::object();
         for (const auto& key : sol.objective_keys)
         {
             if (key == "min_container_count")
             {
-                val.push_back(sol.objective->container_count);
+                ov[key] = sol.objective->container_count;
             }
             else if (key == "min_platforms_per_container")
             {
-                val.push_back(sol.objective->total_platforms);
+                ov[key] = sol.objective->total_platforms;
             }
             else if (key == "max_avg_volume_rate")
             {
-                val.push_back(sol.objective->avg_volume_rate);
+                ov[key] = sol.objective->avg_volume_rate;
             }
             else if (key == "min_group_split")
             {
-                val.push_back(sol.objective->group_split_sum);
+                ov[key] = sol.objective->group_split_sum;
             }
         }
-        summary["objective_vector"] = std::move(val);
+        summary["objective_vector"] = std::move(ov);
     }
 
     j["summary"] = std::move(summary);
 
-    // --- result ---
-    nlohmann::json result;
-
-    nlohmann::json containers_json = nlohmann::json::array();
+    json result;
+    json containers_json = json::array();
     for (size_t i = 0; i < sol.container_summaries.size(); ++i)
     {
         const auto& cs = sol.container_summaries[i];
-        nlohmann::json cj;
+        json cj;
 
         cj["id"] = cs.id;
         cj["type_id"] = cs.type_id;
-        cj["inner_size"] = {
-            {"x", cs.inner_size.x},
-            {"y", cs.inner_size.y},
-            {"z", cs.inner_size.z}};
+        cj["inner_size"] = json::object();
+        cj["inner_size"]["x"] = cs.inner_size.x;
+        cj["inner_size"]["y"] = cs.inner_size.y;
+        cj["inner_size"]["z"] = cs.inner_size.z;
 
-        nlohmann::json ls;
+        json ls;
         ls["used_volume"] = cs.used_volume;
         ls["total_volume"] = cs.total_volume;
         ls["volume_rate"] = cs.volume_rate;
@@ -448,18 +444,18 @@ nlohmann::json solution_to_json(const Solution& sol) noexcept
         ls["groups"] = cs.groups;
         cj["load_summary"] = std::move(ls);
 
-        nlohmann::json placements_json = nlohmann::json::array();
+        json placements_json = json::array();
         if (i < sol.container_placements.size())
         {
             for (const auto& pl : sol.container_placements[i])
             {
-                nlohmann::json pj;
+                json pj;
                 pj["box_id"] = pl.box_id;
                 pj["box_type_id"] = pl.box_type_id;
-                pj["position"] = {
-                    {"x", pl.position.x},
-                    {"y", pl.position.y},
-                    {"z", pl.position.z}};
+                pj["position"] = json::object();
+                pj["position"]["x"] = pl.position.x;
+                pj["position"]["y"] = pl.position.y;
+                pj["position"]["z"] = pl.position.z;
                 pj["orientation"] = std::string(orientation_to_string(pl.orientation));
                 placements_json.push_back(std::move(pj));
             }
@@ -470,14 +466,16 @@ nlohmann::json solution_to_json(const Solution& sol) noexcept
     }
     result["containers"] = std::move(containers_json);
 
-    // box_types — 使输出自包含
-    nlohmann::json box_types_json = nlohmann::json::array();
+    json box_types_json = json::array();
     for (const auto& bt : sol.box_types)
     {
-        nlohmann::json bj;
+        json bj;
         bj["id"] = bt.id;
-        bj["size"] = {{"x", bt.size.x}, {"y", bt.size.y}, {"z", bt.size.z}};
-        nlohmann::json orients = nlohmann::json::array();
+        bj["size"] = json::object();
+        bj["size"]["x"] = bt.size.x;
+        bj["size"]["y"] = bt.size.y;
+        bj["size"]["z"] = bt.size.z;
+        json orients = json::array();
         for (auto o : bt.allowed_orientations)
         {
             orients.push_back(std::string(orientation_to_string(o)));
@@ -491,13 +489,12 @@ nlohmann::json solution_to_json(const Solution& sol) noexcept
 
     j["result"] = std::move(result);
 
-    // --- violations（仅在非空时输出）---
     if (!sol.violations.empty())
     {
-        nlohmann::json violations_json = nlohmann::json::array();
+        json violations_json = json::array();
         for (const auto& v : sol.violations)
         {
-            nlohmann::json vj;
+            json vj;
             vj["kind"] = v.kind;
             vj["subject_ids"] = v.subject_ids;
             vj["details"] = v.details;
