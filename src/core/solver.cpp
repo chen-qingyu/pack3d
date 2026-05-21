@@ -265,14 +265,6 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
 // =============================================================
 bool SolverEngine::construct_solution(SearchState& state)
 {
-    // 打开第一个容器
-    if (!open_new_container(state))
-    {
-        state.proven_infeasible = true;
-        state.failure_reason = "no_container_type_available";
-        return false;
-    }
-
     while (!state.remaining_boxes.empty())
     {
         if (!check_time(state))
@@ -397,10 +389,20 @@ bool SolverEngine::open_new_container(SearchState& state)
 }
 
 // =============================================================
-// place_next_box — 逐个试放，先到先得
+// place_next_box — 按目标投影选择最优放置
 // =============================================================
 bool SolverEngine::place_next_box(SearchState& state)
 {
+    struct ScoredPlacement
+    {
+        const ContainerLoad* container{nullptr};
+        const ContainerType* new_container_type{nullptr};
+        Position position;
+        Orientation orientation{Orientation::XYZ};
+        OrientedSize osize;
+        bool new_container{false};
+    };
+
     for (size_t bi = 0; bi < state.remaining_boxes.size(); ++bi)
     {
         const auto& box = state.remaining_boxes[bi];
@@ -410,9 +412,13 @@ bool SolverEngine::place_next_box(SearchState& state)
             continue;
         }
 
+        ScoredPlacement best;
+        ObjectiveVector best_proj;
+        bool found = false;
+
+        // --- 在已有容器中找最优放置 ---
         for (auto& container : state.open_containers)
         {
-            // 极点排序：低 Y 优先，再低 Z，再低 X
             std::sort(container.extreme_points.begin(), container.extreme_points.end(),
                       [](const Position& a, const Position& b) noexcept
                       {
@@ -427,7 +433,6 @@ bool SolverEngine::place_next_box(SearchState& state)
                           return a.x < b.x;
                       });
 
-            // 平台数量限制预检
             if (problem_.platform_limit.has_value() && !box.platform.empty())
             {
                 auto pr = check_platform_limit_constraint(
@@ -438,7 +443,6 @@ bool SolverEngine::place_next_box(SearchState& state)
                 }
             }
 
-            // 限制检查的极点数量，前 200 个低 Y/Z/X 已覆盖大部分有效位置
             size_t ep_limit = std::min(container.extreme_points.size(), size_t(200));
             for (size_t ei = 0; ei < ep_limit; ++ei)
             {
@@ -474,22 +478,228 @@ bool SolverEngine::place_next_box(SearchState& state)
                         }
                     }
 
-                    // 找到有效放置，直接应用
-                    Candidate cand;
-                    cand.box_id = box.id;
-                    cand.container_instance_id = container.instance_id;
-                    cand.position = ep;
-                    cand.orientation = orient;
-                    cand.osize = osize;
+                    // 投影目标
+                    ObjectiveVector proj = state.current_objective;
 
-                    apply_placement(state, cand);
+                    // 新平台会增加 total_platforms
+                    if (!box.platform.empty() && !container.platforms.count(box.platform))
+                    {
+                        proj.total_platforms += 1;
+                    }
 
-                    state.remaining_boxes.erase(state.remaining_boxes.begin() +
-                                                static_cast<ptrdiff_t>(bi));
-                    return true;
+                    // 估算 avg_volume_rate 变化
+                    int type_count = 0;
+                    for (const auto& c : state.open_containers)
+                    {
+                        if (c.type)
+                            ++type_count;
+                    }
+                    if (type_count > 0 && container.type)
+                    {
+                        double old_rate = container.volume_rate();
+                        double new_rate = static_cast<double>(container.used_volume + osize.volume()) / static_cast<double>(container.total_volume());
+                        double old_sum = proj.avg_volume_rate * type_count;
+                        proj.avg_volume_rate = (old_sum - old_rate + new_rate) / type_count;
+                    }
+
+                    // 模拟放置后检查是否还有剩余箱子能放进任一生成的新极点
+                    bool fills_container = (container.used_volume + osize.volume() >= container.total_volume());
+                    if (!fills_container)
+                    {
+                        auto sim_eps = generate_extreme_points(ep, osize, container);
+                        filter_extreme_points(sim_eps, container, box_type_map_);
+                        if (sim_eps.empty())
+                        {
+                            fills_container = true;
+                        }
+                        else
+                        {
+                            // 所有剩余箱子都放不进任一极点 -> 容器已满
+                            fills_container = true;
+                            for (const auto& rb : state.remaining_boxes)
+                            {
+                                if (rb.id == box.id)
+                                {
+                                    continue;
+                                }
+                                auto* rbt = resolve_box_type(rb.box_type_id, box_type_map_);
+                                if (!rbt)
+                                {
+                                    continue;
+                                }
+                                for (const auto& sep : sim_eps)
+                                {
+                                    for (auto ro : rbt->allowed_orientations)
+                                    {
+                                        auto ros = orient_size(rbt->size, ro);
+                                        if (check_boundary(*container.type, sep, ros) &&
+                                            !check_overlap_any(sep, ros, container.placements, box_type_map_))
+                                        {
+                                            fills_container = false;
+                                            break;
+                                        }
+                                    }
+                                    if (!fills_container)
+                                    {
+                                        break;
+                                    }
+                                }
+                                if (!fills_container)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    bool has_remaining = (state.remaining_boxes.size() > 1);
+                    if (fills_container && has_remaining)
+                    {
+                        proj.container_count += 1;
+                        // 填满后剩余箱子只能去新容器，它们的平台在新容器中也是新增的
+                        if (!box.platform.empty())
+                        {
+                            proj.total_platforms += 1;
+                        }
+                    }
+
+                    if (!found || compare_objectives(proj, best_proj, state.objective_keys) < 0)
+                    {
+                        found = true;
+                        best = {&container, nullptr, ep, orient, osize, false};
+                        best_proj = proj;
+                    }
                 }
             }
         }
+
+        // --- 评估开新容器的选项 ---
+        {
+            std::vector<const ContainerType*> available;
+            for (const auto& ct : problem_.container_types)
+            {
+                auto it = state.container_type_usage.find(ct.id);
+                int used = (it != state.container_type_usage.end()) ? it->second : 0;
+                if (!ct.quantity_limit.has_value() || used < ct.quantity_limit.value())
+                {
+                    available.push_back(&ct);
+                }
+            }
+
+            // 每个可用类型逐个评估，选投影目标最优的
+            for (auto* ct : available)
+            {
+                Orientation cand_orient = bt->allowed_orientations[0];
+                OrientedSize cand_osize = orient_size(bt->size, cand_orient);
+                bool fits = false;
+                for (auto orient : bt->allowed_orientations)
+                {
+                    auto os = orient_size(bt->size, orient);
+                    if (os.dx <= ct->inner_size.x &&
+                        os.dy <= ct->inner_size.y &&
+                        os.dz <= ct->inner_size.z)
+                    {
+                        cand_orient = orient;
+                        cand_osize = os;
+                        fits = true;
+                        break;
+                    }
+                }
+                if (!fits)
+                {
+                    continue;
+                }
+
+                ObjectiveVector proj = state.current_objective;
+                proj.container_count += 1;
+                if (!box.platform.empty())
+                {
+                    proj.total_platforms += 1;
+                }
+
+                // 预判此容器装完当前箱子后，剩余能力能否装下后续箱子
+                {
+                    int64_t extra_vol = 0;
+                    for (const auto& rb : state.remaining_boxes)
+                    {
+                        if (rb.id == box.id)
+                        {
+                            continue;
+                        }
+                        // 有平台时只看同平台（不同平台可放不同平台不占此容量）
+                        if (!box.platform.empty() && rb.platform != box.platform)
+                        {
+                            continue;
+                        }
+                        auto* rbt = resolve_box_type(rb.box_type_id, box_type_map_);
+                        if (rbt)
+                        {
+                            extra_vol += rbt->size.volume();
+                        }
+                    }
+                    int64_t free_cap = ct->inner_size.volume() - cand_osize.volume();
+                    if (extra_vol > 0 && extra_vol > free_cap)
+                    {
+                        int extra = static_cast<int>((extra_vol + ct->inner_size.volume() - 1) / ct->inner_size.volume());
+                        proj.container_count += extra;
+                        if (!box.platform.empty())
+                        {
+                            proj.total_platforms += extra;
+                        }
+                    }
+                }
+
+                int type_count = 0;
+                for (const auto& c : state.open_containers)
+                {
+                    if (c.type)
+                        ++type_count;
+                }
+                double new_rate = static_cast<double>(cand_osize.volume()) / static_cast<double>(ct->inner_size.volume());
+                double old_sum = proj.avg_volume_rate * type_count;
+                proj.avg_volume_rate = (old_sum + new_rate) / (type_count + 1);
+
+                if (!found || compare_objectives(proj, best_proj, state.objective_keys) < 0)
+                {
+                    found = true;
+                    best = {nullptr, ct, {0, 0, 0}, cand_orient, cand_osize, true};
+                    best_proj = proj;
+                }
+            }
+        }
+
+        if (!found)
+        {
+            continue;
+        }
+
+        // --- 执行最优选项 ---
+        if (best.new_container)
+        {
+            auto* ct = best.new_container_type;
+            ContainerLoad load;
+            load.instance_id = fmt::format("container_{}", state.next_container_instance++);
+            load.type_id = ct->id;
+            load.type = &state.container_type_map[ct->id];
+            load.extreme_points.push_back({0, 0, 0});
+            state.open_containers.push_back(std::move(load));
+            state.container_type_usage[ct->id] =
+                (state.container_type_usage[ct->id]) + 1;
+
+            best.container = &state.open_containers.back();
+        }
+
+        Candidate cand;
+        cand.box_id = box.id;
+        cand.container_instance_id = best.container->instance_id;
+        cand.position = best.position;
+        cand.orientation = best.orientation;
+        cand.osize = best.osize;
+
+        apply_placement(state, cand);
+
+        state.remaining_boxes.erase(state.remaining_boxes.begin() +
+                                    static_cast<ptrdiff_t>(bi));
+        return true;
     }
 
     return false;
