@@ -23,13 +23,7 @@ struct Candidate
     std::string container_instance_id;
     Position position;
     Orientation orientation = Orientation::XYZ;
-    OrientedSize osize; // 预计算的朝向尺寸
-
-    // 应用此放置后的投影目标向量
-    ObjectiveVector projected_objective;
-
-    // 用于打破平局的指标
-    double volume_utilization_delta = 0.0;
+    OrientedSize osize;
 };
 
 // =============================================================

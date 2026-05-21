@@ -90,40 +90,6 @@ ObjectiveVector compute_objective(
 }
 
 // =============================================================
-// project_objective — 增量投影
-// =============================================================
-ObjectiveVector project_objective(
-    const ObjectiveVector& current,
-    const ContainerLoad& target_container,
-    bool is_new_container,
-    bool is_new_platform,
-    const std::string& box_group,
-    bool group_touches_new_container) noexcept
-{
-    ObjectiveVector projected = current;
-
-    if (is_new_container)
-    {
-        projected.container_count += 1;
-    }
-
-    if (is_new_platform)
-    {
-        projected.total_platforms += 1;
-    }
-
-    // avg_volume_rate 在没有完整重算的情况下难以精确投影
-    // 局部比较时保留粗略估计，最终解时做完整重算
-
-    if (group_touches_new_container && !box_group.empty())
-    {
-        projected.group_split_sum += 1;
-    }
-
-    return projected;
-}
-
-// =============================================================
 // compare_objectives — 字典序比较
 // =============================================================
 int compare_objectives(const ObjectiveVector& a,

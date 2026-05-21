@@ -363,7 +363,6 @@ std::vector<Violation> final_check_solution(
         load.type = ctype;
 
         double total_w = 0;
-        int64_t total_v = 0;
 
         for (const auto& pl : placements)
         {
@@ -379,7 +378,6 @@ std::vector<Violation> final_check_solution(
             auto bit = box_map.find(pl.box_id);
             double box_weight = (bit != box_map.end()) ? bit->second.weight : 0.0;
             total_w += box_weight;
-            total_v += osize.volume();
 
             // 边界检查
             if (!check_boundary(*ctype, pl.position, osize))

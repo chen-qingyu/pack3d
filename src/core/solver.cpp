@@ -178,6 +178,7 @@ Solution SolverEngine::solve()
 SearchState SolverEngine::make_initial_state(BoxOrder order) const
 {
     SearchState s;
+    // 复用构造时已建好的 maps，避免每次重建
     s.box_type_map = box_type_map_;
     s.container_type_map = container_type_map_;
     s.remaining_boxes = problem_.boxes;
@@ -383,7 +384,7 @@ bool SolverEngine::open_new_container(SearchState& state)
 
     // 创建新容器实例
     ContainerLoad load;
-    load.instance_id = "container_" + std::to_string(state.next_container_instance++);
+    load.instance_id = fmt::format("container_{}", state.next_container_instance++);
     load.type_id = best->id;
     load.type = &state.container_type_map[best->id];
     load.extreme_points.push_back({0, 0, 0});
@@ -437,6 +438,7 @@ bool SolverEngine::place_next_box(SearchState& state)
                 }
             }
 
+            // 限制检查的极点数量，前 200 个低 Y/Z/X 已覆盖大部分有效位置
             size_t ep_limit = std::min(container.extreme_points.size(), size_t(200));
             for (size_t ei = 0; ei < ep_limit; ++ei)
             {

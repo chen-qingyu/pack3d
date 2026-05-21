@@ -32,16 +32,6 @@ namespace hypercube
 [[nodiscard]] ObjectiveVector compute_objective(
     const std::vector<ContainerLoad>& containers) noexcept;
 
-/// 计算将箱子放入某容器后的增量目标变化
-/// 用于搜索过程中的局部比较
-[[nodiscard]] ObjectiveVector project_objective(
-    const ObjectiveVector& current,
-    const ContainerLoad& target_container,
-    bool is_new_container,
-    bool is_new_platform,
-    const std::string& box_group,
-    bool group_touches_new_container) noexcept;
-
 // =============================================================
 // 字典序比较辅助
 // =============================================================
