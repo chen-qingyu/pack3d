@@ -32,29 +32,6 @@ std::string_view status_to_string(Status s) noexcept
     return "unknown";
 }
 
-std::optional<Status> status_from_string(const std::string& s) noexcept
-{
-    if (s == "success")
-    {
-        return Status::Success;
-    }
-    if (s == "timeout")
-    {
-        return Status::Timeout;
-    }
-    if (s == "failed_constraint")
-    {
-        return Status::FailedConstraint;
-    }
-    if (s == "invalid_input")
-    {
-        return Status::InvalidInput;
-    }
-    return std::nullopt;
-}
-
-// Orientation 字符串互转
-
 std::string_view orientation_to_string(Orientation o) noexcept
 {
     switch (o)

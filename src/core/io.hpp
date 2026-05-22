@@ -34,9 +34,6 @@ using json = nlohmann::ordered_json;
 /// 将 Solution 序列化为美化打印的 JSON 字符串
 [[nodiscard]] std::string solution_to_json_string(const Solution& sol, int indent = 2) noexcept;
 
-// Status / reason 与字符串互转
-
 [[nodiscard]] std::string_view status_to_string(Status s) noexcept;
-[[nodiscard]] std::optional<Status> status_from_string(const std::string& s) noexcept;
 
 } // namespace hypercube
