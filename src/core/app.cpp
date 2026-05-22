@@ -3,7 +3,6 @@
 #include <string>
 #include <variant>
 
-#include "constraints.hpp"
 #include "io.hpp"
 #include "solver.hpp"
 

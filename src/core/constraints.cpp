@@ -2,88 +2,9 @@
 
 #include <algorithm>
 #include <cmath>
-#include <set>
 
 namespace hypercube
 {
-
-// 重复 ID 检查
-template <typename T>
-std::vector<Violation> check_duplicate_ids(const std::vector<T>& items,
-                                           const char* kind)
-{
-    std::vector<Violation> out;
-    std::set<std::string> seen;
-    for (const auto& item : items)
-    {
-        if (!seen.insert(item.id).second)
-        {
-            out.push_back({std::string(kind),
-                           {item.id},
-                           reason::k_duplicate_id});
-        }
-    }
-    return out;
-}
-
-// 预校验输入，返回违规列表（空表示通过）
-std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
-{
-    std::vector<Violation> out;
-
-    // --- 重复 ID ---
-    auto dup_ct = check_duplicate_ids(problem.container_types, "container_type");
-    out.insert(out.end(), dup_ct.begin(), dup_ct.end());
-
-    auto dup_bt = check_duplicate_ids(problem.box_types, "box_type");
-    out.insert(out.end(), dup_bt.begin(), dup_bt.end());
-
-    auto dup_bx = check_duplicate_ids(problem.boxes, "box");
-    out.insert(out.end(), dup_bx.begin(), dup_bx.end());
-
-    // --- box_type_id 引用校验 ---
-    std::set<std::string> bt_ids;
-    for (const auto& bt : problem.box_types)
-    {
-        bt_ids.insert(bt.id);
-    }
-    for (const auto& bx : problem.boxes)
-    {
-        if (!bt_ids.count(bx.box_type_id))
-        {
-            out.push_back({"unknown_box_type", {bx.id, bx.box_type_id}, "unknown_box_type"});
-        }
-    }
-
-    // --- 路线检查 ---
-    if (problem.route.has_value())
-    {
-        const auto& route = problem.route.value();
-
-        // 路线中不得有重复平台
-        std::set<std::string> rseen;
-        for (const auto& p : route.platform_order)
-        {
-            if (!rseen.insert(p).second)
-            {
-                out.push_back({"route_duplicate", {p}, reason::k_route_missing_platform});
-            }
-        }
-
-        // 每个非空的 box.platform 必须在路线中
-        for (const auto& bx : problem.boxes)
-        {
-            if (!bx.platform.empty() && !route.index_of.count(bx.platform))
-            {
-                out.push_back({"route_platform_missing",
-                               {bx.id, bx.platform},
-                               reason::k_route_missing_platform});
-            }
-        }
-    }
-
-    return out;
-}
 
 // 边界约束
 ConstraintResult check_boundary_constraint(const ContainerLoad& load,

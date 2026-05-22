@@ -21,8 +21,10 @@ using json = nlohmann::ordered_json;
 [[nodiscard]] std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcept;
 
 /// 从 json 对象反序列化 Problem
-/// 不执行语义校验（需单独调用 pre_validate_input）
 [[nodiscard]] std::optional<Problem> problem_from_json(const json& j) noexcept;
+
+/// 输入语义校验（schema 无法表达的跨字段校验：重复 ID、引用完整性、路线等）
+[[nodiscard]] std::vector<Violation> pre_validate_input(const Problem& problem) noexcept;
 
 // JSON 序列化（输出）
 

@@ -17,9 +17,6 @@ struct ConstraintResult
     std::optional<Violation> violation;
 };
 
-/// 返回所有输入级别的违规
-[[nodiscard]] std::vector<Violation> pre_validate_input(const Problem& problem) noexcept;
-
 [[nodiscard]] ConstraintResult check_boundary_constraint(const ContainerLoad& load,
                                                          const Position& pos,
                                                          const OrientedSize& osize) noexcept;

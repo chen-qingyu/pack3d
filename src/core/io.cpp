@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <string>
 #include <variant>
@@ -9,7 +10,6 @@
 #include <nlohmann/json-schema.hpp>
 #include <spdlog/spdlog.h>
 
-#include "constraints.hpp"
 #include "solver.hpp"
 
 namespace hypercube
@@ -260,6 +260,79 @@ std::vector<Violation> validate_schema(const json& j) noexcept
     {
         out.push_back({"schema_validation", {}, e.what()});
     }
+    return out;
+}
+
+// 重复 ID 检查
+template <typename T>
+std::vector<Violation> check_duplicate_ids(const std::vector<T>& items,
+                                           const char* kind)
+{
+    std::vector<Violation> out;
+    std::set<std::string> seen;
+    for (const auto& item : items)
+    {
+        if (!seen.insert(item.id).second)
+        {
+            out.push_back({std::string(kind),
+                           {item.id},
+                           reason::k_duplicate_id});
+        }
+    }
+    return out;
+}
+
+// 预校验输入（schema 无法表达的跨字段校验），空列表表示通过
+std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
+{
+    std::vector<Violation> out;
+
+    auto dup_ct = check_duplicate_ids(problem.container_types, "container_type");
+    out.insert(out.end(), dup_ct.begin(), dup_ct.end());
+
+    auto dup_bt = check_duplicate_ids(problem.box_types, "box_type");
+    out.insert(out.end(), dup_bt.begin(), dup_bt.end());
+
+    auto dup_bx = check_duplicate_ids(problem.boxes, "box");
+    out.insert(out.end(), dup_bx.begin(), dup_bx.end());
+
+    std::set<std::string> bt_ids;
+    for (const auto& bt : problem.box_types)
+    {
+        bt_ids.insert(bt.id);
+    }
+    for (const auto& bx : problem.boxes)
+    {
+        if (!bt_ids.count(bx.box_type_id))
+        {
+            out.push_back({"unknown_box_type", {bx.id, bx.box_type_id}, "unknown_box_type"});
+        }
+    }
+
+    if (problem.route.has_value())
+    {
+        const auto& route = problem.route.value();
+
+        std::set<std::string> rseen;
+        for (const auto& p : route.platform_order)
+        {
+            if (!rseen.insert(p).second)
+            {
+                out.push_back({"route_duplicate", {p}, reason::k_route_missing_platform});
+            }
+        }
+
+        for (const auto& bx : problem.boxes)
+        {
+            if (!bx.platform.empty() && !route.index_of.count(bx.platform))
+            {
+                out.push_back({"route_platform_missing",
+                               {bx.id, bx.platform},
+                               reason::k_route_missing_platform});
+            }
+        }
+    }
+
     return out;
 }
 

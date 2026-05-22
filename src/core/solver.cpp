@@ -26,17 +26,6 @@ SolverEngine::SolverEngine(const Problem& problem)
 // 主入口
 Solution SolverEngine::solve()
 {
-    // --- 预校验 ---
-    auto pre_errors = pre_validate_input(problem_);
-    if (!pre_errors.empty())
-    {
-        Solution s;
-        s.status = Status::InvalidInput;
-        s.reason = reason::k_invalid_range;
-        s.violations = pre_errors;
-        return s;
-    }
-
     // --- 初始状态 ---
     SearchState state = make_initial_state();
 
