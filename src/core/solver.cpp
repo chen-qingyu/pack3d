@@ -485,76 +485,79 @@ bool SolverEngine::place_next_box(SearchState& state)
                         proj.avg_volume_rate = (old_sum - old_rate + new_rate) / type_count;
                     }
 
-                    // 模拟放置后检查是否还有剩余箱子能放进任一生成的新极点
-                    bool fills_container = (container.used_volume + osize.volume() >= container.total_volume());
-                    if (!fills_container)
-                    {
-                        auto sim_eps = generate_extreme_points(ep, osize, container);
-                        filter_extreme_points(sim_eps, container, box_type_map_);
-                        if (sim_eps.empty())
-                        {
-                            fills_container = true;
-                        }
-                        else
-                        {
-                            // 所有剩余箱子都放不进任一极点 -> 容器已满
-                            fills_container = true;
-                            for (const auto& rb : state.remaining_boxes)
-                            {
-                                if (rb.id == box.id)
-                                {
-                                    continue;
-                                }
-                                auto* rbt = resolve_box_type(rb.box_type_id, box_type_map_);
-                                if (!rbt)
-                                {
-                                    continue;
-                                }
-                                for (const auto& sep : sim_eps)
-                                {
-                                    for (auto ro : rbt->allowed_orientations)
-                                    {
-                                        auto ros = orient_size(rbt->size, ro);
-                                        if (check_boundary(*container.type, sep, ros) &&
-                                            !check_overlap_any(sep, ros, container.placements, box_type_map_))
-                                        {
-                                            fills_container = false;
-                                            break;
-                                        }
-                                    }
-                                    if (!fills_container)
-                                    {
-                                        break;
-                                    }
-                                }
-                                if (!fills_container)
-                                {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    bool has_remaining = (state.remaining_boxes.size() > 1);
-                    if (fills_container && has_remaining)
-                    {
-                        proj.container_count += 1;
-                        // 填满后剩余箱子只能去新容器
-                        if (!box.platform.empty())
-                        {
-                            proj.platform_count += 1;
-                        }
-                        if (!box.group.empty())
-                        {
-                            proj.group_split_sum += 1;
-                        }
-                    }
-
                     if (!found || compare_objectives(proj, best_proj, state.objective_keys) < 0)
                     {
                         found = true;
                         best = {&container, nullptr, ep, orient, osize, false};
                         best_proj = proj;
                     }
+                }
+            }
+        }
+
+        // 对已找到的最优容器放置做惰性 fills_container 检测
+        if (found && !best.new_container)
+        {
+            const auto& target = *best.container;
+            int64_t cap_left = target.total_volume() - target.used_volume - best.osize.volume();
+            bool fills_container = (cap_left <= 0);
+            if (!fills_container)
+            {
+                auto sim_eps = generate_extreme_points(best.position, best.osize, target);
+                filter_extreme_points(sim_eps, target, box_type_map_);
+                if (sim_eps.empty())
+                {
+                    fills_container = true;
+                }
+                else
+                {
+                    fills_container = true;
+                    for (const auto& rb : state.remaining_boxes)
+                    {
+                        if (rb.id == box.id)
+                        {
+                            continue;
+                        }
+                        auto* rbt = resolve_box_type(rb.box_type_id, box_type_map_);
+                        if (!rbt)
+                        {
+                            continue;
+                        }
+                        for (const auto& sep : sim_eps)
+                        {
+                            for (auto ro : rbt->allowed_orientations)
+                            {
+                                auto ros = orient_size(rbt->size, ro);
+                                if (check_boundary(*target.type, sep, ros) &&
+                                    !check_overlap_any(sep, ros, target.placements, box_type_map_))
+                                {
+                                    fills_container = false;
+                                    break;
+                                }
+                            }
+                            if (!fills_container)
+                            {
+                                break;
+                            }
+                        }
+                        if (!fills_container)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+            bool has_remaining = (state.remaining_boxes.size() > 1);
+            if (fills_container && has_remaining)
+            {
+                best_proj.container_count += 1;
+                if (!box.platform.empty())
+                {
+                    best_proj.platform_count += 1;
+                }
+                if (!box.group.empty())
+                {
+                    best_proj.group_split_sum += 1;
                 }
             }
         }
