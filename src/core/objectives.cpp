@@ -31,7 +31,7 @@ bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs,
 bool ObjectiveVector::operator==(const ObjectiveVector& rhs) const noexcept
 {
     return container_count == rhs.container_count &&
-           total_platforms == rhs.total_platforms &&
+           platform_count == rhs.platform_count &&
            std::abs(avg_volume_rate - rhs.avg_volume_rate) < 1e-12 &&
            group_split_sum == rhs.group_split_sum;
 }
@@ -44,7 +44,7 @@ ObjectiveVector compute_objective(
 
     int total_plat = 0;
     double sum_rate = 0.0;
-    int container_count_for_rate = 0;
+    int container_count = 0;
 
     // 组分散追踪
     std::map<std::string, std::set<std::string>> group_containers;
@@ -56,7 +56,7 @@ ObjectiveVector compute_objective(
         if (c.type)
         {
             sum_rate += c.volume_rate();
-            ++container_count_for_rate;
+            ++container_count;
         }
 
         for (const auto& g : c.groups)
@@ -65,9 +65,9 @@ ObjectiveVector compute_objective(
         }
     }
 
-    ov.total_platforms = total_plat;
-    ov.avg_volume_rate = container_count_for_rate > 0
-                             ? sum_rate / container_count_for_rate
+    ov.platform_count = total_plat;
+    ov.avg_volume_rate = container_count > 0
+                             ? sum_rate / container_count
                              : 0.0;
 
     int split_sum = 0;
@@ -97,18 +97,18 @@ int compare_objectives(const ObjectiveVector& a,
                 return 1;
             }
         }
-        else if (key == "min_platforms_per_container")
+        else if (key == "min_platform_count")
         {
-            if (a.total_platforms < b.total_platforms)
+            if (a.platform_count < b.platform_count)
             {
                 return -1;
             }
-            if (a.total_platforms > b.total_platforms)
+            if (a.platform_count > b.platform_count)
             {
                 return 1;
             }
         }
-        else if (key == "max_avg_volume_rate")
+        else if (key == "max_volume_rate")
         {
             if (a.avg_volume_rate > b.avg_volume_rate + 1e-12)
             {

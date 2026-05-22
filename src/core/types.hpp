@@ -179,7 +179,7 @@ struct ContainerLoad
 struct ObjectiveVector
 {
     int container_count = 0;      // v1: 越小越好
-    int total_platforms = 0;      // v2: 越小越好
+    int platform_count = 0;       // v2: 越小越好
     double avg_volume_rate = 0.0; // v3: 越大越好
     int group_split_sum = 0;      // v4: 越小越好
 

@@ -397,11 +397,11 @@ json solution_to_json(const Solution& sol) noexcept
             {
                 ov[key] = sol.objective->container_count;
             }
-            else if (key == "min_platforms_per_container")
+            else if (key == "min_platform_count")
             {
-                ov[key] = sol.objective->total_platforms;
+                ov[key] = sol.objective->platform_count;
             }
-            else if (key == "max_avg_volume_rate")
+            else if (key == "max_volume_rate")
             {
                 ov[key] = sol.objective->avg_volume_rate;
             }

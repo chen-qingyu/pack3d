@@ -17,12 +17,12 @@ TEST_CASE("目标函数与平台约束集成测试", "[solver]")
     buf << ifs.rdbuf();
     auto base = nlohmann::json::parse(buf.str());
 
-    // --- 1) max_avg_volume_rate：一大一小，两个容器均 100%，共 3 个平台 ---
-    base["objectives"] = {"max_avg_volume_rate"};
+    // --- 1) max_volume_rate：一大一小，两个容器均 100%，共 3 个平台 ---
+    base["objectives"] = {"max_volume_rate"};
     auto res = run_solver(base.dump());
 
     REQUIRE(res["summary"]["objective_vector"].size() == 1);
-    REQUIRE(res["summary"]["objective_vector"].contains("max_avg_volume_rate"));
+    REQUIRE(res["summary"]["objective_vector"].contains("max_volume_rate"));
 
     auto& cs = res["result"]["containers"];
     REQUIRE(cs.size() == 2);
@@ -59,8 +59,8 @@ TEST_CASE("容器数量目标测试", "[solver]")
     REQUIRE(res["summary"]["objective_vector"].size() == 4);
     REQUIRE(res["result"]["containers"].size() == 1);
 
-    // --- max_avg_volume_rate：两个小容器，各 100% ---
-    base["objectives"] = {"max_avg_volume_rate"};
+    // --- max_volume_rate：两个小容器，各 100% ---
+    base["objectives"] = {"max_volume_rate"};
     res = run_solver(base.dump());
     REQUIRE(res["summary"]["objective_vector"].size() == 1);
 

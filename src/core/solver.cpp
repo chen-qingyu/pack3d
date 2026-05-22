@@ -458,10 +458,10 @@ bool SolverEngine::place_next_box(SearchState& state)
                     // 投影目标
                     ObjectiveVector proj = state.current_objective;
 
-                    // 新平台会增加 total_platforms
+                    // 新平台会增加 platform_count
                     if (!box.platform.empty() && !container.platforms.count(box.platform))
                     {
-                        proj.total_platforms += 1;
+                        proj.platform_count += 1;
                     }
 
                     // 估算 avg_volume_rate 变化
@@ -535,7 +535,7 @@ bool SolverEngine::place_next_box(SearchState& state)
                         // 填满后剩余箱子只能去新容器，它们的平台在新容器中也是新增的
                         if (!box.platform.empty())
                         {
-                            proj.total_platforms += 1;
+                            proj.platform_count += 1;
                         }
                     }
 
@@ -590,7 +590,7 @@ bool SolverEngine::place_next_box(SearchState& state)
                 proj.container_count += 1;
                 if (!box.platform.empty())
                 {
-                    proj.total_platforms += 1;
+                    proj.platform_count += 1;
                 }
 
                 // 预判此容器装完当前箱子后，剩余能力能否装下后续箱子
@@ -620,7 +620,7 @@ bool SolverEngine::place_next_box(SearchState& state)
                         proj.container_count += extra;
                         if (!box.platform.empty())
                         {
-                            proj.total_platforms += extra;
+                            proj.platform_count += extra;
                         }
                     }
                 }

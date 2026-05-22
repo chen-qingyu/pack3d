@@ -15,8 +15,8 @@ namespace hypercube
 {
     static const std::vector<std::string> keys = {
         "min_container_count",
-        "min_platforms_per_container",
-        "max_avg_volume_rate",
+        "min_platform_count",
+        "max_volume_rate",
         "min_group_split",
     };
     return keys;
