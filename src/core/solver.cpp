@@ -926,8 +926,7 @@ void SolverEngine::update_best(SearchState& state)
     }
     else
     {
-        if (ov.is_better_than(state.best_feasible->objective.value_or(ObjectiveVector{}),
-                              state.objective_keys))
+        if (ov.is_better_than(state.best_feasible->objective, state.objective_keys))
         {
             state.best_feasible = build_solution(state, Status::Success, reason::k_feasible);
             state.best_feasible->objective = ov;
@@ -946,7 +945,6 @@ Solution SolverEngine::build_solution(const SearchState& state,
     auto elapsed = std::chrono::steady_clock::now() - state.start_time;
     sol.elapsed_second = std::chrono::duration<double>(elapsed).count();
 
-    sol.container_count = static_cast<int>(state.open_containers.size());
     sol.packed_box_count = static_cast<int>(
         problem_.boxes.size() - state.remaining_boxes.size());
     sol.unpacked_box_count = static_cast<int>(state.remaining_boxes.size());
@@ -1029,9 +1027,7 @@ void SolverEngine::multi_start_solve(SearchState& state)
                 auto cand_ov = compute_objective(fresh.open_containers);
 
                 if (!state.best_feasible.has_value() ||
-                    cand_ov.is_better_than(
-                        state.best_feasible->objective.value_or(ObjectiveVector{}),
-                        fresh.objective_keys))
+                    cand_ov.is_better_than(state.best_feasible->objective, fresh.objective_keys))
                 {
                     Solution& cand = fresh.best_feasible.value();
                     state.best_feasible = std::move(cand);

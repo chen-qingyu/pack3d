@@ -233,9 +233,8 @@ struct Solution
     double elapsed_second = 0.0;
     int packed_box_count = 0;
     int unpacked_box_count = 0;
-    int container_count = 0;
 
-    std::optional<ObjectiveVector> objective;
+    ObjectiveVector objective;
 
     std::vector<ContainerSummary> container_summaries;
     std::vector<std::vector<Placement>> container_placements;

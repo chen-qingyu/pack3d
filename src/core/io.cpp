@@ -385,20 +385,10 @@ json solution_to_json(const Solution& sol) noexcept
     summary["elapsed_second"] = sol.elapsed_second;
     summary["packed_box_count"] = sol.packed_box_count;
     summary["unpacked_box_count"] = sol.unpacked_box_count;
-    summary["container_count"] = sol.container_count;
-
-    if (sol.objective.has_value())
-    {
-        summary["platform_count"] = sol.objective->platform_count;
-        summary["volume_rate"] = sol.objective->avg_volume_rate;
-        summary["group_split"] = sol.objective->group_split_sum;
-    }
-    else
-    {
-        summary["platform_count"] = 0;
-        summary["volume_rate"] = 0.0;
-        summary["group_split"] = 0;
-    }
+    summary["container_count"] = sol.objective.container_count;
+    summary["platform_count"] = sol.objective.platform_count;
+    summary["volume_rate"] = sol.objective.avg_volume_rate;
+    summary["group_split"] = sol.objective.group_split_sum;
 
     json keys = json::array();
     for (const auto& key : sol.objective_keys)
