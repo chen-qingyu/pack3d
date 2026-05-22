@@ -389,29 +389,23 @@ json solution_to_json(const Solution& sol) noexcept
 
     if (sol.objective.has_value())
     {
-        // 按 objective_keys 顺序输出（ordered_json 保留插入顺序）
-        json ov = json::object();
-        for (const auto& key : sol.objective_keys)
-        {
-            if (key == "min_container_count")
-            {
-                ov[key] = sol.objective->container_count;
-            }
-            else if (key == "min_platform_count")
-            {
-                ov[key] = sol.objective->platform_count;
-            }
-            else if (key == "max_volume_rate")
-            {
-                ov[key] = sol.objective->avg_volume_rate;
-            }
-            else if (key == "min_group_split")
-            {
-                ov[key] = sol.objective->group_split_sum;
-            }
-        }
-        summary["objective_vector"] = std::move(ov);
+        summary["platform_count"] = sol.objective->platform_count;
+        summary["volume_rate"] = sol.objective->avg_volume_rate;
+        summary["group_split"] = sol.objective->group_split_sum;
     }
+    else
+    {
+        summary["platform_count"] = 0;
+        summary["volume_rate"] = 0.0;
+        summary["group_split"] = 0;
+    }
+
+    json keys = json::array();
+    for (const auto& key : sol.objective_keys)
+    {
+        keys.push_back(key);
+    }
+    summary["objective_keys"] = std::move(keys);
 
     j["summary"] = std::move(summary);
 

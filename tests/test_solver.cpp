@@ -38,8 +38,8 @@ TEST_CASE("independent_objectives", "[solver]")
         base["objectives"] = {key};
         auto res = run_solver(base.dump());
         REQUIRE(res["status"] == "success");
-        REQUIRE(res["summary"]["objective_vector"].size() == 1);
-        REQUIRE(res["summary"]["objective_vector"].contains(key));
+        REQUIRE(res["summary"]["objective_keys"].size() == 1);
+        REQUIRE(res["summary"]["objective_keys"][0] == key);
         REQUIRE(res["result"]["containers"].size() >= 1);
     }
 }
@@ -53,8 +53,8 @@ TEST_CASE("min_container_count", "[solver]")
     {
         base["objectives"] = json::array();
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["objective_vector"]["min_container_count"] == 1);
-        REQUIRE(res["summary"]["objective_vector"]["max_volume_rate"] < 1.0);
+        REQUIRE(res["summary"]["container_count"] == 1);
+        REQUIRE(res["summary"]["volume_rate"] < 1.0);
         REQUIRE(res["result"]["containers"].size() == 1);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
     }
@@ -63,8 +63,8 @@ TEST_CASE("min_container_count", "[solver]")
     {
         base["objectives"] = {"max_volume_rate", "min_container_count"};
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["objective_vector"]["min_container_count"] == 2);
-        REQUIRE(res["summary"]["objective_vector"]["max_volume_rate"] == 1.0);
+        REQUIRE(res["summary"]["container_count"] == 2);
+        REQUIRE(res["summary"]["volume_rate"] == 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "small");
         REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
@@ -80,8 +80,8 @@ TEST_CASE("min_platform_count", "[solver]")
     {
         base["objectives"] = json::array();
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["objective_vector"]["min_platform_count"] == 2);
-        REQUIRE(res["summary"]["objective_vector"]["max_volume_rate"] < 1.0);
+        REQUIRE(res["summary"]["platform_count"] == 2);
+        REQUIRE(res["summary"]["volume_rate"] < 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
         REQUIRE(res["result"]["containers"][0]["load_summary"]["platforms"] == json::array({"A"}));
@@ -93,8 +93,8 @@ TEST_CASE("min_platform_count", "[solver]")
     {
         base["objectives"] = {"max_volume_rate", "min_platform_count"};
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["objective_vector"]["min_platform_count"] == 3);
-        REQUIRE(res["summary"]["objective_vector"]["max_volume_rate"] == 1.0);
+        REQUIRE(res["summary"]["platform_count"] == 3);
+        REQUIRE(res["summary"]["volume_rate"] == 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
         REQUIRE(res["result"]["containers"][0]["load_summary"]["platforms"] == json::array({"A", "B"}));
@@ -112,8 +112,8 @@ TEST_CASE("max_volume_rate", "[solver]")
     {
         base["objectives"] = json::array();
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["objective_vector"]["max_volume_rate"] < 1.0);
-        REQUIRE(res["summary"]["objective_vector"]["min_container_count"] == 1);
+        REQUIRE(res["summary"]["volume_rate"] < 1.0);
+        REQUIRE(res["summary"]["container_count"] == 1);
         REQUIRE(res["result"]["containers"].size() == 1);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
     }
@@ -122,8 +122,8 @@ TEST_CASE("max_volume_rate", "[solver]")
     {
         base["objectives"] = {"max_volume_rate", "min_container_count"};
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["objective_vector"]["max_volume_rate"] == 1.0);
-        REQUIRE(res["summary"]["objective_vector"]["min_container_count"] == 3);
+        REQUIRE(res["summary"]["volume_rate"] == 1.0);
+        REQUIRE(res["summary"]["container_count"] == 3);
         REQUIRE(res["result"]["containers"].size() == 3);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "small");
         REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
@@ -140,8 +140,8 @@ TEST_CASE("min_group_split", "[solver]")
     {
         base["objectives"] = json::array();
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["objective_vector"]["min_group_split"] == 3);
-        REQUIRE(res["summary"]["objective_vector"]["max_volume_rate"] == 1.0);
+        REQUIRE(res["summary"]["group_split"] == 3);
+        REQUIRE(res["summary"]["volume_rate"] == 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
         REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
@@ -151,8 +151,8 @@ TEST_CASE("min_group_split", "[solver]")
     {
         base["objectives"] = {"min_group_split", "max_volume_rate"};
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["objective_vector"]["min_group_split"] == 2);
-        REQUIRE(res["summary"]["objective_vector"]["max_volume_rate"] < 1.0);
+        REQUIRE(res["summary"]["group_split"] == 2);
+        REQUIRE(res["summary"]["volume_rate"] < 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
         REQUIRE(res["result"]["containers"][1]["type_id"] == "big");
