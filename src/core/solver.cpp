@@ -1037,8 +1037,11 @@ void SolverEngine::multi_start_solve(SearchState& state)
                     state.best_feasible->objective = cand_ov;
                 }
 
-                // 单容器 -> min_container_count 已达到最优
-                if (fresh.open_containers.size() == 1)
+                // 单容器已达到 min_container_count 最优，跳过剩余搜索
+                if (fresh.open_containers.size() == 1 &&
+                    state.best_feasible.has_value() &&
+                    state.objective_keys.size() == 1 &&
+                    state.objective_keys[0] == "min_container_count")
                 {
                     return;
                 }
