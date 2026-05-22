@@ -7,9 +7,6 @@
 namespace hypercube
 {
 
-// =============================================================
-// resolve_objective_keys
-// =============================================================
 std::vector<std::string> resolve_objective_keys(
     const std::vector<std::string>& user_keys) noexcept
 {
@@ -20,9 +17,6 @@ std::vector<std::string> resolve_objective_keys(
     return user_keys;
 }
 
-// =============================================================
-// ObjectiveVector::is_better_than
-// =============================================================
 bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs) const noexcept
 {
     return compare_objectives(*this, rhs, default_objective_keys()) < 0;
@@ -42,9 +36,6 @@ bool ObjectiveVector::operator==(const ObjectiveVector& rhs) const noexcept
            group_split_sum == rhs.group_split_sum;
 }
 
-// =============================================================
-// compute_objective
-// =============================================================
 ObjectiveVector compute_objective(
     const std::vector<ContainerLoad>& containers) noexcept
 {
@@ -89,9 +80,6 @@ ObjectiveVector compute_objective(
     return ov;
 }
 
-// =============================================================
-// compare_objectives — 字典序比较
-// =============================================================
 int compare_objectives(const ObjectiveVector& a,
                        const ObjectiveVector& b,
                        const std::vector<std::string>& keys) noexcept

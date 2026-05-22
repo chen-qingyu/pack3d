@@ -15,9 +15,7 @@
 namespace hypercube
 {
 
-// =============================================================
 // Status 字符串互转
-// =============================================================
 std::string_view status_to_string(Status s) noexcept
 {
     switch (s)
@@ -55,11 +53,7 @@ std::optional<Status> status_from_string(const std::string& s) noexcept
     return std::nullopt;
 }
 
-// =============================================================
 // Orientation 字符串互转
-// =============================================================
-namespace
-{
 
 std::string_view orientation_to_string(Orientation o) noexcept
 {
@@ -132,11 +126,6 @@ std::optional<double> json_opt_double(const json& j, const char* key)
     return it->get<double>();
 }
 
-} // anonymous namespace
-
-// =============================================================
-// problem_from_json
-// =============================================================
 std::optional<Problem> problem_from_json(const json& j) noexcept
 {
     try
@@ -248,12 +237,7 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
     }
 }
 
-// =============================================================
 // 从 data/input_schema.json 读取 schema 并校验 JSON
-// =============================================================
-namespace
-{
-
 std::vector<Violation> validate_schema(const json& j) noexcept
 {
     std::vector<Violation> out;
@@ -279,11 +263,6 @@ std::vector<Violation> validate_schema(const json& j) noexcept
     return out;
 }
 
-} // anonymous namespace
-
-// =============================================================
-// parse_json — 入口
-// =============================================================
 std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcept
 {
     try
@@ -343,9 +322,6 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
     }
 }
 
-// =============================================================
-// solution_to_json
-// =============================================================
 json solution_to_json(const Solution& sol) noexcept
 {
     json j;
@@ -472,9 +448,6 @@ json solution_to_json(const Solution& sol) noexcept
     return j;
 }
 
-// =============================================================
-// solution_to_json_string
-// =============================================================
 std::string solution_to_json_string(const Solution& sol, int indent) noexcept
 {
     return solution_to_json(sol).dump(indent);

@@ -7,9 +7,6 @@
 namespace hypercube
 {
 
-// =============================================================
-// orient_size
-// =============================================================
 OrientedSize orient_size(const Size& base, Orientation o) noexcept
 {
     auto [x, y, z] = base;
@@ -31,9 +28,7 @@ OrientedSize orient_size(const Size& base, Orientation o) noexcept
     return {x, y, z}; // unreachable
 }
 
-// =============================================================
 // 边界检查
-// =============================================================
 bool check_boundary(const ContainerType& ctype, const Position& pos,
                     const OrientedSize& osize) noexcept
 {
@@ -56,9 +51,7 @@ bool check_boundary(const ContainerType& ctype, const Position& pos,
     return true;
 }
 
-// =============================================================
 // 重叠检查
-// =============================================================
 bool check_overlap(const Position& a_pos, const OrientedSize& a_size,
                    const Position& b_pos, const OrientedSize& b_size) noexcept
 {
@@ -110,9 +103,6 @@ bool check_overlap_any(const Position& pos, const OrientedSize& osize,
     return false;
 }
 
-// =============================================================
-// 支撑率计算
-// =============================================================
 double calc_support_ratio(const Position& pos, const OrientedSize& osize,
                           const ContainerLoad& load,
                           const std::map<std::string, BoxType>& box_type_map) noexcept
@@ -169,9 +159,7 @@ double calc_support_ratio(const Position& pos, const OrientedSize& osize,
     return static_cast<double>(supported_area) / static_cast<double>(total_area);
 }
 
-// =============================================================
 // 极点生成
-// =============================================================
 std::vector<Position> generate_extreme_points(
     const Position& pos, const OrientedSize& osize,
     const ContainerLoad& load) noexcept
@@ -184,9 +172,7 @@ std::vector<Position> generate_extreme_points(
     return eps;
 }
 
-// =============================================================
 // 过滤极点
-// =============================================================
 void filter_extreme_points(std::vector<Position>& points,
                            const ContainerLoad& load,
                            const std::map<std::string, BoxType>& box_type_map) noexcept
@@ -242,9 +228,7 @@ void filter_extreme_points(std::vector<Position>& points,
     points = std::move(filtered);
 }
 
-// =============================================================
 // 查找辅助
-// =============================================================
 const BoxType* resolve_box_type(const std::string& id,
                                 const std::map<std::string, BoxType>& map) noexcept
 {

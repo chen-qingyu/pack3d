@@ -7,9 +7,7 @@
 namespace hypercube
 {
 
-// =============================================================
 // 几何辅助函数
-// =============================================================
 
 /// 应用朝向到基础尺寸
 [[nodiscard]] OrientedSize orient_size(const Size& base, Orientation o) noexcept;
@@ -32,9 +30,7 @@ namespace hypercube
                                         const ContainerLoad& load,
                                         const std::map<std::string, BoxType>& box_type_map) noexcept;
 
-// =============================================================
 // 极点生成
-// =============================================================
 
 /// 放置箱子后生成候选极点（无序，可能包含重复）
 [[nodiscard]] std::vector<Position> generate_extreme_points(
@@ -46,9 +42,7 @@ void filter_extreme_points(std::vector<Position>& points,
                            const ContainerLoad& load,
                            const std::map<std::string, BoxType>& box_type_map) noexcept;
 
-// =============================================================
 // 查找辅助
-// =============================================================
 
 /// 根据 ID 查找箱子类型
 [[nodiscard]] const BoxType* resolve_box_type(const std::string& id,

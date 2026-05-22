@@ -10,10 +10,6 @@
 namespace hypercube
 {
 
-// =============================================================
-// 约束检查层
-// =============================================================
-
 /// 单约束检查结果
 struct ConstraintResult
 {
@@ -21,16 +17,8 @@ struct ConstraintResult
     std::optional<Violation> violation;
 };
 
-// =============================================================
-// 输入预校验 — 在求解器启动前运行
-// =============================================================
-
 /// 返回所有输入级别的违规
 [[nodiscard]] std::vector<Violation> pre_validate_input(const Problem& problem) noexcept;
-
-// =============================================================
-// 放置时检查 — 每次尝试放置时运行
-// =============================================================
 
 [[nodiscard]] ConstraintResult check_boundary_constraint(const ContainerLoad& load,
                                                          const Position& pos,
@@ -64,10 +52,7 @@ struct ConstraintResult
     const std::string& platform,
     int platform_limit) noexcept;
 
-// =============================================================
 // 最终解校验 — 对完整解运行所有硬约束
-// =============================================================
-
 [[nodiscard]] std::vector<Violation> final_check_solution(
     const Solution& solution,
     const Problem& problem,

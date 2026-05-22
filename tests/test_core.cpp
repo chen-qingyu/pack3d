@@ -13,10 +13,6 @@
 
 using namespace hypercube;
 
-// =============================================================
-// 几何测试
-// =============================================================
-
 TEST_CASE("orient_size 产生正确的尺寸", "[geometry]")
 {
     Size base{500, 400, 300};
@@ -112,10 +108,6 @@ TEST_CASE("calc_support_ratio 部分支撑", "[geometry]")
     REQUIRE(partial == 0.5);
 }
 
-// =============================================================
-// 约束测试
-// =============================================================
-
 TEST_CASE("pre_validate_input 检测重复 ID", "[constraints]")
 {
     Problem p;
@@ -183,10 +175,6 @@ TEST_CASE("平台数量限制约束", "[constraints]")
     REQUIRE(r3.ok);
 }
 
-// =============================================================
-// 目标测试
-// =============================================================
-
 TEST_CASE("ObjectiveVector 字典序比较", "[objectives]")
 {
     ObjectiveVector a{2, 3, 0.8, 5};
@@ -204,10 +192,7 @@ TEST_CASE("ObjectiveVector 字典序比较", "[objectives]")
     REQUIRE(higher_rate.is_better_than(a));
 }
 
-// =============================================================
-// 目标函数与平台约束集成测试
-// =============================================================
-TEST_CASE("目标函数与平台约束集成测试", "[objectives][platform][integration]")
+TEST_CASE("目标函数与平台约束集成测试", "[objectives]")
 {
     std::ifstream ifs("data/tests/test_min_platform.json");
     REQUIRE(ifs.is_open());
@@ -246,10 +231,7 @@ TEST_CASE("目标函数与平台约束集成测试", "[objectives][platform][int
     }
 }
 
-// =============================================================
-// 容器数量目标测试
-// =============================================================
-TEST_CASE("容器数量目标测试", "[objectives][container_count][integration]")
+TEST_CASE("容器数量目标测试", "[objectives]")
 {
     std::ifstream ifs("data/tests/test_min_container.json");
     REQUIRE(ifs.is_open());

@@ -8,9 +8,7 @@
 namespace hypercube
 {
 
-// =============================================================
 // 目标向量计算与比较
-// =============================================================
 
 /// 默认目标键（按优先级排序）
 [[nodiscard]] inline const std::vector<std::string>& default_objective_keys()
@@ -32,9 +30,7 @@ namespace hypercube
 [[nodiscard]] ObjectiveVector compute_objective(
     const std::vector<ContainerLoad>& containers) noexcept;
 
-// =============================================================
 // 字典序比较辅助
-// =============================================================
 
 /// 比较两个目标向量，按 keys 指定维度和顺序进行字典序比较
 /// 返回 -1 若 a < b（a 更优），0 若相等，1 若 a > b（b 更优）

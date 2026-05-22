@@ -7,12 +7,7 @@
 namespace hypercube
 {
 
-// =============================================================
-// 辅助：检查 ID 唯一性
-// =============================================================
-namespace
-{
-
+// 重复 ID 检查
 template <typename T>
 std::vector<Violation> check_duplicate_ids(const std::vector<T>& items,
                                            const char* kind)
@@ -31,11 +26,7 @@ std::vector<Violation> check_duplicate_ids(const std::vector<T>& items,
     return out;
 }
 
-} // anonymous namespace
-
-// =============================================================
-// pre_validate_input
-// =============================================================
+// 预校验输入，返回违规列表（空表示通过）
 std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
 {
     std::vector<Violation> out;
@@ -94,9 +85,7 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
     return out;
 }
 
-// =============================================================
 // 边界约束
-// =============================================================
 ConstraintResult check_boundary_constraint(const ContainerLoad& load,
                                            const Position& pos,
                                            const OrientedSize& osize) noexcept
@@ -112,9 +101,7 @@ ConstraintResult check_boundary_constraint(const ContainerLoad& load,
     return {true, std::nullopt};
 }
 
-// =============================================================
 // 重叠约束
-// =============================================================
 ConstraintResult check_overlap_constraint(
     const ContainerLoad& load,
     const Position& pos, const OrientedSize& osize,
@@ -127,9 +114,7 @@ ConstraintResult check_overlap_constraint(
     return {true, std::nullopt};
 }
 
-// =============================================================
 // 重量约束
-// =============================================================
 ConstraintResult check_weight_constraint(const ContainerLoad& load,
                                          const OrientedSize& osize,
                                          double box_weight) noexcept
@@ -145,9 +130,7 @@ ConstraintResult check_weight_constraint(const ContainerLoad& load,
     return {true, std::nullopt};
 }
 
-// =============================================================
 // 支撑率约束
-// =============================================================
 ConstraintResult check_support_constraint(
     const ContainerLoad& load,
     const Position& pos, const OrientedSize& osize,
@@ -168,9 +151,7 @@ ConstraintResult check_support_constraint(
     return {true, std::nullopt};
 }
 
-// =============================================================
 // 路线顺序约束
-// =============================================================
 ConstraintResult check_route_order_constraint(
     const ContainerLoad& load,
     const std::string& platform,
@@ -231,9 +212,7 @@ ConstraintResult check_route_order_constraint(
     return {true, std::nullopt};
 }
 
-// =============================================================
-// 平台数量限制约束（预检）
-// =============================================================
+// 平台数量限制约束
 ConstraintResult check_platform_limit_constraint(
     const ContainerLoad& load,
     const std::string& platform,
@@ -256,9 +235,7 @@ ConstraintResult check_platform_limit_constraint(
     return {true, std::nullopt};
 }
 
-// =============================================================
-// final_check_solution
-// =============================================================
+// 最终解检查：对求解器输出的解进行全面验证，返回违规列表（空表示通过）
 std::vector<Violation> final_check_solution(
     const Solution& solution,
     const Problem& problem,

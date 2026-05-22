@@ -12,9 +12,6 @@
 namespace hypercube
 {
 
-// =============================================================
-// SolverEngine
-// =============================================================
 SolverEngine::SolverEngine(const Problem& problem)
     : problem_(problem)
 {
@@ -26,9 +23,7 @@ SolverEngine::SolverEngine(const Problem& problem)
     }
 }
 
-// =============================================================
-// solve — 主入口
-// =============================================================
+// 主入口
 Solution SolverEngine::solve()
 {
     // --- 预校验 ---
@@ -172,9 +167,6 @@ Solution SolverEngine::solve()
     return build_solution(state, Status::Timeout, reason::k_no_solution);
 }
 
-// =============================================================
-// make_initial_state
-// =============================================================
 SearchState SolverEngine::make_initial_state(BoxOrder order) const
 {
     SearchState s;
@@ -253,16 +245,13 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
             break;
 
         case BoxOrder::ByMixed:
-            // 不排序——调用者会打乱
+            // 不排序，调用者会打乱
             break;
     }
 
     return s;
 }
 
-// =============================================================
-// construct_solution — 贪心构造式搜索
-// =============================================================
 bool SolverEngine::construct_solution(SearchState& state)
 {
     while (!state.remaining_boxes.empty())
@@ -293,12 +282,10 @@ bool SolverEngine::construct_solution(SearchState& state)
     return true;
 }
 
-// =============================================================
-// open_new_container — 智能选择容器类型
-// =============================================================
+// 智能选择容器类型
 bool SolverEngine::open_new_container(SearchState& state)
 {
-    // 收集可用（未耗尽）的容器类型
+    // 收集可用的容器类型
     std::vector<const ContainerType*> available;
     for (const auto& ct : problem_.container_types)
     {
@@ -388,9 +375,7 @@ bool SolverEngine::open_new_container(SearchState& state)
     return true;
 }
 
-// =============================================================
-// place_next_box — 按目标投影选择最优放置
-// =============================================================
+// 按目标投影选择最优放置
 bool SolverEngine::place_next_box(SearchState& state)
 {
     struct ScoredPlacement
@@ -416,7 +401,7 @@ bool SolverEngine::place_next_box(SearchState& state)
         ObjectiveVector best_proj;
         bool found = false;
 
-        // --- 在已有容器中找最优放置 ---
+        // 在已有容器中找最优放置
         for (auto& container : state.open_containers)
         {
             std::sort(container.extreme_points.begin(), container.extreme_points.end(),
@@ -572,7 +557,7 @@ bool SolverEngine::place_next_box(SearchState& state)
             }
         }
 
-        // --- 评估开新容器的选项 ---
+        // 评估开新容器的选项
         {
             std::vector<const ContainerType*> available;
             for (const auto& ct : problem_.container_types)
@@ -672,7 +657,7 @@ bool SolverEngine::place_next_box(SearchState& state)
             continue;
         }
 
-        // --- 执行最优选项 ---
+        // 执行最优选项
         if (best.new_container)
         {
             auto* ct = best.new_container_type;
@@ -705,9 +690,6 @@ bool SolverEngine::place_next_box(SearchState& state)
     return false;
 }
 
-// =============================================================
-// check_tender_limit_proven_infeasible
-// =============================================================
 bool SolverEngine::check_tender_limit_proven_infeasible(SearchState& state)
 {
     if (!problem_.tender_limit.has_value())
@@ -781,9 +763,7 @@ bool SolverEngine::check_tender_limit_proven_infeasible(SearchState& state)
     return false;
 }
 
-// =============================================================
-// compactify_placement — 将箱子向 (Y-, Z-, X-) 滑动以紧凑排列
-// =============================================================
+// 将箱子向 (Y-, Z-, X-) 滑动以紧凑排列
 Position SolverEngine::compactify_placement(const ContainerLoad& container,
                                             const Box& box,
                                             Position pos,
@@ -832,9 +812,6 @@ Position SolverEngine::compactify_placement(const ContainerLoad& container,
     return pos;
 }
 
-// =============================================================
-// apply_placement
-// =============================================================
 void SolverEngine::apply_placement(SearchState& state, Candidate& cand)
 {
     auto cit = std::find_if(state.open_containers.begin(),
@@ -915,9 +892,6 @@ void SolverEngine::apply_placement(SearchState& state, Candidate& cand)
     state.current_objective = compute_objective(state.open_containers);
 }
 
-// =============================================================
-// check_time
-// =============================================================
 bool SolverEngine::check_time(const SearchState& state) const
 {
     auto elapsed = std::chrono::steady_clock::now() - state.start_time;
@@ -925,9 +899,7 @@ bool SolverEngine::check_time(const SearchState& state) const
     return elapsed_sec < state.time_limit_seconds;
 }
 
-// =============================================================
-// update_best
-// =============================================================
+// 更新最佳解
 void SolverEngine::update_best(SearchState& state)
 {
     if (!state.remaining_boxes.empty())
@@ -953,9 +925,6 @@ void SolverEngine::update_best(SearchState& state)
     }
 }
 
-// =============================================================
-// build_solution
-// =============================================================
 Solution SolverEngine::build_solution(const SearchState& state,
                                       Status status,
                                       const std::string& reason) const
@@ -1005,9 +974,7 @@ Solution SolverEngine::build_solution(const SearchState& state,
     return sol;
 }
 
-// =============================================================
-// multi_start_solve — 尝试不同排序 + 打乱
-// =============================================================
+// 尝试不同排序 + 打乱
 void SolverEngine::multi_start_solve(SearchState& state)
 {
     std::mt19937 rng(static_cast<unsigned>(state.config ? state.config->random_seed : 42));
