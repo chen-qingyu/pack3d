@@ -464,6 +464,12 @@ bool SolverEngine::place_next_box(SearchState& state)
                         proj.platform_count += 1;
                     }
 
+                    // 新组会增加 group_split_sum
+                    if (!box.group.empty() && !container.groups.count(box.group))
+                    {
+                        proj.group_split_sum += 1;
+                    }
+
                     // 估算 avg_volume_rate 变化
                     int type_count = 0;
                     for (const auto& c : state.open_containers)
@@ -532,10 +538,14 @@ bool SolverEngine::place_next_box(SearchState& state)
                     if (fills_container && has_remaining)
                     {
                         proj.container_count += 1;
-                        // 填满后剩余箱子只能去新容器，它们的平台在新容器中也是新增的
+                        // 填满后剩余箱子只能去新容器
                         if (!box.platform.empty())
                         {
                             proj.platform_count += 1;
+                        }
+                        if (!box.group.empty())
+                        {
+                            proj.group_split_sum += 1;
                         }
                     }
 
@@ -592,6 +602,10 @@ bool SolverEngine::place_next_box(SearchState& state)
                 {
                     proj.platform_count += 1;
                 }
+                if (!box.group.empty())
+                {
+                    proj.group_split_sum += 1;
+                }
 
                 // 预判此容器装完当前箱子后，剩余能力能否装下后续箱子
                 {
@@ -621,6 +635,10 @@ bool SolverEngine::place_next_box(SearchState& state)
                         if (!box.platform.empty())
                         {
                             proj.platform_count += extra;
+                        }
+                        if (!box.group.empty())
+                        {
+                            proj.group_split_sum += extra;
                         }
                     }
                 }
