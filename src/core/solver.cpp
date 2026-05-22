@@ -236,6 +236,9 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
         case BoxOrder::ByMixed:
             // 不排序，调用者会打乱
             break;
+
+        default:
+            assert(false && "Unhandled BoxOrder enum value");
     }
 
     return s;

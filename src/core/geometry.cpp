@@ -1,6 +1,7 @@
 #include "geometry.hpp"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <limits>
 
@@ -24,8 +25,10 @@ OrientedSize orient_size(const Size& base, Orientation o) noexcept
             return {z, x, y};
         case Orientation::ZYX:
             return {z, y, x};
+        default:
+            assert(false && "Unhandled Orientation enum value");
+            return {x, y, z};
     }
-    return {x, y, z}; // unreachable
 }
 
 // 边界检查

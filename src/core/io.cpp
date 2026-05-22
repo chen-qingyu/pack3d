@@ -28,8 +28,10 @@ std::string_view status_to_string(Status s) noexcept
             return "failed_constraint";
         case Status::InvalidInput:
             return "invalid_input";
+        default:
+            assert(false && "Unhandled Status enum value");
+            return "unknown";
     }
-    return "unknown";
 }
 
 std::string_view orientation_to_string(Orientation o) noexcept
@@ -48,11 +50,13 @@ std::string_view orientation_to_string(Orientation o) noexcept
             return "zxy";
         case Orientation::ZYX:
             return "zyx";
+        default:
+            assert(false && "Unhandled Orientation enum value");
+            return "unknown";
     }
-    return "xyz";
 }
 
-std::optional<Orientation> orientation_from_string(const std::string& s) noexcept
+Orientation orientation_from_string(const std::string& s) noexcept
 {
     if (s == "xyz")
     {
@@ -78,7 +82,8 @@ std::optional<Orientation> orientation_from_string(const std::string& s) noexcep
     {
         return Orientation::ZYX;
     }
-    return std::nullopt;
+    assert(false && "Unhandled Orientation string value");
+    return Orientation::XYZ;
 }
 
 // 从 JSON 中获取可选的 int，null 视为空 optional
@@ -140,11 +145,8 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
                 {
                     for (const auto& o_str : item["allowed_orientations"])
                     {
-                        auto o = orientation_from_string(o_str.get<std::string>());
-                        if (o.has_value())
-                        {
-                            bt.allowed_orientations.push_back(o.value());
-                        }
+                        bt.allowed_orientations.push_back(
+                            orientation_from_string(o_str.get<std::string>()));
                     }
                 }
                 p.box_types.push_back(std::move(bt));
