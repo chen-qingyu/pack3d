@@ -42,22 +42,14 @@ ObjectiveVector compute_objective(
     ObjectiveVector ov;
     ov.container_count = static_cast<int>(containers.size());
 
-    int total_plat = 0;
     double sum_rate = 0.0;
-    int container_count = 0;
 
-    // 组分散追踪
     std::map<std::string, std::set<std::string>> group_containers;
 
     for (const auto& c : containers)
     {
-        total_plat += static_cast<int>(c.platforms.size());
-
-        if (c.type)
-        {
-            sum_rate += c.volume_rate();
-            ++container_count;
-        }
+        ov.platform_count += static_cast<int>(c.platforms.size());
+        sum_rate += c.volume_rate();
 
         for (const auto& g : c.groups)
         {
@@ -65,9 +57,8 @@ ObjectiveVector compute_objective(
         }
     }
 
-    ov.platform_count = total_plat;
-    ov.avg_volume_rate = container_count > 0
-                             ? sum_rate / container_count
+    ov.avg_volume_rate = ov.container_count > 0
+                             ? sum_rate / ov.container_count
                              : 0.0;
 
     int split_sum = 0;

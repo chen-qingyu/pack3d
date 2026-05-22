@@ -152,26 +152,25 @@ struct ContainerLoad
 
     int32_t inner_x() const noexcept
     {
-        return type ? type->inner_size.x : 0;
+        return type->inner_size.x;
     }
     int32_t inner_y() const noexcept
     {
-        return type ? type->inner_size.y : 0;
+        return type->inner_size.y;
     }
     int32_t inner_z() const noexcept
     {
-        return type ? type->inner_size.z : 0;
+        return type->inner_size.z;
     }
 
     int64_t total_volume() const noexcept
     {
-        return type ? type->inner_size.volume() : 0;
+        return type->inner_size.volume();
     }
 
     double volume_rate() const noexcept
     {
-        auto tv = total_volume();
-        return tv > 0 ? static_cast<double>(used_volume) / static_cast<double>(tv) : 0.0;
+        return static_cast<double>(used_volume) / static_cast<double>(total_volume());
     }
 };
 

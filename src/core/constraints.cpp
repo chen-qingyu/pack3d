@@ -11,10 +11,6 @@ ConstraintResult check_boundary_constraint(const ContainerLoad& load,
                                            const Position& pos,
                                            const OrientedSize& osize) noexcept
 {
-    if (load.type == nullptr)
-    {
-        return {false, Violation{"internal", {}, "no_container_type"}};
-    }
     if (!check_boundary(*load.type, pos, osize))
     {
         return {false, Violation{"boundary", {}, "box_exceeds_container_boundaries"}};
@@ -40,10 +36,6 @@ ConstraintResult check_weight_constraint(const ContainerLoad& load,
                                          const OrientedSize& osize,
                                          double box_weight) noexcept
 {
-    if (load.type == nullptr)
-    {
-        return {false, Violation{"internal", {}, "no_container_type"}};
-    }
     if (load.total_weight + box_weight > load.type->max_weight + 1e-9)
     {
         return {false, Violation{"weight", {}, "container_weight_limit_exceeded"}};

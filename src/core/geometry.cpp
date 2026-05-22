@@ -180,13 +180,6 @@ void filter_extreme_points(std::vector<Position>& points,
                            const ContainerLoad& load,
                            const std::map<std::string, BoxType>& box_type_map) noexcept
 {
-    auto& ctype = load.type;
-    if (ctype == nullptr)
-    {
-        points.clear();
-        return;
-    }
-
     std::vector<Position> filtered;
     filtered.reserve(points.size());
 
@@ -197,9 +190,9 @@ void filter_extreme_points(std::vector<Position>& points,
         {
             continue;
         }
-        if (pt.x > ctype->inner_size.x ||
-            pt.y > ctype->inner_size.y ||
-            pt.z > ctype->inner_size.z)
+        if (pt.x > load.type->inner_size.x ||
+            pt.y > load.type->inner_size.y ||
+            pt.z > load.type->inner_size.z)
         {
             continue;
         }
