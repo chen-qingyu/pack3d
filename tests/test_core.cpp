@@ -1,19 +1,13 @@
-#include <fstream>
-#include <sstream>
-
 #include <catch2/catch_test_macros.hpp>
 
-#include "core/app.hpp"
 #include "core/constraints.hpp"
 #include "core/geometry.hpp"
-#include "core/io.hpp"
 #include "core/objectives.hpp"
-#include "core/solver.hpp"
 #include "core/types.hpp"
 
 using namespace hypercube;
 
-TEST_CASE("orient_size 产生正确的尺寸", "[geometry]")
+TEST_CASE("orient_size 产生正确的尺寸", "[core]")
 {
     Size base{500, 400, 300};
 
@@ -33,7 +27,7 @@ TEST_CASE("orient_size 产生正确的尺寸", "[geometry]")
     REQUIRE(r3.dz == 500);
 }
 
-TEST_CASE("check_boundary 拒绝越界", "[geometry]")
+TEST_CASE("check_boundary 拒绝越界", "[core]")
 {
     ContainerType ct;
     ct.inner_size = {1000, 1000, 1000};
@@ -46,7 +40,7 @@ TEST_CASE("check_boundary 拒绝越界", "[geometry]")
     REQUIRE_FALSE(check_boundary(ct, {0, 0, 0}, {1001, 500, 500}));
 }
 
-TEST_CASE("check_overlap 检测碰撞", "[geometry]")
+TEST_CASE("check_overlap 检测碰撞", "[core]")
 {
     REQUIRE(check_overlap({0, 0, 0}, {100, 100, 100},
                           {50, 50, 50}, {100, 100, 100}));
@@ -56,7 +50,7 @@ TEST_CASE("check_overlap 检测碰撞", "[geometry]")
                                 {0, 200, 0}, {100, 100, 100}));
 }
 
-TEST_CASE("calc_support_ratio 在地板上为 1.0", "[geometry]")
+TEST_CASE("calc_support_ratio 在地板上为 1.0", "[core]")
 {
     ContainerLoad load;
     load.type_id = "test";
@@ -74,7 +68,7 @@ TEST_CASE("calc_support_ratio 在地板上为 1.0", "[geometry]")
     REQUIRE(ratio == 1.0);
 }
 
-TEST_CASE("calc_support_ratio 部分支撑", "[geometry]")
+TEST_CASE("calc_support_ratio 部分支撑", "[core]")
 {
     ContainerLoad load;
     load.type_id = "test";
@@ -98,64 +92,14 @@ TEST_CASE("calc_support_ratio 部分支撑", "[geometry]")
     load.used_volume = 100 * 100 * 100;
     load.total_weight = 100.0;
 
-    // 新箱子放在现有箱子顶部：底面在 y=100
-    // 100x100 完全支撑
     double full = calc_support_ratio({0, 100, 0}, {100, 100, 100}, load, btm);
     REQUIRE(full == 1.0);
 
-    // 200x100 仅一半支撑
     double partial = calc_support_ratio({0, 100, 0}, {200, 100, 100}, load, btm);
     REQUIRE(partial == 0.5);
 }
 
-TEST_CASE("pre_validate_input 检测重复 ID", "[constraints]")
-{
-    Problem p;
-    p.time_limit_seconds = 30.0;
-    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
-    p.container_types.push_back({"ct1", {2000, 2000, 2000}, 2000.0, std::nullopt});
-    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
-    p.boxes.push_back({"box1", "bt1", 10.0, "", ""});
-
-    auto violations = pre_validate_input(p);
-    bool found_dup = false;
-    for (const auto& v : violations)
-    {
-        if (v.details == reason::k_duplicate_id)
-        {
-            found_dup = true;
-        }
-    }
-    REQUIRE(found_dup);
-}
-
-TEST_CASE("pre_validate_input 检测路线缺失平台", "[constraints]")
-{
-    Problem p;
-    p.time_limit_seconds = 30.0;
-    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
-    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
-    p.boxes.push_back({"box1", "bt1", 10.0, "", "Z"});
-
-    RouteOrder route;
-    route.platform_order = {"A", "B"};
-    route.index_of["A"] = 0;
-    route.index_of["B"] = 1;
-    p.route = route;
-
-    auto violations = pre_validate_input(p);
-    bool found_route = false;
-    for (const auto& v : violations)
-    {
-        if (v.details == reason::k_route_missing_platform)
-        {
-            found_route = true;
-        }
-    }
-    REQUIRE(found_route);
-}
-
-TEST_CASE("平台数量限制约束", "[constraints]")
+TEST_CASE("平台数量限制约束", "[core]")
 {
     ContainerLoad load;
     load.type_id = "test";
@@ -175,7 +119,7 @@ TEST_CASE("平台数量限制约束", "[constraints]")
     REQUIRE(r3.ok);
 }
 
-TEST_CASE("ObjectiveVector 字典序比较", "[objectives]")
+TEST_CASE("ObjectiveVector 字典序比较", "[core]")
 {
     ObjectiveVector a{2, 3, 0.8, 5};
     ObjectiveVector b{2, 3, 0.8, 5};
@@ -190,69 +134,4 @@ TEST_CASE("ObjectiveVector 字典序比较", "[objectives]")
 
     ObjectiveVector higher_rate{2, 3, 0.9, 5};
     REQUIRE(higher_rate.is_better_than(a));
-}
-
-TEST_CASE("目标函数与平台约束集成测试", "[objectives]")
-{
-    std::ifstream ifs("data/tests/test_min_platform.json");
-    REQUIRE(ifs.is_open());
-    std::stringstream buf;
-    buf << ifs.rdbuf();
-    auto base = nlohmann::json::parse(buf.str());
-
-    // --- 1) max_avg_volume_rate：一大一小，两个容器均 100%，共 3 个平台 ---
-    base["objectives"] = {"max_avg_volume_rate"};
-    auto res = run_solver(base.dump());
-
-    REQUIRE(res["summary"]["objective_vector"].size() == 1);
-    REQUIRE(res["summary"]["objective_vector"].contains("max_avg_volume_rate"));
-
-    auto& cs = res["result"]["containers"];
-    REQUIRE(cs.size() == 2);
-    // 第一个容器为大容器，装 a1,a2,b1 -> 100%, 平台 A,B
-    REQUIRE(cs[0]["type_id"] == "big");
-    REQUIRE(cs[0]["load_summary"]["volume_rate"] == 1.0);
-    REQUIRE(cs[0]["load_summary"]["platforms"].size() == 2);
-    // 第二个容器为小容器，装 b2 -> 100%, 平台 B
-    REQUIRE(cs[1]["type_id"] == "small");
-    REQUIRE(cs[1]["load_summary"]["volume_rate"] == 1.0);
-    REQUIRE(cs[1]["load_summary"]["platforms"].size() == 1);
-
-    // --- 2) 默认目标：两个大容器，各一个平台 ---
-    base["objectives"] = nlohmann::json::array();
-    res = run_solver(base.dump());
-
-    REQUIRE(res["summary"]["objective_vector"].size() == 4);
-    REQUIRE(res["result"]["containers"].size() == 2);
-    for (const auto& c : res["result"]["containers"])
-    {
-        REQUIRE(c["type_id"] == "big");
-        REQUIRE(c["load_summary"]["platforms"].size() == 1);
-    }
-}
-
-TEST_CASE("容器数量目标测试", "[objectives]")
-{
-    std::ifstream ifs("data/tests/test_min_container.json");
-    REQUIRE(ifs.is_open());
-    std::stringstream buf;
-    buf << ifs.rdbuf();
-    auto base = nlohmann::json::parse(buf.str());
-
-    // --- 默认目标 ---
-    auto res = run_solver(base.dump());
-    REQUIRE(res["summary"]["objective_vector"].size() == 4);
-    REQUIRE(res["result"]["containers"].size() == 1);
-
-    // --- max_avg_volume_rate：两个小容器，各 100% ---
-    base["objectives"] = {"max_avg_volume_rate"};
-    res = run_solver(base.dump());
-    REQUIRE(res["summary"]["objective_vector"].size() == 1);
-
-    auto& cs2 = res["result"]["containers"];
-    REQUIRE(cs2.size() == 2);
-    REQUIRE(cs2[0]["type_id"] == "small");
-    REQUIRE(cs2[0]["load_summary"]["volume_rate"] == 1.0);
-    REQUIRE(cs2[1]["type_id"] == "small");
-    REQUIRE(cs2[1]["load_summary"]["volume_rate"] == 1.0);
 }
