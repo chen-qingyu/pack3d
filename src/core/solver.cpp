@@ -42,23 +42,22 @@ Solution SolverEngine::solve()
     bool all_packed = construct_solution(state);
 
     // 记录最终状态的容器统计
+    int idx = 1;
+    int packed_sofar = 0;
+    int total_boxes = static_cast<int>(problem_.boxes.size());
+    for (const auto& c : state.open_containers)
     {
-        int idx = 1;
-        int packed_sofar = 0;
-        int total_boxes = static_cast<int>(problem_.boxes.size());
-        for (const auto& c : state.open_containers)
-        {
-            int packed = static_cast<int>(c.placements.size());
-            packed_sofar += packed;
-            int left = total_boxes - packed_sofar;
-            spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {:.2f}%",
-                         idx, c.type_id,
-                         packed, left,
-                         c.volume_rate() * 100.0,
-                         c.total_weight / c.type->max_weight * 100.0);
-            ++idx;
-        }
+        int packed = static_cast<int>(c.placements.size());
+        packed_sofar += packed;
+        int left = total_boxes - packed_sofar;
+        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {:.2f}%",
+                     idx, c.type_id,
+                     packed, left,
+                     c.volume_rate() * 100.0,
+                     c.total_weight / c.type->max_weight * 100.0);
+        ++idx;
     }
+
     spdlog::info("===Algorithm End===");
 
     // --- 收尾 ---
@@ -167,7 +166,7 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
     s.time_limit_seconds = problem_.time_limit_seconds;
     s.config = &problem_.solver_config;
     s.problem = &problem_;
-    s.objective_keys = resolve_objective_keys(problem_.objective_keys);
+    s.objective_keys = problem_.objective_keys.empty() ? default_objective_keys() : problem_.objective_keys;
 
     switch (order)
     {

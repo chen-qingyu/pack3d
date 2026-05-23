@@ -22,10 +22,6 @@ namespace hypercube
     return keys;
 }
 
-/// 解析有效的目标键列表（使用用户提供或默认值）
-[[nodiscard]] std::vector<std::string> resolve_objective_keys(
-    const std::vector<std::string>& user_keys) noexcept;
-
 /// 根据 ContainerLoad 列表计算完整目标向量
 [[nodiscard]] ObjectiveVector compute_objective(
     const std::vector<ContainerLoad>& containers) noexcept;

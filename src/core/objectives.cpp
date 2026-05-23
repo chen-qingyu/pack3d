@@ -7,23 +7,12 @@
 namespace hypercube
 {
 
-std::vector<std::string> resolve_objective_keys(
-    const std::vector<std::string>& user_keys) noexcept
-{
-    if (user_keys.empty())
-    {
-        return default_objective_keys();
-    }
-    return user_keys;
-}
-
 bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs) const noexcept
 {
     return compare_objectives(*this, rhs, default_objective_keys()) < 0;
 }
 
-bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs,
-                                     const std::vector<std::string>& keys) const noexcept
+bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs, const std::vector<std::string>& keys) const noexcept
 {
     return compare_objectives(*this, rhs, keys) < 0;
 }
@@ -36,8 +25,7 @@ bool ObjectiveVector::operator==(const ObjectiveVector& rhs) const noexcept
            group_split_sum == rhs.group_split_sum;
 }
 
-ObjectiveVector compute_objective(
-    const std::vector<ContainerLoad>& containers) noexcept
+ObjectiveVector compute_objective(const std::vector<ContainerLoad>& containers) noexcept
 {
     ObjectiveVector ov;
     ov.container_count = static_cast<int>(containers.size());

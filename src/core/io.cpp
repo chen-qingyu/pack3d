@@ -16,7 +16,7 @@ namespace hypercube
 {
 
 // Status 字符串互转
-std::string_view status_to_string(Status s) noexcept
+std::string status_to_string(Status s) noexcept
 {
     switch (s)
     {
@@ -34,7 +34,7 @@ std::string_view status_to_string(Status s) noexcept
     }
 }
 
-std::string_view orientation_to_string(Orientation o) noexcept
+std::string orientation_to_string(Orientation o) noexcept
 {
     switch (o)
     {
@@ -114,61 +114,48 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
     {
         Problem p;
 
-        // --- container_types ---
-        if (j.contains("container_types") && j["container_types"].is_array())
+        // container_types
+        for (const auto& item : j["container_types"])
         {
-            for (const auto& item : j["container_types"])
-            {
-                ContainerType ct;
-                ct.id = item["id"].get<std::string>();
-                ct.inner_size.x = item["inner_size"]["x"].get<int32_t>();
-                ct.inner_size.y = item["inner_size"]["y"].get<int32_t>();
-                ct.inner_size.z = item["inner_size"]["z"].get<int32_t>();
-                ct.max_weight = item["max_weight"].get<double>();
-                ct.quantity_limit = json_opt_int(item, "quantity_limit");
-                p.container_types.push_back(std::move(ct));
-            }
+            ContainerType ct;
+            ct.id = item["id"].get<std::string>();
+            ct.inner_size.x = item["inner_size"]["x"].get<int32_t>();
+            ct.inner_size.y = item["inner_size"]["y"].get<int32_t>();
+            ct.inner_size.z = item["inner_size"]["z"].get<int32_t>();
+            ct.max_weight = item["max_weight"].get<double>();
+            ct.quantity_limit = json_opt_int(item, "quantity_limit");
+            p.container_types.push_back(std::move(ct));
         }
 
-        // --- box_types ---
-        if (j.contains("box_types") && j["box_types"].is_array())
+        // box_types
+        for (const auto& item : j["box_types"])
         {
-            for (const auto& item : j["box_types"])
+            BoxType bt;
+            bt.id = item["id"].get<std::string>();
+            bt.size.x = item["size"]["x"].get<int32_t>();
+            bt.size.y = item["size"]["y"].get<int32_t>();
+            bt.size.z = item["size"]["z"].get<int32_t>();
+            for (const auto& o_str : item["allowed_orientations"])
             {
-                BoxType bt;
-                bt.id = item["id"].get<std::string>();
-                bt.size.x = item["size"]["x"].get<int32_t>();
-                bt.size.y = item["size"]["y"].get<int32_t>();
-                bt.size.z = item["size"]["z"].get<int32_t>();
-                if (item.contains("allowed_orientations") &&
-                    item["allowed_orientations"].is_array())
-                {
-                    for (const auto& o_str : item["allowed_orientations"])
-                    {
-                        bt.allowed_orientations.push_back(
-                            orientation_from_string(o_str.get<std::string>()));
-                    }
-                }
-                p.box_types.push_back(std::move(bt));
+                bt.allowed_orientations.push_back(
+                    orientation_from_string(o_str.get<std::string>()));
             }
+            p.box_types.push_back(std::move(bt));
         }
 
-        // --- boxes ---
-        if (j.contains("boxes") && j["boxes"].is_array())
+        // boxes
+        for (const auto& item : j["boxes"])
         {
-            for (const auto& item : j["boxes"])
-            {
-                Box bx;
-                bx.id = item["id"].get<std::string>();
-                bx.box_type_id = item["box_type_id"].get<std::string>();
-                bx.weight = item["weight"].get<double>();
-                bx.group = item.value("group", std::string());
-                bx.platform = item.value("platform", std::string());
-                p.boxes.push_back(std::move(bx));
-            }
+            Box bx;
+            bx.id = item["id"].get<std::string>();
+            bx.box_type_id = item["box_type_id"].get<std::string>();
+            bx.weight = item["weight"].get<double>();
+            bx.group = item.value("group", std::string());
+            bx.platform = item.value("platform", std::string());
+            p.boxes.push_back(std::move(bx));
         }
 
-        // --- constraints ---
+        // constraints
         if (j.contains("constraints"))
         {
             const auto& c = j["constraints"];
@@ -177,7 +164,7 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
             p.platform_limit = json_opt_int(c, "platform_limit");
             p.tender_limit = json_opt_int(c, "tender_limit");
 
-            if (c.contains("route") && c["route"].is_array())
+            if (c.contains("route"))
             {
                 RouteOrder route;
                 for (const auto& plat : c["route"])
@@ -190,8 +177,8 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
             }
         }
 
-        // --- objectives ---
-        if (j.contains("objectives") && j["objectives"].is_array())
+        // objectives
+        if (j.contains("objectives"))
         {
             for (const auto& obj : j["objectives"])
             {
@@ -199,7 +186,7 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
             }
         }
 
-        // --- solver ---
+        // solver
         if (j.contains("solver"))
         {
             const auto& s = j["solver"];
@@ -378,7 +365,7 @@ json solution_to_json(const Solution& sol) noexcept
 {
     json j;
 
-    j["status"] = std::string(status_to_string(sol.status));
+    j["status"] = status_to_string(sol.status);
     j["reason"] = sol.reason;
 
     json summary;
@@ -434,7 +421,7 @@ json solution_to_json(const Solution& sol) noexcept
                 pj["position"]["x"] = pl.position.x;
                 pj["position"]["y"] = pl.position.y;
                 pj["position"]["z"] = pl.position.z;
-                pj["orientation"] = std::string(orientation_to_string(pl.orientation));
+                pj["orientation"] = orientation_to_string(pl.orientation);
                 placements_json.push_back(std::move(pj));
             }
         }
@@ -456,7 +443,7 @@ json solution_to_json(const Solution& sol) noexcept
         json orients = json::array();
         for (auto o : bt.allowed_orientations)
         {
-            orients.push_back(std::string(orientation_to_string(o)));
+            orients.push_back(orientation_to_string(o));
         }
         bj["allowed_orientations"] = std::move(orients);
         box_types_json.push_back(std::move(bj));
@@ -482,11 +469,6 @@ json solution_to_json(const Solution& sol) noexcept
     }
 
     return j;
-}
-
-std::string solution_to_json_string(const Solution& sol, int indent) noexcept
-{
-    return solution_to_json(sol).dump(indent);
 }
 
 } // namespace hypercube

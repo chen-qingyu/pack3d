@@ -22,9 +22,6 @@ enum class Orientation : uint8_t
     ZYX,
 };
 
-/// 有效朝向数量
-inline constexpr int k_orientation_count = 6;
-
 // 几何基础类型
 struct Size
 {
