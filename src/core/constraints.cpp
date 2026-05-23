@@ -187,13 +187,8 @@ std::vector<Violation> final_check_solution(
 
         for (const auto& pl : placements)
         {
-            auto* bt = resolve_box_type(pl.box_type_id, box_type_map);
-            if (bt == nullptr)
-            {
-                out.push_back({"internal", {pl.box_id}, "unknown_box_type_in_placement"});
-                continue;
-            }
-            auto osize = orient_size(bt->size, pl.orientation);
+            auto& bt = box_type_map.at(pl.box_type_id);
+            auto osize = orient_size(bt.size, pl.orientation);
 
             // 查找箱子重量
             auto bit = box_map.find(pl.box_id);
@@ -209,12 +204,8 @@ std::vector<Violation> final_check_solution(
             // 与该容器内已处理放置的重叠检查
             for (const auto& prev : load.placements)
             {
-                auto* pbt = resolve_box_type(prev.box_type_id, box_type_map);
-                if (pbt == nullptr)
-                {
-                    continue;
-                }
-                auto psize = orient_size(pbt->size, prev.orientation);
+                auto& pbt = box_type_map.at(prev.box_type_id);
+                auto psize = orient_size(pbt.size, prev.orientation);
                 if (check_overlap(prev.position, psize, pl.position, osize))
                 {
                     out.push_back({"overlap", {pl.box_id, prev.box_id}, "final_overlap_violation"});

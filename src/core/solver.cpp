@@ -174,13 +174,9 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
             std::sort(s.remaining_boxes.begin(), s.remaining_boxes.end(),
                       [&](const Box& a, const Box& b)
                       {
-                          auto* at = resolve_box_type(a.box_type_id, box_type_map_);
-                          auto* bt = resolve_box_type(b.box_type_id, box_type_map_);
-                          if (!at || !bt)
-                          {
-                              return false;
-                          }
-                          return at->size.volume() > bt->size.volume();
+                          auto& at = box_type_map_.at(a.box_type_id);
+                          auto& bt = box_type_map_.at(b.box_type_id);
+                          return at.size.volume() > bt.size.volume();
                       });
             break;
 
@@ -188,13 +184,9 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
             std::sort(s.remaining_boxes.begin(), s.remaining_boxes.end(),
                       [&](const Box& a, const Box& b)
                       {
-                          auto* at = resolve_box_type(a.box_type_id, box_type_map_);
-                          auto* bt = resolve_box_type(b.box_type_id, box_type_map_);
-                          if (!at || !bt)
-                          {
-                              return false;
-                          }
-                          return at->size.volume() < bt->size.volume();
+                          auto& at = box_type_map_.at(a.box_type_id);
+                          auto& bt = box_type_map_.at(b.box_type_id);
+                          return at.size.volume() < bt.size.volume();
                       });
             break;
 
@@ -202,13 +194,9 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
             std::sort(s.remaining_boxes.begin(), s.remaining_boxes.end(),
                       [&](const Box& a, const Box& b)
                       {
-                          auto* at = resolve_box_type(a.box_type_id, box_type_map_);
-                          auto* bt = resolve_box_type(b.box_type_id, box_type_map_);
-                          if (!at || !bt)
-                          {
-                              return false;
-                          }
-                          return at->size.y > bt->size.y;
+                          auto& at = box_type_map_.at(a.box_type_id);
+                          auto& bt = box_type_map_.at(b.box_type_id);
+                          return at.size.y > bt.size.y;
                       });
             break;
 
@@ -222,13 +210,9 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
                                      return b.platform.empty();
                                  }
                                  // 同平台内按体积降序
-                                 auto* at = resolve_box_type(a.box_type_id, box_type_map_);
-                                 auto* bt = resolve_box_type(b.box_type_id, box_type_map_);
-                                 if (!at || !bt)
-                                 {
-                                     return false;
-                                 }
-                                 return at->size.volume() > bt->size.volume();
+                                 auto& at = box_type_map_.at(a.box_type_id);
+                                 auto& bt = box_type_map_.at(b.box_type_id);
+                                 return at.size.volume() > bt.size.volume();
                              });
             break;
 
@@ -296,11 +280,7 @@ bool SolverEngine::open_new_container(SearchState& state)
     int64_t remaining_volume = 0;
     for (const auto& bx : state.remaining_boxes)
     {
-        auto* bt = resolve_box_type(bx.box_type_id, box_type_map_);
-        if (bt)
-        {
-            remaining_volume += bt->size.volume();
-        }
+        remaining_volume += box_type_map_.at(bx.box_type_id).size.volume();
     }
 
     // 按体积升序排列
@@ -321,15 +301,10 @@ bool SolverEngine::open_new_container(SearchState& state)
             bool dim_ok = false;
             for (const auto& bx : state.remaining_boxes)
             {
-                auto* bt = resolve_box_type(bx.box_type_id, box_type_map_);
-                if (!bt)
+                auto& bt = box_type_map_.at(bx.box_type_id);
+                for (auto o : bt.allowed_orientations)
                 {
-                    continue;
-                }
-
-                for (auto o : bt->allowed_orientations)
-                {
-                    auto os = orient_size(bt->size, o);
+                    auto os = orient_size(bt.size, o);
                     if (os.dx <= ct->inner_size.x &&
                         os.dy <= ct->inner_size.y &&
                         os.dz <= ct->inner_size.z)
@@ -382,11 +357,7 @@ bool SolverEngine::place_next_box(SearchState& state)
     for (size_t bi = 0; bi < state.remaining_boxes.size(); ++bi)
     {
         const auto& box = state.remaining_boxes[bi];
-        auto* bt = resolve_box_type(box.box_type_id, box_type_map_);
-        if (!bt)
-        {
-            continue;
-        }
+        auto& bt = box_type_map_.at(box.box_type_id);
 
         ScoredPlacement best;
         ObjectiveVector best_proj;
@@ -423,9 +394,9 @@ bool SolverEngine::place_next_box(SearchState& state)
             for (size_t ei = 0; ei < ep_limit; ++ei)
             {
                 const auto& ep = container.extreme_points[ei];
-                for (auto orient : bt->allowed_orientations)
+                for (auto orient : bt.allowed_orientations)
                 {
-                    OrientedSize osize = orient_size(bt->size, orient);
+                    OrientedSize osize = orient_size(bt.size, orient);
 
                     if (!check_boundary_constraint(container, ep, osize).ok)
                     {
@@ -517,16 +488,12 @@ bool SolverEngine::place_next_box(SearchState& state)
                         {
                             continue;
                         }
-                        auto* rbt = resolve_box_type(rb.box_type_id, box_type_map_);
-                        if (!rbt)
-                        {
-                            continue;
-                        }
+                        auto& rbt = box_type_map_.at(rb.box_type_id);
                         for (const auto& sep : sim_eps)
                         {
-                            for (auto ro : rbt->allowed_orientations)
+                            for (auto ro : rbt.allowed_orientations)
                             {
-                                auto ros = orient_size(rbt->size, ro);
+                                auto ros = orient_size(rbt.size, ro);
                                 if (check_boundary(*target.type, sep, ros) &&
                                     !check_overlap_any(sep, ros, target.placements, box_type_map_))
                                 {
@@ -577,12 +544,12 @@ bool SolverEngine::place_next_box(SearchState& state)
             // 每个可用类型逐个评估，选投影目标最优的
             for (auto* ct : available)
             {
-                Orientation cand_orient = bt->allowed_orientations[0];
-                OrientedSize cand_osize = orient_size(bt->size, cand_orient);
+                Orientation cand_orient = bt.allowed_orientations[0];
+                OrientedSize cand_osize = orient_size(bt.size, cand_orient);
                 bool fits = false;
-                for (auto orient : bt->allowed_orientations)
+                for (auto orient : bt.allowed_orientations)
                 {
-                    auto os = orient_size(bt->size, orient);
+                    auto os = orient_size(bt.size, orient);
                     if (os.dx <= ct->inner_size.x &&
                         os.dy <= ct->inner_size.y &&
                         os.dz <= ct->inner_size.z)
@@ -623,11 +590,7 @@ bool SolverEngine::place_next_box(SearchState& state)
                         {
                             continue;
                         }
-                        auto* rbt = resolve_box_type(rb.box_type_id, box_type_map_);
-                        if (rbt)
-                        {
-                            extra_vol += rbt->size.volume();
-                        }
+                        extra_vol += box_type_map_.at(rb.box_type_id).size.volume();
                     }
                     int64_t free_cap = ct->inner_size.volume() - cand_osize.volume();
                     if (extra_vol > 0 && extra_vol > free_cap)

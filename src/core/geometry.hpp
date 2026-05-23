@@ -44,10 +44,6 @@ void filter_extreme_points(std::vector<Position>& points,
 
 // 查找辅助
 
-/// 根据 ID 查找箱子类型
-[[nodiscard]] const BoxType* resolve_box_type(const std::string& id,
-                                              const std::map<std::string, BoxType>& map) noexcept;
-
 /// 构建 box_type_id -> BoxType 查找映射
 [[nodiscard]] std::map<std::string, BoxType> build_box_type_map(const std::vector<BoxType>& types) noexcept;
 

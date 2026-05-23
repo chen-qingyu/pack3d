@@ -92,12 +92,8 @@ bool check_overlap_any(const Position& pos, const OrientedSize& osize,
 {
     for (const auto& pl : existing)
     {
-        auto* bt = resolve_box_type(pl.box_type_id, box_type_map);
-        if (bt == nullptr)
-        {
-            continue;
-        }
-        auto e_size = orient_size(bt->size, pl.orientation);
+        auto& bt = box_type_map.at(pl.box_type_id);
+        auto e_size = orient_size(bt.size, pl.orientation);
         if (check_overlap(pl.position, e_size, pos, osize))
         {
             return true;
@@ -132,12 +128,8 @@ double calc_support_ratio(const Position& pos, const OrientedSize& osize,
 
     for (const auto& pl : load.placements)
     {
-        auto* bt = resolve_box_type(pl.box_type_id, box_type_map);
-        if (bt == nullptr)
-        {
-            continue;
-        }
-        auto e_size = orient_size(bt->size, pl.orientation);
+        auto& bt = box_type_map.at(pl.box_type_id);
+        auto e_size = orient_size(bt.size, pl.orientation);
 
         // 支撑箱子的顶面 Y 范围：[pl.position.y + e_size.dy, ...]
         // 新箱子的底面在 pos.y，只有顶面恰好在 pos.y 的箱子才可能支撑
@@ -201,12 +193,8 @@ void filter_extreme_points(std::vector<Position>& points,
         bool inside_existing = false;
         for (const auto& pl : load.placements)
         {
-            auto* bt = resolve_box_type(pl.box_type_id, box_type_map);
-            if (bt == nullptr)
-            {
-                continue;
-            }
-            auto e_size = orient_size(bt->size, pl.orientation);
+            auto& bt = box_type_map.at(pl.box_type_id);
+            auto e_size = orient_size(bt.size, pl.orientation);
             if (pt.x >= pl.position.x && pt.x < pl.position.x + e_size.dx &&
                 pt.y >= pl.position.y && pt.y < pl.position.y + e_size.dy &&
                 pt.z >= pl.position.z && pt.z < pl.position.z + e_size.dz)
@@ -222,14 +210,6 @@ void filter_extreme_points(std::vector<Position>& points,
     }
 
     points = std::move(filtered);
-}
-
-// 查找辅助
-const BoxType* resolve_box_type(const std::string& id,
-                                const std::map<std::string, BoxType>& map) noexcept
-{
-    auto it = map.find(id);
-    return it != map.end() ? &it->second : nullptr;
 }
 
 std::map<std::string, BoxType> build_box_type_map(const std::vector<BoxType>& types) noexcept
