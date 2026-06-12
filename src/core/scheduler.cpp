@@ -30,75 +30,73 @@ Solution GlobalScheduler::schedule()
     next_instance_ = 0;
     container_type_usage_.clear();
 
-    if (problem_.container_types.size() == 1 &&
-        problem_.container_types[0].quantity_limit.has_value() &&
-        problem_.container_types[0].quantity_limit.value() == 1)
+    // 统一流程：对每种容器类型，一次打包全部剩余箱子
+    // 装进去的收走，装不下的留给下一个容器
+    std::vector<ContainerSlot> slots;
+    std::set<std::string> remaining_ids;
+    for (const auto& bx : problem_.boxes)
     {
-        std::vector<const Box*> all_boxes;
-        all_boxes.reserve(problem_.boxes.size());
-        for (const auto& bx : problem_.boxes)
-        {
-            all_boxes.push_back(&bx);
-        }
-
-        Assignment direct;
-        ContainerSlot slot;
-        slot.instance_id = fmt::format("container_{}", next_instance_++);
-        slot.type = &problem_.container_types[0];
-        for (const auto& bx : problem_.boxes)
-        {
-            slot.box_ids.push_back(bx.id);
-        }
-        slot.pack_result = pack_container(slot.type, all_boxes);
-        if (slot.pack_result.has_value())
-        {
-            direct.slots.push_back(std::move(slot));
-        }
-        direct.objective = compute_objective(direct);
-
-        bool all_packed = false;
-        if (!direct.slots.empty() && direct.slots[0].pack_result.has_value())
-        {
-            all_packed = direct.slots[0].pack_result->placements.size() == problem_.boxes.size();
-        }
-
-        int idx = 1;
-        int packed_sofar = 0;
-        int total_boxes = static_cast<int>(problem_.boxes.size());
-        for (const auto& out_slot : direct.slots)
-        {
-            const auto& pr = out_slot.pack_result.value();
-            int packed = static_cast<int>(pr.placements.size());
-            packed_sofar += packed;
-            int left = total_boxes - packed_sofar;
-            int64_t container_vol = static_cast<int64_t>(out_slot.type->inner_size.x) *
-                                    out_slot.type->inner_size.y *
-                                    out_slot.type->inner_size.z;
-            double vol_rate = container_vol > 0
-                                  ? static_cast<double>(pr.used_volume) / static_cast<double>(container_vol) * 100.0
-                                  : 0.0;
-            double wt_rate = has_weight_info_ && out_slot.type->max_weight.has_value() && out_slot.type->max_weight.value() > 0
-                                 ? pr.total_weight / out_slot.type->max_weight.value() * 100.0
-                                 : 0.0;
-            spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {:.2f}%",
-                         idx, out_slot.type->id, packed, left, vol_rate, wt_rate);
-            ++idx;
-        }
-
-        return to_solution(direct, problem_.boxes, all_packed,
-                           all_packed ? reason::k_feasible : reason::k_no_solution);
+        remaining_ids.insert(bx.id);
     }
 
-    // 直接使用配置参数运行一次分配+局部搜索
-    Assignment best = greedy_assign(problem_.boxes);
-    local_search(best, problem_.boxes);
+    while (!remaining_ids.empty() && check_time())
+    {
+        // 收集剩余箱子
+        std::vector<const Box*> remaining;
+        for (const auto& bx : problem_.boxes)
+        {
+            if (remaining_ids.count(bx.id))
+            {
+                remaining.push_back(&bx);
+            }
+        }
 
-    bool all_packed = true;
-    size_t total_packed = 0;
+        // 选一个容器类型来装
+        const ContainerType* best_ct = nullptr;
+        PackResult best_pr;
+        size_t best_count = 0;
+
+        for (const auto& ct : problem_.container_types)
+        {
+            auto it = container_type_usage_.find(ct.id);
+            int used = (it != container_type_usage_.end()) ? it->second : 0;
+            if (ct.quantity_limit.has_value() && used >= ct.quantity_limit.value())
+            {
+                continue;
+            }
+
+            auto pr = pack_container(&ct, remaining);
+            if (pr.has_value() && pr->placements.size() > best_count)
+            {
+                best_count = pr->placements.size();
+                best_ct = &ct;
+                best_pr = std::move(pr.value());
+            }
+        }
+
+        if (best_ct == nullptr || best_count == 0)
+        {
+            break; // 没有容器能装下任何箱子
+        }
+
+        // 记录此容器
+        ContainerSlot slot;
+        slot.instance_id = fmt::format("container_{}", next_instance_++);
+        slot.type = best_ct;
+        slot.pack_result = std::move(best_pr);
+        for (const auto& pl : slot.pack_result->placements)
+        {
+            remaining_ids.erase(pl.box_id);
+        }
+        slots.push_back(std::move(slot));
+        container_type_usage_[best_ct->id]++;
+    }
+
+    // 日志输出
     int idx = 1;
     int packed_sofar = 0;
     int total_boxes = static_cast<int>(problem_.boxes.size());
-    for (const auto& slot : best.slots)
+    for (const auto& slot : slots)
     {
         if (!slot.pack_result.has_value())
             continue;
@@ -106,281 +104,27 @@ Solution GlobalScheduler::schedule()
         int packed = static_cast<int>(pr.placements.size());
         packed_sofar += packed;
         int left = total_boxes - packed_sofar;
-        int64_t container_vol = static_cast<int64_t>(slot.type->inner_size.x) *
-                                slot.type->inner_size.y *
-                                slot.type->inner_size.z;
-        double vol_rate = container_vol > 0
-                              ? static_cast<double>(pr.used_volume) / static_cast<double>(container_vol) * 100.0
-                              : 0.0;
-        double wt_rate = has_weight_info_ && slot.type->max_weight.has_value() && slot.type->max_weight.value() > 0
-                             ? pr.total_weight / slot.type->max_weight.value() * 100.0
-                             : 0.0;
+        int64_t cv = static_cast<int64_t>(slot.type->inner_size.x) *
+                     slot.type->inner_size.y *
+                     slot.type->inner_size.z;
+        double vr = cv > 0 ? static_cast<double>(pr.used_volume) / static_cast<double>(cv) * 100.0 : 0.0;
+        double wr = has_weight_info_ && slot.type->max_weight.has_value() && slot.type->max_weight.value() > 0
+                        ? pr.total_weight / slot.type->max_weight.value() * 100.0
+                        : 0.0;
         spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {:.2f}%",
-                     idx, slot.type->id, packed, left, vol_rate, wt_rate);
+                     idx, slot.type->id, packed, left, vr, wr);
         ++idx;
-        total_packed += packed;
     }
-    all_packed = (total_packed == problem_.boxes.size());
 
-    return to_solution(best, problem_.boxes, all_packed,
+    bool all_packed = remaining_ids.empty();
+    return to_solution(slots, problem_.boxes, all_packed,
                        all_packed ? reason::k_feasible : reason::k_no_solution);
-}
-
-GlobalScheduler::Assignment GlobalScheduler::greedy_assign(const std::vector<Box>& boxes)
-{
-    Assignment assign;
-
-    // 按体积降序排列箱子
-    std::vector<const Box*> sorted;
-    for (const auto& bx : boxes)
-    {
-        sorted.push_back(&bx);
-    }
-    std::sort(sorted.begin(), sorted.end(),
-              [&](const Box* a, const Box* b)
-              {
-                  auto& at = box_type_map_.at(a->box_type_id);
-                  auto& bt = box_type_map_.at(b->box_type_id);
-                  return at.size.volume() > bt.size.volume();
-              });
-
-    // 依次分配每个箱子
-    for (const Box* box : sorted)
-    {
-        bool placed = false;
-
-        // 尝试放入已有容器
-        for (auto& slot : assign.slots)
-        {
-            // 模拟加入此箱子后重新打包
-            std::vector<const Box*> trial_boxes;
-            for (const auto& bid : slot.box_ids)
-            {
-                auto it = box_map_.find(bid);
-                if (it != box_map_.end())
-                {
-                    trial_boxes.push_back(&it->second);
-                }
-            }
-            trial_boxes.push_back(box);
-
-            auto pr = pack_container(slot.type, trial_boxes);
-            if (pr.has_value() && pr->success)
-            {
-                // 可行，更新分配
-                slot.box_ids.push_back(box->id);
-                slot.pack_result = std::move(pr);
-                placed = true;
-                break;
-            }
-        }
-
-        if (!placed)
-        {
-            // 开新容器
-            const ContainerType* best_ct = nullptr;
-            std::optional<PackResult> best_pr;
-
-            for (const auto& ct : problem_.container_types)
-            {
-                auto usage_it = container_type_usage_.find(ct.id);
-                int used = (usage_it != container_type_usage_.end()) ? usage_it->second : 0;
-                if (ct.quantity_limit.has_value() && used >= ct.quantity_limit.value())
-                {
-                    continue;
-                }
-
-                std::vector<const Box*> single_box = {box};
-                auto pr = pack_container(&ct, single_box);
-                if (pr.has_value() && pr->success)
-                {
-                    // 偏好体积更大的容器（有助于减少后续容器数）
-                    if (!best_ct || ct.inner_size.volume() > best_ct->inner_size.volume())
-                    {
-                        best_ct = &ct;
-                        best_pr = std::move(pr);
-                    }
-                }
-            }
-
-            if (best_ct)
-            {
-                ContainerSlot slot;
-                slot.instance_id = fmt::format("container_{}", next_instance_++);
-                slot.type = best_ct;
-                slot.box_ids.push_back(box->id);
-                slot.pack_result = std::move(best_pr);
-                assign.slots.push_back(std::move(slot));
-                container_type_usage_[best_ct->id]++;
-            }
-        }
-    }
-
-    // 补充：对未成功打包的容器重新尝试（首次分配时可能会有 packing 失败的 slot）
-    repack_all(assign);
-    assign.objective = compute_objective(assign);
-    return assign;
-}
-
-void GlobalScheduler::local_search(Assignment& assign, const std::vector<Box>& all_boxes)
-{
-    std::map<std::string, const Box*> box_ptr_map;
-    for (const auto& bx : all_boxes)
-    {
-        box_ptr_map[bx.id] = &bx;
-    }
-
-    bool improved = true;
-    int iteration = 0;
-    const int max_iterations = 100;
-
-    while (improved && iteration < max_iterations && check_time())
-    {
-        improved = false;
-        ++iteration;
-
-        // 遍历所有容器对 (src, dst)，尝试将 src 中的一个箱子移到 dst
-        for (size_t si = 0; si < assign.slots.size(); ++si)
-        {
-            for (size_t bi = 0; bi < assign.slots[si].box_ids.size(); ++bi)
-            {
-                if (!check_time())
-                {
-                    return;
-                }
-
-                const std::string& box_id = assign.slots[si].box_ids[bi];
-                auto box_it = box_ptr_map.find(box_id);
-                if (box_it == box_ptr_map.end())
-                {
-                    continue;
-                }
-
-                for (size_t di = 0; di < assign.slots.size(); ++di)
-                {
-                    if (si == di)
-                    {
-                        continue;
-                    }
-
-                    // 尝试 dst + box
-                    std::vector<const Box*> dst_boxes;
-                    for (const auto& bid : assign.slots[di].box_ids)
-                    {
-                        auto it = box_ptr_map.find(bid);
-                        if (it != box_ptr_map.end())
-                        {
-                            dst_boxes.push_back(it->second);
-                        }
-                    }
-                    dst_boxes.push_back(box_it->second);
-
-                    auto dst_pr = pack_container(assign.slots[di].type, dst_boxes);
-                    if (!dst_pr.has_value() || !dst_pr->success)
-                    {
-                        continue;
-                    }
-
-                    // 尝试 src - box
-                    std::vector<const Box*> src_boxes;
-                    for (const auto& bid : assign.slots[si].box_ids)
-                    {
-                        if (bid != box_id)
-                        {
-                            auto it = box_ptr_map.find(bid);
-                            if (it != box_ptr_map.end())
-                            {
-                                src_boxes.push_back(it->second);
-                            }
-                        }
-                    }
-
-                    // 移动可行，提交（先收集新状态，再原子替换）
-                    std::vector<ContainerSlot> new_slots;
-                    for (size_t i = 0; i < assign.slots.size(); ++i)
-                    {
-                        if (i == si)
-                        {
-                            if (!src_boxes.empty())
-                            {
-                                auto src_pr = pack_container(assign.slots[i].type, src_boxes);
-                                if (!src_pr.has_value() || !src_pr->success)
-                                {
-                                    continue; // 不应发生，跳过此候选
-                                }
-                                ContainerSlot new_slot = assign.slots[i];
-                                new_slot.box_ids.clear();
-                                for (const auto* bp : src_boxes)
-                                {
-                                    new_slot.box_ids.push_back(bp->id);
-                                }
-                                new_slot.pack_result = std::move(src_pr);
-                                new_slots.push_back(std::move(new_slot));
-                            }
-                            // 否则 src 空了，不加入（被删除）
-                        }
-                        else if (i == di)
-                        {
-                            ContainerSlot new_slot = assign.slots[i];
-                            new_slot.box_ids.push_back(box_id);
-                            new_slot.pack_result = std::move(dst_pr);
-                            new_slots.push_back(std::move(new_slot));
-                        }
-                        else
-                        {
-                            new_slots.push_back(assign.slots[i]);
-                        }
-                    }
-
-                    // 验证新方案的目标是否不差于旧方案
-                    Assignment new_assign;
-                    new_assign.slots = std::move(new_slots);
-                    new_assign.objective = compute_objective(new_assign);
-
-                    if (!new_assign.is_better_than(assign))
-                    {
-                        continue; // 目标没改善，跳过
-                    }
-
-                    // 接受
-                    assign = std::move(new_assign);
-                    improved = true;
-                    goto found_move;
-                }
-            }
-        }
-    found_move:;
-    }
-
-    if (iteration > 1)
-    {
-        spdlog::info("Local search: {} iterations, {} containers",
-                     iteration, assign.slots.size());
-    }
-}
-
-void GlobalScheduler::repack_all(Assignment& assign)
-{
-    for (auto& slot : assign.slots)
-    {
-        std::vector<const Box*> boxes;
-        for (const auto& bid : slot.box_ids)
-        {
-            auto it = box_map_.find(bid);
-            if (it != box_map_.end())
-            {
-                boxes.push_back(&it->second);
-            }
-        }
-        slot.pack_result = pack_container(slot.type, boxes);
-    }
 }
 
 std::optional<PackResult> GlobalScheduler::pack_container(
     const ContainerType* ct,
     const std::vector<const Box*>& boxes) const
 {
-    // 将 Box* 列表转为 Box 列表
     std::vector<Box> box_list;
     for (const auto* bp : boxes)
     {
@@ -404,58 +148,11 @@ std::optional<PackResult> GlobalScheduler::pack_container(
     return std::nullopt;
 }
 
-ObjectiveVector GlobalScheduler::compute_objective(const Assignment& assign) const noexcept
-{
-    ObjectiveVector ov;
-    ov.container_count = static_cast<int>(assign.slots.size());
-
-    double sum_rate = 0.0;
-    std::map<std::string, int> group_containers;
-
-    for (const auto& slot : assign.slots)
-    {
-        if (!slot.pack_result.has_value())
-        {
-            continue;
-        }
-        const auto& pr = slot.pack_result.value();
-        ov.platform_count += static_cast<int>(pr.platforms.size());
-
-        int64_t container_vol = static_cast<int64_t>(slot.type->inner_size.x) *
-                                slot.type->inner_size.y *
-                                slot.type->inner_size.z;
-        double rate = container_vol > 0
-                          ? static_cast<double>(pr.used_volume) / static_cast<double>(container_vol)
-                          : 0.0;
-        sum_rate += rate;
-
-        for (const auto& g : pr.groups)
-        {
-            group_containers[g]++;
-        }
-    }
-
-    ov.avg_volume_rate = ov.container_count > 0 ? sum_rate / ov.container_count : 0.0;
-
-    int split = 0;
-    for (const auto& [g, count] : group_containers)
-    {
-        split += count - 1;
-    }
-    ov.group_split_sum = split;
-
-    return ov;
-}
-
-bool GlobalScheduler::Assignment::is_better_than(const Assignment& rhs) const noexcept
-{
-    return objective.is_better_than(rhs.objective);
-}
-
-Solution GlobalScheduler::to_solution(const Assignment& assign,
-                                      const std::vector<Box>& all_boxes,
-                                      bool success,
-                                      const std::string& reason) const
+Solution GlobalScheduler::to_solution(
+    const std::vector<ContainerSlot>& slots,
+    const std::vector<Box>& all_boxes,
+    bool success,
+    const std::string& reason) const
 {
     Solution sol;
     sol.success = success;
@@ -464,22 +161,18 @@ Solution GlobalScheduler::to_solution(const Assignment& assign,
     sol.objective_keys = problem_.objective_keys.empty()
                              ? default_objective_keys()
                              : problem_.objective_keys;
-    sol.objective = assign.objective;
 
     auto elapsed = std::chrono::steady_clock::now() - start_time_;
     sol.elapsed_second = std::chrono::duration<double>(elapsed).count();
 
-    // 统计打包/未打包的箱子
     std::set<std::string> packed_ids;
-    for (const auto& slot : assign.slots)
+
+    for (const auto& slot : slots)
     {
         if (!slot.pack_result.has_value())
-        {
             continue;
-        }
         const auto& pr = slot.pack_result.value();
 
-        // ContainerSummary
         ContainerSummary cs;
         cs.id = slot.instance_id;
         cs.type_id = slot.type->id;
@@ -519,6 +212,41 @@ Solution GlobalScheduler::to_solution(const Assignment& assign,
             sol.unpacked_boxes.push_back(bx.id);
         }
     }
+
+    // 计算目标向量
+    sol.objective.container_count = static_cast<int>(slots.size());
+    sol.objective.platform_count = 0;
+    double sum_rate = 0.0;
+    std::map<std::string, int> group_containers;
+
+    for (const auto& slot : slots)
+    {
+        if (!slot.pack_result.has_value())
+            continue;
+        const auto& pr = slot.pack_result.value();
+        sol.objective.platform_count += static_cast<int>(pr.platforms.size());
+
+        int64_t cv = static_cast<int64_t>(slot.type->inner_size.x) *
+                     slot.type->inner_size.y *
+                     slot.type->inner_size.z;
+        sum_rate += cv > 0 ? static_cast<double>(pr.used_volume) / static_cast<double>(cv) : 0.0;
+
+        for (const auto& g : pr.groups)
+        {
+            group_containers[g]++;
+        }
+    }
+
+    sol.objective.avg_volume_rate = sol.objective.container_count > 0
+                                        ? sum_rate / sol.objective.container_count
+                                        : 0.0;
+
+    int split = 0;
+    for (const auto& [g, count] : group_containers)
+    {
+        split += count - 1;
+    }
+    sol.objective.group_split_sum = split;
 
     return sol;
 }
