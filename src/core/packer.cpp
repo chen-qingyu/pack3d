@@ -405,8 +405,10 @@ PackResult ContainerPacker::make_result(
     return r;
 }
 
-PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int beam_width)
+PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
 {
+    const int kMaxHeap = 6; // 每层保留的部分方案数（论文 MaxHeap）
+
     std::map<std::string, int> all_available;
     for (const auto& bx : boxes)
     {
@@ -457,7 +459,7 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int beam_wi
 
             if (live_blocks.empty())
             {
-                candidates.push_back(ps);
+                // 有箱子但无可匹配的块，此路径死亡
                 continue;
             }
 
@@ -467,57 +469,76 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int beam_wi
             if (viable.empty())
             {
                 auto mut_stack = ps.stack;
-                mut_stack.push_back(space);
-                if (!transfer_space(mut_stack))
-                    mut_stack.pop_back();
-                PartialState next = ps;
-                next.stack = std::move(mut_stack);
-                candidates.push_back(std::move(next));
+                bool recycled = transfer_space(mut_stack);
+                if (recycled)
+                {
+                    PartialState next = ps;
+                    next.stack = std::move(mut_stack);
+                    candidates.push_back(std::move(next));
+                }
                 continue;
             }
 
-            // 前瞻评估：对候选块打分，选 top beam_width
-            std::vector<double> scores;
-            int effort = problem_.solver_config.effort;
-            evaluate_blocks(viable, space, ps.state, ps.available,
-                            live_blocks, effort > 0 ? effort : beam_width * 2, scores);
+            // 取前 width 个候选块做前瞻评估
+            int eval_count = std::min(width, static_cast<int>(viable.size()));
+            std::vector<double> scores(eval_count, 0.0);
 
-            // 按分数降序排列
-            std::vector<size_t> indices(viable.size());
-            for (size_t i = 0; i < indices.size(); ++i)
-                indices[i] = i;
-            std::sort(indices.begin(), indices.end(),
+            for (int ci = 0; ci < eval_count; ++ci)
+            {
+                // 模拟放置候选块
+                ContainerLoad sim = ps.state;
+                auto sim_avail = ps.available;
+                std::vector<Space> sim_stack = {space};
+                place_block(*viable[ci], space, sim, sim_avail, sim_stack);
+
+                // 贪心完成
+                double fill_rate = greedy_complete(
+                    std::move(sim), std::move(sim_avail),
+                    std::move(sim_stack), live_blocks);
+
+                scores[ci] = fill_rate;
+            }
+
+            // 按分数降序排列，展开前 kMaxHeap 个
+            std::vector<size_t> idx(eval_count);
+            for (int i = 0; i < eval_count; ++i)
+                idx[i] = i;
+            std::sort(idx.begin(), idx.end(),
                       [&](size_t a, size_t b)
                       { return scores[a] > scores[b]; });
 
-            int n = std::min(beam_width, static_cast<int>(viable.size()));
-            for (int ci = 0; ci < n; ++ci)
+            int expand_n = std::min(kMaxHeap, eval_count);
+            for (int ci = 0; ci < expand_n; ++ci)
             {
                 PartialState next = ps;
                 auto mut_stack = ps.stack;
                 mut_stack.pop_back();
-                place_block(*viable[indices[ci]], space, next.state, next.available, mut_stack);
+                place_block(*viable[idx[ci]], space, next.state, next.available, mut_stack);
                 next.stack = std::move(mut_stack);
                 next.boxes_placed = static_cast<int>(next.state.placements.size());
                 candidates.push_back(std::move(next));
             }
         }
 
-        std::partial_sort(candidates.begin(),
-                          candidates.begin() + std::min(beam_width, static_cast<int>(candidates.size())),
-                          candidates.end(),
-                          [](const PartialState& a, const PartialState& b)
-                          {
-                              return a.boxes_placed > b.boxes_placed;
-                          });
-
-        beam.resize(std::min(beam_width, static_cast<int>(candidates.size())));
+        // 保留 top kMaxHeap
+        if (candidates.size() > 1)
+        {
+            std::partial_sort(candidates.begin(),
+                              candidates.begin() + std::min(kMaxHeap, static_cast<int>(candidates.size())),
+                              candidates.end(),
+                              [](const PartialState& a, const PartialState& b)
+                              {
+                                  return a.boxes_placed > b.boxes_placed;
+                              });
+        }
+        beam.resize(std::min(kMaxHeap, static_cast<int>(candidates.size())));
         for (int i = 0; i < static_cast<int>(beam.size()); ++i)
         {
             beam[i] = std::move(candidates[i]);
         }
     }
 
+    // 选最佳方案
     if (beam.empty())
     {
         return make_result(ContainerLoad{}, all_available, boxes);
@@ -581,9 +602,7 @@ double ContainerPacker::greedy_complete(
         {
             stack.push_back(space);
             if (!transfer_space(stack))
-            {
                 stack.pop_back();
-            }
         }
 
         blocks.erase(
@@ -596,54 +615,9 @@ double ContainerPacker::greedy_complete(
             blocks.end());
     }
 
-    return static_cast<double>(state.used_volume) / static_cast<double>(total_vol);
-}
-
-void ContainerPacker::evaluate_blocks(
-    const std::vector<const SimpleBlock*>& viable,
-    const Space& space,
-    const ContainerLoad& state,
-    const std::map<std::string, int>& available,
-    const std::vector<SimpleBlock>& all_blocks,
-    int effort,
-    std::vector<double>& scores) const
-{
-    scores.resize(viable.size(), 0.0);
-
-    // effort=0: 仅按块体积打分（快速）
-    if (effort <= 0)
-    {
-        for (size_t i = 0; i < viable.size(); ++i)
-        {
-            scores[i] = static_cast<double>(viable[i]->volume());
-        }
-        return;
-    }
-
-    int eval_count = std::min(effort, static_cast<int>(viable.size()));
-
-    for (int i = 0; i < eval_count; ++i)
-    {
-        // 模拟放置
-        ContainerLoad sim_state = state;
-        auto sim_avail = available;
-        std::vector<Space> sim_stack = {space};
-
-        place_block(*viable[i], space, sim_state, sim_avail, sim_stack);
-
-        // 贪心完成
-        double fill_rate = greedy_complete(
-            std::move(sim_state), std::move(sim_avail),
-            std::move(sim_stack), all_blocks);
-
-        scores[i] = fill_rate * 100.0; // 百分比作为分数
-    }
-
-    // 超出 effort 的候选按体积打分
-    for (size_t i = static_cast<size_t>(eval_count); i < viable.size(); ++i)
-    {
-        scores[i] = static_cast<double>(viable[i]->volume()) / 1000.0;
-    }
+    return total_vol > 0
+               ? static_cast<double>(state.used_volume) / static_cast<double>(total_vol) * 100.0
+               : 0.0;
 }
 
 } // namespace hypercube

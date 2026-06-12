@@ -122,9 +122,7 @@ struct SolverConfig
 {
     Strategy strategy = Strategy::ExtremePoints;
     int random_seed = 42;
-    int beam_width = 0;       // beam 宽度（0=自动渐进，1=贪心，>1=beam搜索）
-    int effort = 0;           // 前瞻评估预算（0=自动渐进）
-    int look_ahead_depth = 0; // 前瞻深度（0=自动渐进）
+    int width = 27; // 前瞻宽度（每步评估的候选块数上限）
 };
 
 // 完整问题描述

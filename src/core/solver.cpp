@@ -1057,8 +1057,7 @@ Solution SolverEngine::solve_mlhs()
 
     spdlog::info("===MLHS Algorithm Start===");
 
-    GlobalScheduler scheduler(problem_, box_type_map_, box_map_, has_weight_info_,
-                              problem_.solver_config.beam_width);
+    GlobalScheduler scheduler(problem_, box_type_map_, box_map_, has_weight_info_);
     Solution solution = scheduler.schedule();
 
     spdlog::info("===MLHS Algorithm End===");
