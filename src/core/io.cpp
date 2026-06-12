@@ -430,12 +430,13 @@ json solution_to_json(const Solution& sol) noexcept
         cj["inner_size"]["x"] = cs.inner_size.x;
         cj["inner_size"]["y"] = cs.inner_size.y;
         cj["inner_size"]["z"] = cs.inner_size.z;
+        cj["max_weight"] = cs.max_weight.has_value() ? json(cs.max_weight.value()) : json(nullptr);
 
         json ls;
         ls["used_volume"] = cs.used_volume;
-        ls["total_volume"] = cs.total_volume;
+        ls["used_weight"] = cs.used_weight.has_value() ? json(cs.used_weight.value()) : json(nullptr);
         ls["volume_rate"] = cs.volume_rate;
-        ls["total_weight"] = cs.total_weight.has_value() ? json(cs.total_weight.value()) : json(nullptr);
+        ls["weight_rate"] = cs.weight_rate.has_value() ? json(cs.weight_rate.value()) : json(nullptr);
         ls["platforms"] = cs.platforms;
         ls["groups"] = cs.groups;
         cj["load_summary"] = std::move(ls);

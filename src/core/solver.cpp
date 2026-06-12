@@ -936,9 +936,14 @@ Solution SolverEngine::build_solution(const SearchState& state,
             cs.inner_size = load.type->inner_size;
         }
         cs.used_volume = load.used_volume;
-        cs.total_volume = load.total_volume();
         cs.volume_rate = load.volume_rate();
-        cs.total_weight = has_weight_info_ ? std::optional<double>(load.total_weight) : std::nullopt;
+        cs.used_weight = has_weight_info_ ? std::optional<double>(load.total_weight) : std::nullopt;
+        cs.weight_rate = has_weight_info_ && load.type && load.type->max_weight.has_value()
+                             ? std::optional<double>(load.total_weight / load.type->max_weight.value())
+                             : std::nullopt;
+        cs.max_weight = load.type && load.type->max_weight.has_value()
+                            ? std::optional<double>(load.type->max_weight.value())
+                            : std::nullopt;
         cs.platforms.assign(load.platforms.begin(), load.platforms.end());
         cs.groups.assign(load.groups.begin(), load.groups.end());
 

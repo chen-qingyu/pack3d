@@ -214,10 +214,11 @@ struct ContainerSummary
     std::string id;
     std::string type_id;
     Size inner_size; // 容器内部尺寸，绘图所需
+    std::optional<double> max_weight = std::nullopt;
     int64_t used_volume = 0;
-    int64_t total_volume = 0;
     double volume_rate = 0.0;
-    std::optional<double> total_weight = std::nullopt;
+    std::optional<double> used_weight = std::nullopt;
+    std::optional<double> weight_rate = std::nullopt;
     std::vector<std::string> platforms;
     std::vector<std::string> groups;
 };
