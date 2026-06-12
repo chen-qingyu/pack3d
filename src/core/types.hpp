@@ -132,7 +132,6 @@ enum class Strategy : uint8_t
 struct SolverConfig
 {
     Strategy strategy = Strategy::ExtremePoints;
-    int random_seed = 42;
     int width = 27; // 前瞻宽度（每步评估的候选块数上限）
 };
 

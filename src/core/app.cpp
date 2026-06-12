@@ -9,29 +9,19 @@
 namespace hypercube
 {
 
-json run_solver(const std::string& json_input, bool debug) noexcept
+json run_solver(const std::string& json_input) noexcept
 {
     auto parsed = parse_json(json_input);
 
     if (std::holds_alternative<Solution>(parsed))
     {
-        Solution error_solution = std::get<Solution>(std::move(parsed));
-        if (!debug)
-        {
-            error_solution.violations.clear();
-        }
-        return solution_to_json(error_solution);
+        return solution_to_json(std::get<Solution>(std::move(parsed)));
     }
 
     Problem problem = std::get<Problem>(std::move(parsed));
 
     SolverEngine engine(problem);
     Solution solution = engine.solve();
-
-    if (!debug)
-    {
-        solution.violations.clear();
-    }
 
     return solution_to_json(solution);
 }

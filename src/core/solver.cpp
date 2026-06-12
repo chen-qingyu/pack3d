@@ -984,7 +984,7 @@ Solution SolverEngine::build_solution(const SearchState& state,
 // 尝试不同排序 + 打乱
 void SolverEngine::multi_start_solve(SearchState& state)
 {
-    std::mt19937 rng(static_cast<unsigned>(state.config ? state.config->random_seed : 42));
+    std::mt19937 rng(42);
 
     const BoxOrder orders[] = {
         BoxOrder::ByVolume,

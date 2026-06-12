@@ -19,11 +19,6 @@ int main(int argc, char** argv)
     program.add_argument("input")
         .help("The input JSON file path");
 
-    program.add_argument("--debug")
-        .help("Enable debug output (including violation information)")
-        .default_value(false)
-        .implicit_value(true);
-
     try
     {
         program.parse_args(argc, argv);
@@ -35,7 +30,6 @@ int main(int argc, char** argv)
     }
 
     std::string input_file = program.get<std::string>("input");
-    bool debug = program.get<bool>("--debug");
 
     // 读取输入文件
     std::ifstream ifs(input_file);
@@ -52,7 +46,7 @@ int main(int argc, char** argv)
 
     // 运行求解器
     auto t0 = std::chrono::steady_clock::now();
-    auto json_output = hypercube::run_solver(json_input, debug).dump(2);
+    auto json_output = hypercube::run_solver(json_input).dump(2);
     auto t1 = std::chrono::steady_clock::now();
 
     // 构建输出路径: result/<input_stem>.json

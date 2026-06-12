@@ -178,7 +178,6 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
         if (j.contains("solver"))
         {
             const auto& s = j["solver"];
-            p.solver_config.random_seed = s.value("random_seed", 42);
             p.solver_config.width = s.value("width", 27);
 
             std::string strategy_str = s.value("strategy", "extreme_points");

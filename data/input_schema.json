@@ -132,8 +132,7 @@
           "minimum": 1,
           "default": 27,
           "description": "前瞻宽度：每步评估的候选块数上限（越大搜索越充分，耗时线性增长）"
-        },
-        "random_seed": { "type": "integer", "default": 42 }
+        }
       }
     }
   }
