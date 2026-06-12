@@ -179,6 +179,16 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
         {
             const auto& s = j["solver"];
             p.solver_config.random_seed = s.value("random_seed", 42);
+
+            std::string strategy_str = s.value("strategy", "extreme_points");
+            if (strategy_str == "mlhs_blocks")
+            {
+                p.solver_config.strategy = Strategy::MLHS_Blocks;
+            }
+            else
+            {
+                p.solver_config.strategy = Strategy::ExtremePoints;
+            }
         }
 
         return p;

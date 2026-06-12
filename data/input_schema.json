@@ -122,6 +122,11 @@
       "description": "求解器配置",
       "additionalProperties": false,
       "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["extreme_points", "mlhs_blocks"],
+          "default": "extreme_points"
+        },
         "random_seed": { "type": "integer", "default": 42 }
       }
     }

@@ -87,8 +87,16 @@ struct RouteOrder
 };
 
 // 求解器配置
+// 求解策略
+enum class Strategy : uint8_t
+{
+    ExtremePoints, // 极点法（默认）
+    MLHS_Blocks,   // MLHS 块装载法
+};
+
 struct SolverConfig
 {
+    Strategy strategy = Strategy::ExtremePoints;
     int random_seed = 42;
 };
 
