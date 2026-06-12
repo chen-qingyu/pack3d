@@ -122,6 +122,8 @@ struct SolverConfig
 {
     Strategy strategy = Strategy::ExtremePoints;
     int random_seed = 42;
+    int beam_width = 1; // beam 宽度（1=贪心，>1=beam搜索）
+    int max_stage = 1;  // 渐进参数档位（1-6，仅 MLHS 策略有效）
 };
 
 // 完整问题描述

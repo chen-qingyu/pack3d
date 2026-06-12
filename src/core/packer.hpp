@@ -26,7 +26,7 @@ struct PackResult
 };
 
 /// 容器内装载引擎（MLHS 块装载法）
-/// 对一个容器 + 箱子子集，使用简单块 + 空间栈 + 贪心选择进行装载
+/// 对一个容器 + 箱子子集，使用简单块 + 空间栈 + beam 搜索进行装载
 class ContainerPacker
 {
 public:
@@ -37,10 +37,24 @@ public:
         const Problem& problem,
         bool has_weight_info);
 
-    /// 运行装载，返回结果
+    /// 贪心装载（beam = 1）
     [[nodiscard]] PackResult pack(const std::vector<Box>& boxes);
 
+    /// Beam 搜索装载
+    /// beam_width: 每层保留的部分方案数（MLHS 论文取 6~16）
+    [[nodiscard]] PackResult pack_beam(const std::vector<Box>& boxes, int beam_width);
+
 private:
+    /// beam 搜索中的一个部分方案
+    struct PartialState
+    {
+        ContainerLoad state;
+        std::map<std::string, int> available;
+        std::vector<Space> stack;
+        int64_t volume_filled = 0;
+        int boxes_placed = 0;
+    };
+
     const ContainerType& container_;
     const std::map<std::string, BoxType>& box_type_map_;
     const std::map<std::string, Box>& box_map_;
@@ -67,6 +81,17 @@ private:
                      ContainerLoad& state,
                      std::map<std::string, int>& available,
                      std::vector<Space>& stack) const;
+
+    /// 从最终状态构建 PackResult
+    [[nodiscard]] PackResult make_result(const ContainerLoad& state,
+                                         const std::map<std::string, int>& available,
+                                         const std::vector<Box>& all_boxes) const;
+
+    /// beam 搜索：展开一个部分方案，返回候选子方案
+    [[nodiscard]] std::vector<PartialState> expand_partial(
+        const PartialState& ps,
+        const std::vector<SimpleBlock>& all_blocks,
+        int beam_width) const;
 };
 
 } // namespace hypercube

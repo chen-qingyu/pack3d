@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 #include <map>
+#include <queue>
+#include <set>
 
 #include "block.hpp"
 #include "constraints.hpp"
@@ -63,91 +65,25 @@ PackResult ContainerPacker::pack(const std::vector<Box>& boxes)
 
         if (!candidates.empty())
         {
-            // 选体积最大的可行块（已按体积降序排列）
+            // 选体积最大的可行块
             const SimpleBlock* best = candidates.front();
 
-            // 展开块为单个箱子 placement
-            auto box_osize = block_gen_.generate_for_type(
-                best->box_type_id, container_.inner_size, "", "", 1);
-            // 取第一个朝向的单个箱子尺寸
-            auto single = orient_size(box_type_map_.at(best->box_type_id).size, best->orientation);
+            // 用 place_block 放置（使用占位 ID）
+            size_t before = state.placements.size();
+            place_block(*best, space, state, available, stack);
 
-            // 从可用箱子中取出具体 ID
+            // 将占位 ID 替换为真实箱子 ID
             auto& type_boxes = boxes_by_type[best->box_type_id];
-            int taken = 0;
-
-            for (int iz = 0; iz < best->nz; ++iz)
+            int bi = 0;
+            for (size_t pi = before; pi < state.placements.size(); ++pi)
             {
-                for (int iy = 0; iy < best->ny; ++iy)
+                if (bi < static_cast<int>(type_boxes.size()))
                 {
-                    for (int ix = 0; ix < best->nx; ++ix)
-                    {
-                        if (taken >= static_cast<int>(type_boxes.size()))
-                        {
-                            break;
-                        }
-
-                        const Box* box_ptr = type_boxes[taken];
-                        ++taken;
-
-                        Position pos;
-                        pos.x = space.pos.x + ix * single.dx;
-                        pos.y = space.pos.y + iy * single.dy;
-                        pos.z = space.pos.z + iz * single.dz;
-
-                        Placement pl;
-                        pl.box_id = box_ptr->id;
-                        pl.box_type_id = best->box_type_id;
-                        pl.position = pos;
-                        pl.orientation = best->orientation;
-
-                        // 更新容器状态
-                        state.placements.push_back(pl);
-                        state.used_volume += single.volume();
-                        if (has_weight_info_)
-                        {
-                            state.total_weight += box_ptr->weight.value_or(0.0);
-                        }
-
-                        // 更新平台跟踪
-                        if (!box_ptr->platform.empty())
-                        {
-                            state.platforms.insert(box_ptr->platform);
-                            int32_t box_max_x = pos.x + single.dx;
-                            auto xmax_it = state.platform_x_max.find(box_ptr->platform);
-                            if (xmax_it == state.platform_x_max.end() || box_max_x > xmax_it->second)
-                            {
-                                state.platform_x_max[box_ptr->platform] = box_max_x;
-                            }
-                            int32_t box_min_x = pos.x;
-                            auto xmin_it = state.platform_x_min.find(box_ptr->platform);
-                            if (xmin_it == state.platform_x_min.end() || box_min_x < xmin_it->second)
-                            {
-                                state.platform_x_min[box_ptr->platform] = box_min_x;
-                            }
-                        }
-
-                        // 更新分组
-                        if (!box_ptr->group.empty())
-                        {
-                            state.groups.insert(box_ptr->group);
-                        }
-
-                        result.placements.push_back(std::move(pl));
-                    }
+                    state.placements[pi].box_id = type_boxes[bi]->id;
+                    result.placements.push_back(state.placements[pi]);
+                    ++bi;
                 }
             }
-
-            // 更新可用库存
-            available[best->box_type_id] -= taken;
-            // 移除已用尽的类型
-            if (available[best->box_type_id] <= 0)
-            {
-                available.erase(best->box_type_id);
-            }
-
-            // 划分剩余空间
-            split_space(space, best->osize, stack);
         }
         else
         {
@@ -357,6 +293,251 @@ bool ContainerPacker::check_block_feasible(
     }
 
     return true;
+}
+
+void ContainerPacker::place_block(
+    const SimpleBlock& block, const Space& space,
+    ContainerLoad& state,
+    std::map<std::string, int>& available,
+    std::vector<Space>& stack) const
+{
+    auto single = orient_size(box_type_map_.at(block.box_type_id).size, block.orientation);
+
+    // 找到 box_type_id 对应的箱子（用于获取 platform/group/weight）
+    const Box* sample_box = nullptr;
+    for (const auto& [id, bx] : box_map_)
+    {
+        if (bx.box_type_id == block.box_type_id)
+        {
+            sample_box = &bx;
+            break;
+        }
+    }
+
+    int placed = 0;
+    for (int iz = 0; iz < block.nz; ++iz)
+    {
+        for (int iy = 0; iy < block.ny; ++iy)
+        {
+            for (int ix = 0; ix < block.nx; ++ix)
+            {
+                Position pos;
+                pos.x = space.pos.x + ix * single.dx;
+                pos.y = space.pos.y + iy * single.dy;
+                pos.z = space.pos.z + iz * single.dz;
+
+                Placement pl;
+                pl.box_id = std::string("__block_") + std::to_string(placed++);
+                pl.box_type_id = block.box_type_id;
+                pl.position = pos;
+                pl.orientation = block.orientation;
+
+                state.placements.push_back(std::move(pl));
+                state.used_volume += single.volume();
+                if (has_weight_info_ && sample_box && sample_box->weight.has_value())
+                {
+                    state.total_weight += sample_box->weight.value();
+                }
+
+                if (sample_box && !sample_box->platform.empty())
+                {
+                    state.platforms.insert(sample_box->platform);
+                    int32_t box_max_x = pos.x + single.dx;
+                    auto xmax_it = state.platform_x_max.find(sample_box->platform);
+                    if (xmax_it == state.platform_x_max.end() || box_max_x > xmax_it->second)
+                    {
+                        state.platform_x_max[sample_box->platform] = box_max_x;
+                    }
+                    int32_t box_min_x = pos.x;
+                    auto xmin_it = state.platform_x_min.find(sample_box->platform);
+                    if (xmin_it == state.platform_x_min.end() || box_min_x < xmin_it->second)
+                    {
+                        state.platform_x_min[sample_box->platform] = box_min_x;
+                    }
+                }
+
+                if (sample_box && !sample_box->group.empty())
+                {
+                    state.groups.insert(sample_box->group);
+                }
+            }
+        }
+    }
+
+    available[block.box_type_id] -= block.box_count;
+    if (available[block.box_type_id] <= 0)
+    {
+        available.erase(block.box_type_id);
+    }
+
+    split_space(space, block.osize, stack);
+}
+
+// ===== Beam 搜索 =====
+
+PackResult ContainerPacker::make_result(
+    const ContainerLoad& state,
+    const std::map<std::string, int>& /*available*/,
+    const std::vector<Box>& all_boxes) const
+{
+    PackResult r;
+    r.used_volume = state.used_volume;
+    r.total_weight = state.total_weight;
+    r.platforms = state.platforms;
+    r.groups = state.groups;
+    r.platform_x_max = state.platform_x_max;
+    r.platform_x_min = state.platform_x_min;
+    r.placements = state.placements;
+
+    std::set<std::string> packed;
+    for (const auto& pl : state.placements)
+    {
+        packed.insert(pl.box_id);
+    }
+    for (const auto& bx : all_boxes)
+    {
+        if (!packed.count(bx.id))
+        {
+            r.unpacked_box_ids.push_back(bx.id);
+        }
+    }
+    r.success = (r.placements.size() == all_boxes.size());
+    return r;
+}
+
+PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int beam_width)
+{
+    std::map<std::string, int> all_available;
+    for (const auto& bx : boxes)
+    {
+        all_available[bx.box_type_id]++;
+    }
+
+    auto all_blocks = block_gen_.generate_all(container_.inner_size, all_available);
+
+    std::vector<PartialState> beam(1);
+    beam[0].state.type = &container_;
+    beam[0].state.type_id = container_.id;
+    beam[0].available = all_available;
+    beam[0].stack.push_back({{0, 0, 0}, container_.inner_size.x, container_.inner_size.y, container_.inner_size.z});
+
+    while (!beam.empty())
+    {
+        bool all_done = true;
+        for (const auto& ps : beam)
+        {
+            if (!ps.stack.empty() && !ps.available.empty())
+            {
+                all_done = false;
+                break;
+            }
+        }
+        if (all_done)
+            break;
+
+        std::vector<PartialState> candidates;
+
+        for (const auto& ps : beam)
+        {
+            if (ps.stack.empty() || ps.available.empty())
+            {
+                candidates.push_back(ps);
+                continue;
+            }
+
+            auto live_blocks = all_blocks;
+            live_blocks.erase(
+                std::remove_if(live_blocks.begin(), live_blocks.end(),
+                               [&](const SimpleBlock& b)
+                               {
+                                   auto it = ps.available.find(b.box_type_id);
+                                   return it == ps.available.end() || it->second < b.box_count;
+                               }),
+                live_blocks.end());
+
+            if (live_blocks.empty())
+            {
+                candidates.push_back(ps);
+                continue;
+            }
+
+            Space space = ps.stack.back();
+            auto viable = filter_viable_blocks(live_blocks, space, ps.available, ps.state);
+
+            if (viable.empty())
+            {
+                auto mut_stack = ps.stack;
+                mut_stack.push_back(space);
+                if (!transfer_space(mut_stack))
+                    mut_stack.pop_back();
+                PartialState next = ps;
+                next.stack = std::move(mut_stack);
+                candidates.push_back(std::move(next));
+                continue;
+            }
+
+            int n = std::min(beam_width, static_cast<int>(viable.size()));
+            for (int ci = 0; ci < n; ++ci)
+            {
+                PartialState next = ps;
+                auto mut_stack = ps.stack;
+                mut_stack.pop_back();
+                place_block(*viable[ci], space, next.state, next.available, mut_stack);
+                next.stack = std::move(mut_stack);
+                next.boxes_placed = static_cast<int>(next.state.placements.size());
+                candidates.push_back(std::move(next));
+            }
+        }
+
+        std::partial_sort(candidates.begin(),
+                          candidates.begin() + std::min(beam_width, static_cast<int>(candidates.size())),
+                          candidates.end(),
+                          [](const PartialState& a, const PartialState& b)
+                          {
+                              return a.boxes_placed > b.boxes_placed;
+                          });
+
+        beam.resize(std::min(beam_width, static_cast<int>(candidates.size())));
+        for (int i = 0; i < static_cast<int>(beam.size()); ++i)
+        {
+            beam[i] = std::move(candidates[i]);
+        }
+    }
+
+    if (beam.empty())
+    {
+        return make_result(ContainerLoad{}, all_available, boxes);
+    }
+
+    std::partial_sort(beam.begin(), beam.begin() + 1, beam.end(),
+                      [](const PartialState& a, const PartialState& b)
+                      {
+                          return a.boxes_placed > b.boxes_placed;
+                      });
+
+    auto& best_state = beam[0].state;
+
+    std::map<std::string, std::vector<std::string>> real_ids_by_type;
+    for (const auto& bx : boxes)
+    {
+        real_ids_by_type[bx.box_type_id].push_back(bx.id);
+    }
+
+    std::map<std::string, size_t> consume_idx;
+    for (auto& pl : best_state.placements)
+    {
+        if (pl.box_id.find("__block_") == 0)
+        {
+            auto& ids = real_ids_by_type[pl.box_type_id];
+            size_t& idx = consume_idx[pl.box_type_id];
+            if (idx < ids.size())
+            {
+                pl.box_id = ids[idx++];
+            }
+        }
+    }
+
+    return make_result(best_state, beam[0].available, boxes);
 }
 
 } // namespace hypercube

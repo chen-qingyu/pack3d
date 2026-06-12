@@ -127,6 +127,19 @@
           "enum": ["extreme_points", "mlhs_blocks"],
           "default": "extreme_points"
         },
+        "beam_width": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Beam 搜索宽度（1=贪心，>1=beam搜索）"
+        },
+        "max_stage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6,
+          "default": 1,
+          "description": "渐进参数档位（1-6，越高搜索越充分）"
+        },
         "random_seed": { "type": "integer", "default": 42 }
       }
     }

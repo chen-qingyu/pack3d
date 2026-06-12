@@ -23,7 +23,8 @@ public:
         const Problem& problem,
         const std::map<std::string, BoxType>& box_type_map,
         const std::map<std::string, Box>& box_map,
-        bool has_weight_info);
+        bool has_weight_info,
+        int beam_width = 1);
 
     /// 运行调度，返回最终解
     [[nodiscard]] Solution schedule();
@@ -33,6 +34,7 @@ private:
     const std::map<std::string, BoxType>& box_type_map_;
     const std::map<std::string, Box>& box_map_;
     bool has_weight_info_;
+    int beam_width_ = 1;
 
     std::chrono::steady_clock::time_point start_time_;
     int next_instance_ = 0;

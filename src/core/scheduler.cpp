@@ -16,11 +16,13 @@ GlobalScheduler::GlobalScheduler(
     const Problem& problem,
     const std::map<std::string, BoxType>& box_type_map,
     const std::map<std::string, Box>& box_map,
-    bool has_weight_info)
+    bool has_weight_info,
+    int beam_width)
     : problem_(problem)
     , box_type_map_(box_type_map)
     , box_map_(box_map)
     , has_weight_info_(has_weight_info)
+    , beam_width_(beam_width)
 {
 }
 
@@ -30,12 +32,57 @@ Solution GlobalScheduler::schedule()
     next_instance_ = 0;
     container_type_usage_.clear();
 
-    // 初始分配
-    Assignment best = greedy_assign(problem_.boxes);
+    // 定义渐进参数档位：每档为 beam_width
+    // 档位越高，beam 越宽，搜索越充分但越慢
+    const int stages[] = {1, 2, 4, 8, 12, 16};
+    const int max_stage = std::min(
+        std::max(problem_.solver_config.max_stage, 1),
+        static_cast<int>(sizeof(stages) / sizeof(stages[0])));
 
-    // 局部搜索改进
-    local_search(best, problem_.boxes);
+    std::optional<Assignment> best_assign;
+    Solution best_solution;
 
+    for (int stage = 0; stage < max_stage; ++stage)
+    {
+        if (!check_time())
+        {
+            break;
+        }
+
+        int bw = beam_width_ > 0 ? beam_width_ : stages[stage];
+
+        if (stage > 0)
+        {
+            spdlog::info("Stage {}/{}: beam_width={}", stage + 1, max_stage, bw);
+        }
+
+        // 用当前 beam_width 创建临时调度器
+        GlobalScheduler stage_sched(
+            problem_, box_type_map_, box_map_, has_weight_info_, bw);
+        stage_sched.start_time_ = start_time_;
+        stage_sched.next_instance_ = next_instance_;
+        stage_sched.container_type_usage_ = container_type_usage_;
+
+        Assignment curr = stage_sched.greedy_assign(problem_.boxes);
+        stage_sched.local_search(curr, problem_.boxes);
+
+        // 更新全局状态
+        next_instance_ = stage_sched.next_instance_;
+        container_type_usage_ = stage_sched.container_type_usage_;
+
+        if (!best_assign.has_value() || curr.is_better_than(best_assign.value()))
+        {
+            best_assign = std::move(curr);
+        }
+    }
+
+    if (!best_assign.has_value())
+    {
+        best_assign = greedy_assign(problem_.boxes);
+        local_search(best_assign.value(), problem_.boxes);
+    }
+
+    const auto& best = best_assign.value();
     bool all_packed = true;
     size_t total_packed = 0;
     for (const auto& slot : best.slots)
@@ -313,7 +360,15 @@ std::optional<PackResult> GlobalScheduler::pack_container(
     }
 
     ContainerPacker packer(*ct, box_type_map_, box_map_, problem_, has_weight_info_);
-    PackResult pr = packer.pack(box_list);
+    PackResult pr;
+    if (beam_width_ > 1)
+    {
+        pr = packer.pack_beam(box_list, beam_width_);
+    }
+    else
+    {
+        pr = packer.pack(box_list);
+    }
     if (pr.success || !pr.placements.empty())
     {
         return pr;
