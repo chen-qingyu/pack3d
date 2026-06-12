@@ -12,6 +12,13 @@
 namespace hypercube
 {
 
+// 有值则 to_string，无值则 "null"
+template <typename T>
+inline std::string opt_str(const std::optional<T>& opt) noexcept
+{
+    return opt.has_value() ? std::to_string(opt.value()) : "null";
+}
+
 SolverEngine::SolverEngine(const Problem& problem)
     : problem_(problem)
 {
@@ -34,11 +41,12 @@ Solution SolverEngine::solve()
     SearchState state = make_initial_state();
 
     spdlog::info("Successfully validated input.");
-    spdlog::info("Boxes count: {}, Support rate: {:.0f}%, Platform limit: {}, Tender limit: {}",
+    spdlog::info("Time limit: {} s, Boxes count: {}, Support rate: {:.2f}%, Platform limit: {}, Tender limit: {}",
+                 problem_.time_limit_seconds,
                  problem_.boxes.size(),
                  problem_.support_rate * 100.0,
-                 problem_.platform_limit.has_value() ? std::to_string(problem_.platform_limit.value()) : "null",
-                 problem_.tender_limit.has_value() ? std::to_string(problem_.tender_limit.value()) : "null");
+                 opt_str(problem_.platform_limit),
+                 opt_str(problem_.tender_limit));
 
     spdlog::info("===Algorithm Start===");
 

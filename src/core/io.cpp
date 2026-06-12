@@ -67,6 +67,13 @@ Orientation orientation_from_string(const std::string& s) noexcept
     return Orientation::XYZ;
 }
 
+// 有值则序列化，无值则输出 null
+template <typename T>
+json opt_json(const std::optional<T>& opt) noexcept
+{
+    return opt.has_value() ? json(opt.value()) : json(nullptr);
+}
+
 // 从 JSON 中获取可选的 int，null 视为空 optional
 std::optional<int> json_opt_int(const json& j, const char* key)
 {
@@ -409,13 +416,13 @@ json solution_to_json(const Solution& sol) noexcept
         cj["inner_size"]["x"] = cs.inner_size.x;
         cj["inner_size"]["y"] = cs.inner_size.y;
         cj["inner_size"]["z"] = cs.inner_size.z;
-        cj["max_weight"] = cs.max_weight.has_value() ? json(cs.max_weight.value()) : json(nullptr);
+        cj["max_weight"] = opt_json(cs.max_weight);
 
         json ls;
         ls["used_volume"] = cs.used_volume;
-        ls["used_weight"] = cs.used_weight.has_value() ? json(cs.used_weight.value()) : json(nullptr);
+        ls["used_weight"] = opt_json(cs.used_weight);
         ls["volume_rate"] = cs.volume_rate;
-        ls["weight_rate"] = cs.weight_rate.has_value() ? json(cs.weight_rate.value()) : json(nullptr);
+        ls["weight_rate"] = opt_json(cs.weight_rate);
         ls["platforms"] = cs.platforms;
         ls["groups"] = cs.groups;
         cj["load_summary"] = std::move(ls);
