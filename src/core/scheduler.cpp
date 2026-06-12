@@ -36,12 +36,30 @@ Solution GlobalScheduler::schedule()
 
     bool all_packed = true;
     size_t total_packed = 0;
+    int idx = 1;
+    int packed_sofar = 0;
+    int total_boxes = static_cast<int>(problem_.boxes.size());
     for (const auto& slot : best.slots)
     {
-        if (slot.pack_result.has_value())
-        {
-            total_packed += slot.pack_result->placements.size();
-        }
+        if (!slot.pack_result.has_value())
+            continue;
+        const auto& pr = slot.pack_result.value();
+        int packed = static_cast<int>(pr.placements.size());
+        packed_sofar += packed;
+        int left = total_boxes - packed_sofar;
+        int64_t container_vol = static_cast<int64_t>(slot.type->inner_size.x) *
+                                slot.type->inner_size.y *
+                                slot.type->inner_size.z;
+        double vol_rate = container_vol > 0
+                              ? static_cast<double>(pr.used_volume) / static_cast<double>(container_vol) * 100.0
+                              : 0.0;
+        double wt_rate = has_weight_info_ && slot.type->max_weight.has_value() && slot.type->max_weight.value() > 0
+                             ? pr.total_weight / slot.type->max_weight.value() * 100.0
+                             : 0.0;
+        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {:.2f}%",
+                     idx, slot.type->id, packed, left, vol_rate, wt_rate);
+        ++idx;
+        total_packed += packed;
     }
     all_packed = (total_packed == problem_.boxes.size());
 
