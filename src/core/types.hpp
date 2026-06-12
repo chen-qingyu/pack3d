@@ -89,8 +89,6 @@ struct RouteOrder
 // 求解器配置
 struct SolverConfig
 {
-    std::string strategy = "constructive_multi_active";
-    int active_container_limit = 3;
     int random_seed = 42;
 };
 
@@ -245,8 +243,6 @@ namespace reason
 inline constexpr const char* k_feasible = "feasible";
 inline constexpr const char* k_no_solution = "no_solution";
 inline constexpr const char* k_tender_limit = "tender_limit";
-inline constexpr const char* k_platform_limit = "platform_limit";
-inline constexpr const char* k_support_rate = "support_rate";
 inline constexpr const char* k_final_check = "final_check";
 inline constexpr const char* k_invalid_range = "invalid_range";
 inline constexpr const char* k_duplicate_id = "duplicate_id";

@@ -45,7 +45,7 @@ struct SearchState
 
     std::optional<Solution> best_feasible;
 
-    bool proven_infeasible = false;
+    bool infeasible = false;
     std::string failure_reason;
 
     std::chrono::steady_clock::time_point start_time;
@@ -101,7 +101,7 @@ private:
 
     void multi_start_solve(SearchState& state);
 
-    bool check_tender_limit_proven_infeasible(SearchState& state);
+    bool check_tender_limit(SearchState& state);
 
     Position compactify_placement(const ContainerLoad& container,
                                   const Box& box,

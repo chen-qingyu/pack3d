@@ -68,7 +68,7 @@ Solution SolverEngine::solve()
     spdlog::info("===Algorithm End===");
 
     // --- 收尾 ---
-    if (state.proven_infeasible)
+    if (state.infeasible)
     {
         return build_solution(state, false,
                               state.failure_reason.c_str());
@@ -239,7 +239,7 @@ bool SolverEngine::construct_solution(SearchState& state)
         {
             // 无法在任何已打开容器中放置剩余箱子
             // 打开新容器前检查 tender_limit 可行性
-            if (check_tender_limit_proven_infeasible(state))
+            if (check_tender_limit(state))
             {
                 return false;
             }
@@ -664,7 +664,7 @@ bool SolverEngine::place_next_box(SearchState& state)
     return false;
 }
 
-bool SolverEngine::check_tender_limit_proven_infeasible(SearchState& state)
+bool SolverEngine::check_tender_limit(SearchState& state)
 {
     if (!problem_.tender_limit.has_value())
     {
@@ -727,7 +727,7 @@ bool SolverEngine::check_tender_limit_proven_infeasible(SearchState& state)
 
             if (!can_place)
             {
-                state.proven_infeasible = true;
+                state.infeasible = true;
                 state.failure_reason = reason::k_tender_limit;
                 return true;
             }

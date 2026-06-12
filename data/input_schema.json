@@ -122,16 +122,6 @@
       "description": "求解器配置",
       "additionalProperties": false,
       "properties": {
-        "strategy": {
-          "type": "string",
-          "enum": ["constructive_multi_active"],
-          "default": "constructive_multi_active"
-        },
-        "active_container_limit": {
-          "type": "integer",
-          "minimum": 1,
-          "default": 3
-        },
         "random_seed": { "type": "integer", "default": 42 }
       }
     }
