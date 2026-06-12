@@ -180,14 +180,14 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
             const auto& s = j["solver"];
             p.solver_config.width = s.value("width", 27);
 
-            std::string strategy_str = s.value("strategy", "extreme_points");
-            if (strategy_str == "mlhs_blocks")
+            std::string strategy_str = s.value("strategy", "sgep");
+            if (strategy_str == "mlhs")
             {
-                p.solver_config.strategy = Strategy::MLHS_Blocks;
+                p.solver_config.strategy = Strategy::MLHS;
             }
             else
             {
-                p.solver_config.strategy = Strategy::ExtremePoints;
+                p.solver_config.strategy = Strategy::SGEP;
             }
         }
 

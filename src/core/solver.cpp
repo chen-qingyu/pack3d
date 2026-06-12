@@ -41,7 +41,7 @@ SolverEngine::SolverEngine(const Problem& problem)
 Solution SolverEngine::solve()
 {
     // 按策略分发
-    if (problem_.solver_config.strategy == Strategy::MLHS_Blocks)
+    if (problem_.solver_config.strategy == Strategy::MLHS)
     {
         return solve_mlhs();
     }

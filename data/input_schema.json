@@ -124,8 +124,8 @@
       "properties": {
         "strategy": {
           "type": "string",
-          "enum": ["extreme_points", "mlhs_blocks"],
-          "default": "extreme_points"
+          "enum": ["sgep", "mlhs"],
+          "default": "sgep"
         },
         "width": {
           "type": "integer",

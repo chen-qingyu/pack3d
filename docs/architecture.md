@@ -40,7 +40,7 @@ SearchState
   ├─ open_containers       已打开的容器列表
   │   └─ ContainerLoad
   │       ├─ placements    箱子的放置列表
-  │       ├─ extreme_points 候选位置极点
+  │       ├─ extreme_points 候选位置极点（SGEP 算法核心）
   │       ├─ used_volume   已用体积
   │       ├─ platforms     本容器涉及的平台集合
   │       ├─ groups        本容器涉及的分组集合

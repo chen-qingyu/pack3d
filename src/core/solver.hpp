@@ -78,8 +78,8 @@ public:
     [[nodiscard]] Solution solve();
 
 private:
-    /// 极点法（当前默认实现）
-    [[nodiscard]] Solution solve_extreme_points();
+    /// SGEP 简单贪心极点算法
+    [[nodiscard]] Solution solve_sgep();
 
     /// MLHS 块装载法
     [[nodiscard]] Solution solve_mlhs();

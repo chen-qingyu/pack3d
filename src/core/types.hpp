@@ -125,13 +125,13 @@ struct RouteOrder
 // 求解策略
 enum class Strategy : uint8_t
 {
-    ExtremePoints, // 极点法（默认）
-    MLHS_Blocks,   // MLHS 块装载法
+    SGEP, // 简单贪心极点算法（默认）
+    MLHS, // 多层启发式搜索
 };
 
 struct SolverConfig
 {
-    Strategy strategy = Strategy::ExtremePoints;
+    Strategy strategy = Strategy::SGEP;
     int width = 27; // 前瞻宽度（每步评估的候选块数上限）
 };
 

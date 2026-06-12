@@ -83,7 +83,7 @@
 
 ### 两套策略共存
 
-通过 `SolverConfig::strategy` 切换——`ExtremePoints`（贪心极点，默认）和 `MLHS_Blocks`（多层启发式搜索），互不干扰。
+通过 `SolverConfig::strategy` 切换——`SGEP`（简单贪心极点算法，默认）和 `MLHS`（多层启发式搜索），互不干扰。
 
 ---
 
