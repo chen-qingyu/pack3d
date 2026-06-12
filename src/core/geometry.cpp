@@ -107,22 +107,22 @@ double calc_support_ratio(const Position& pos, const OrientedSize& osize,
                           const std::map<std::string, BoxType>& box_type_map) noexcept
 {
     // 直接放在容器底板上，支撑率为 100%
-    if (pos.y == 0)
+    if (pos.z == 0)
     {
         return 1.0;
     }
 
-    int64_t total_area = static_cast<int64_t>(osize.dx) * osize.dz;
+    int64_t total_area = static_cast<int64_t>(osize.dx) * osize.dy;
     if (total_area <= 0)
     {
         return 0.0;
     }
 
-    // 新箱子底面在 XZ 平面上的矩形
+    // 新箱子底面在 XY 平面上的矩形
     int32_t bx1 = pos.x;
     int32_t bx2 = pos.x + osize.dx;
-    int32_t bz1 = pos.z;
-    int32_t bz2 = pos.z + osize.dz;
+    int32_t by1 = pos.y;
+    int32_t by2 = pos.y + osize.dy;
 
     int64_t supported_area = 0;
 
@@ -131,23 +131,23 @@ double calc_support_ratio(const Position& pos, const OrientedSize& osize,
         auto& bt = box_type_map.at(pl.box_type_id);
         auto e_size = orient_size(bt.size, pl.orientation);
 
-        // 支撑箱子的顶面 Y 范围：[pl.position.y + e_size.dy, ...]
-        // 新箱子的底面在 pos.y，只有顶面恰好在 pos.y 的箱子才可能支撑
-        int32_t support_top = pl.position.y + e_size.dy;
-        if (support_top != pos.y)
+        // 支撑箱子的顶面 Z 范围：[pl.position.z + e_size.dz, ...]
+        // 新箱子的底面在 pos.z，只有顶面恰好在 pos.z 的箱子才可能支撑
+        int32_t support_top = pl.position.z + e_size.dz;
+        if (support_top != pos.z)
         {
             continue;
         }
 
-        // 在 XZ 平面上的交集矩形
+        // 在 XY 平面上的交集矩形
         int32_t sx1 = std::max(bx1, pl.position.x);
         int32_t sx2 = std::min(bx2, pl.position.x + e_size.dx);
-        int32_t sz1 = std::max(bz1, pl.position.z);
-        int32_t sz2 = std::min(bz2, pl.position.z + e_size.dz);
+        int32_t sy1 = std::max(by1, pl.position.y);
+        int32_t sy2 = std::min(by2, pl.position.y + e_size.dy);
 
-        if (sx1 < sx2 && sz1 < sz2)
+        if (sx1 < sx2 && sy1 < sy2)
         {
-            supported_area += static_cast<int64_t>(sx2 - sx1) * (sz2 - sz1);
+            supported_area += static_cast<int64_t>(sx2 - sx1) * (sy2 - sy1);
         }
     }
 

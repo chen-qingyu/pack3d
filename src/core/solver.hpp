@@ -63,7 +63,7 @@ enum class BoxOrder : uint8_t
 {
     ByVolume,             // 大体积优先（默认）
     ByVolumeAsc,          // 小体积优先
-    ByHeight,             // 高箱子优先（Y 方向最受限）
+    ByHeight,             // 高箱子优先（Z 方向最受限）
     ByPlatformThenVolume, // 按路线平台分组，再按体积
     ByMixed,              // 打乱（增加多样性）
 };

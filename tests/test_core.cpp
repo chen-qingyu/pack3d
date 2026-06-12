@@ -92,10 +92,10 @@ TEST_CASE("calc_support_ratio 部分支撑", "[core]")
     load.used_volume = 100 * 100 * 100;
     load.total_weight = 100.0;
 
-    double full = calc_support_ratio({0, 100, 0}, {100, 100, 100}, load, btm);
+    double full = calc_support_ratio({0, 0, 100}, {100, 100, 100}, load, btm);
     REQUIRE(full == 1.0);
 
-    double partial = calc_support_ratio({0, 100, 0}, {200, 100, 100}, load, btm);
+    double partial = calc_support_ratio({0, 0, 100}, {200, 100, 100}, load, btm);
     REQUIRE(partial == 0.5);
 }
 

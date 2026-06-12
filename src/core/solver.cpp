@@ -195,7 +195,7 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
                       {
                           auto& at = box_type_map_.at(a.box_type_id);
                           auto& bt = box_type_map_.at(b.box_type_id);
-                          return at.size.y > bt.size.y;
+                          return at.size.z > bt.size.z;
                       });
             break;
 
@@ -378,13 +378,14 @@ bool SolverEngine::place_next_box(SearchState& state)
             std::sort(container.extreme_points.begin(), container.extreme_points.end(),
                       [](const Position& a, const Position& b) noexcept
                       {
-                          if (a.y != b.y)
-                          {
-                              return a.y < b.y;
-                          }
+                          // Z 为高度方向，优先尝试低处的点
                           if (a.z != b.z)
                           {
                               return a.z < b.z;
+                          }
+                          if (a.y != b.y)
+                          {
+                              return a.y < b.y;
                           }
                           return a.x < b.x;
                       });
@@ -806,10 +807,11 @@ Position SolverEngine::compactify_placement(const ContainerLoad& container,
         return cur;
     };
 
-    pos.y = slide(pos.y, 0, [&](int32_t v)
-                  { return Position{pos.x, v, pos.z}; });
+    // Z 为高度方向，优先向下紧凑
     pos.z = slide(pos.z, 0, [&](int32_t v)
                   { return Position{pos.x, pos.y, v}; });
+    pos.y = slide(pos.y, 0, [&](int32_t v)
+                  { return Position{pos.x, v, pos.z}; });
     pos.x = slide(pos.x, 0, [&](int32_t v)
                   { return Position{v, pos.y, pos.z}; });
 
