@@ -768,7 +768,7 @@ bool SolverEngine::check_tender_limit(SearchState& state)
     return false;
 }
 
-// 将箱子向 (Y-, Z-, X-) 滑动以紧凑排列
+// 将箱子向 (Z-, Y-, X-) 滑动以紧凑排列
 Position SolverEngine::compactify_placement(const ContainerLoad& container,
                                             const Box& box,
                                             Position pos,

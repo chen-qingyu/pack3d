@@ -99,7 +99,7 @@
         "tender_limit": { "type": ["integer", "null"], "minimum": 1 },
         "route": {
           "type": "array",
-          "description": "路线顺序：按装卸顺序排列的平台 ID",
+          "description": "路线顺序：按装货顺序排列的平台 ID（先装平台在深处 X 小，后装平台在近门处 X 大）",
           "items": { "type": "string" }
         }
       }

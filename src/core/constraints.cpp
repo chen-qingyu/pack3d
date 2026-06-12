@@ -90,7 +90,7 @@ ConstraintResult check_route_order_constraint(
 
     size_t my_idx = it->second;
 
-    // 后路线平台的箱子不得比先路线平台更浅（X 更小），但允许并列或堆叠
+    // 装货顺序：先装的在深处（X 小），后装的在近门处（X 大），允许并列或堆叠
     for (const auto& [other_plat, other_min_x] : load.platform_x_min)
     {
         if (other_plat == platform)
@@ -107,7 +107,7 @@ ConstraintResult check_route_order_constraint(
 
         if (my_idx > other_idx)
         {
-            // 对方路线更先：我的箱子不能比对方更浅
+            // 我后装对方先装：我的箱子不能比对方更靠里
             if (pos.x < other_min_x)
             {
                 return {false, Violation{"route_order", {platform, other_plat}, "route_order_violation"}};
@@ -115,7 +115,7 @@ ConstraintResult check_route_order_constraint(
         }
         else
         {
-            // 对方路线更后：我的箱子不能比对方更深
+            // 我先装对方后装：我的箱子不能比对方更靠近门
             auto max_it = load.platform_x_max.find(other_plat);
             if (max_it != load.platform_x_max.end())
             {
@@ -247,8 +247,8 @@ std::vector<Violation> final_check_solution(
                 }
             }
 
-            // 路线顺序检查：后路线平台的箱子不得比先路线平台的箱子更浅（X 更小）
-            // 允许并列（同 X 不同 Z）和堆叠（同 X 不同 Y）
+            // 路线顺序检查（装货顺序）：先装的在深处（X 小），后装的在近门处（X 大）
+            // 允许并列（同 X 不同 Y）和堆叠（同 X 不同 Z）
             if (!box_platform.empty() && problem.route.has_value())
             {
                 const auto& route = problem.route.value();

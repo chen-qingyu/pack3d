@@ -256,7 +256,7 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
 
     // 重量信息一致性校验：
     // - 任一箱子有重量 -> 所有箱子和容器都必须有重量信息
-    // - 容器有限重而箱子无重量 -> 允许（重量视为 0）
+    // - 容器有限重而箱子无重量 -> 允许（此时整个重量约束被禁用）
     bool any_box_has_weight = false;
     bool all_boxes_have_weight = true;
     for (const auto& bx : problem.boxes)
