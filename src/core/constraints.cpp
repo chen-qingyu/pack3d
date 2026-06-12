@@ -90,8 +90,8 @@ ConstraintResult check_route_order_constraint(
 
     size_t my_idx = it->second;
 
-    // 检查与容器内其他每个平台的相对位置
-    for (const auto& [other_plat, other_max_x] : load.platform_x_max)
+    // 后路线平台的箱子不得比先路线平台更浅（X 更小），但允许并列或堆叠
+    for (const auto& [other_plat, other_min_x] : load.platform_x_min)
     {
         if (other_plat == platform)
         {
@@ -105,21 +105,21 @@ ConstraintResult check_route_order_constraint(
 
         size_t other_idx = oit->second;
 
-        if (my_idx < other_idx)
+        if (my_idx > other_idx)
         {
-            // 我比对方先装载 -> 我应该更深（X 更大）
-            if (pos.x + osize.dx <= other_max_x)
+            // 对方路线更先：我的箱子不能比对方更浅
+            if (pos.x < other_min_x)
             {
                 return {false, Violation{"route_order", {platform, other_plat}, "route_order_violation"}};
             }
         }
         else
         {
-            // 我比对方后装载 -> 我应该更浅（X 更小）
-            auto min_it = load.platform_x_min.find(other_plat);
-            if (min_it != load.platform_x_min.end())
+            // 对方路线更后：我的箱子不能比对方更深
+            auto max_it = load.platform_x_max.find(other_plat);
+            if (max_it != load.platform_x_max.end())
             {
-                if (pos.x >= min_it->second)
+                if (pos.x + osize.dx > max_it->second)
                 {
                     return {false, Violation{"route_order", {platform, other_plat}, "route_order_violation"}};
                 }
@@ -247,13 +247,28 @@ std::vector<Violation> final_check_solution(
                 }
             }
 
-            // 路线顺序检查
+            // 路线顺序检查：后路线平台的箱子不得比先路线平台的箱子更浅（X 更小）
+            // 允许并列（同 X 不同 Z）和堆叠（同 X 不同 Y）
             if (!box_platform.empty() && problem.route.has_value())
             {
-                auto rr = check_route_order_constraint(load, box_platform, pl.position, osize, problem.route.value());
-                if (!rr.ok)
+                const auto& route = problem.route.value();
+                auto my_it = route.index_of.find(box_platform);
+                if (my_it != route.index_of.end())
                 {
-                    out.push_back({"route_order", {pl.box_id}, "final_route_order_violation"});
+                    size_t my_idx = my_it->second;
+                    int32_t box_min_x = pl.position.x;
+                    for (const auto& [other_plat, other_min_x] : load.platform_x_min)
+                    {
+                        auto oit = route.index_of.find(other_plat);
+                        if (oit == route.index_of.end())
+                            continue;
+                        if (oit->second >= my_idx)
+                            continue; // 对方路线不更早
+                        if (box_min_x < other_min_x)
+                        {
+                            out.push_back({"route_order", {pl.box_id}, "final_route_order_violation"});
+                        }
+                    }
                 }
             }
 

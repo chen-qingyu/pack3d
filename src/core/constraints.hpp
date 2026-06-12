@@ -36,7 +36,7 @@ struct ConstraintResult
     double support_rate,
     const std::map<std::string, BoxType>& box_type_map) noexcept;
 
-/// 路线 X 顺序约束：后装载平台的箱子不能比先装载平台的箱子放得更深（X 更大）
+/// 路线 X 顺序约束：后路线平台的箱子不得比先路线平台的箱子放得更浅（X 更小）
 [[nodiscard]] ConstraintResult check_route_order_constraint(
     const ContainerLoad& load,
     const std::string& platform,
