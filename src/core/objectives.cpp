@@ -52,7 +52,7 @@ ObjectiveVector compute_objective(const std::vector<ContainerLoad>& containers) 
     int split_sum = 0;
     for (const auto& [g, containers_set] : group_containers)
     {
-        split_sum += static_cast<int>(containers_set.size());
+        split_sum += static_cast<int>(containers_set.size()) - 1;
     }
     ov.group_split_sum = split_sum;
 

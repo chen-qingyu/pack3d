@@ -140,7 +140,7 @@ TEST_CASE("min_group_split", "[solver]")
     {
         base["objectives"] = json::array();
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["group_split"] == 3);
+        REQUIRE(res["summary"]["group_split"] == 1);
         REQUIRE(res["summary"]["volume_rate"] == 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
@@ -151,7 +151,7 @@ TEST_CASE("min_group_split", "[solver]")
     {
         base["objectives"] = {"min_group_split", "max_volume_rate"};
         auto res = run_solver(base.dump());
-        REQUIRE(res["summary"]["group_split"] == 2);
+        REQUIRE(res["summary"]["group_split"] == 0);
         REQUIRE(res["summary"]["volume_rate"] < 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
