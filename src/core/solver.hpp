@@ -78,6 +78,11 @@ public:
     [[nodiscard]] Solution solve();
 
 private:
+    /// 极点法（当前默认实现）
+    [[nodiscard]] Solution solve_extreme_points();
+
+    /// MLHS 块装载法
+    [[nodiscard]] Solution solve_mlhs();
     Problem problem_;
     std::map<std::string, BoxType> box_type_map_;
     std::map<std::string, ContainerType> container_type_map_;
