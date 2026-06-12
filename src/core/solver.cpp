@@ -20,6 +20,10 @@ SolverEngine::SolverEngine(const Problem& problem)
     for (const auto& bx : problem.boxes)
     {
         box_map_[bx.id] = bx;
+        if (bx.weight.has_value())
+        {
+            has_weight_info_ = true;
+        }
     }
 }
 
@@ -50,11 +54,14 @@ Solution SolverEngine::solve()
         int packed = static_cast<int>(c.placements.size());
         packed_sofar += packed;
         int left = total_boxes - packed_sofar;
+        double weight_rate = c.type->max_weight.has_value()
+                                 ? c.total_weight / c.type->max_weight.value() * 100.0
+                                 : 0.0;
         spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {:.2f}%",
                      idx, c.type_id,
                      packed, left,
                      c.volume_rate() * 100.0,
-                     c.total_weight / c.type->max_weight * 100.0);
+                     weight_rate);
         ++idx;
     }
 
@@ -85,7 +92,7 @@ Solution SolverEngine::solve()
             }
 
             // 最终验证
-            auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_);
+            auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_, has_weight_info_);
             if (!final_errors.empty())
             {
                 sol.status = Status::FailedConstraint;
@@ -104,7 +111,7 @@ Solution SolverEngine::solve()
         sol.status = Status::Success;
         sol.reason = reason::k_feasible;
 
-        auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_);
+        auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_, has_weight_info_);
         if (!final_errors.empty())
         {
             sol.status = Status::FailedConstraint;
@@ -141,7 +148,7 @@ Solution SolverEngine::solve()
         sol.status = Status::Success;
         sol.reason = reason::k_feasible;
 
-        auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_);
+        auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_, has_weight_info_);
         if (!final_errors.empty())
         {
             sol.status = Status::FailedConstraint;
@@ -406,7 +413,7 @@ bool SolverEngine::place_next_box(SearchState& state)
                     {
                         continue;
                     }
-                    if (!check_weight_constraint(container, osize, box.weight).ok)
+                    if (has_weight_info_ && !check_weight_constraint(container, osize, box.weight.value()).ok)
                     {
                         continue;
                     }
@@ -825,7 +832,10 @@ void SolverEngine::apply_placement(SearchState& state, Candidate& cand)
     // 更新容器状态
     container.placements.push_back(pl);
     container.used_volume += cand.osize.volume();
-    container.total_weight += box.weight;
+    if (has_weight_info_)
+    {
+        container.total_weight += box.weight.value();
+    }
 
     if (!box.platform.empty())
     {
@@ -928,7 +938,7 @@ Solution SolverEngine::build_solution(const SearchState& state,
         cs.used_volume = load.used_volume;
         cs.total_volume = load.total_volume();
         cs.volume_rate = load.volume_rate();
-        cs.total_weight = load.total_weight;
+        cs.total_weight = has_weight_info_ ? std::optional<double>(load.total_weight) : std::nullopt;
         cs.platforms.assign(load.platforms.begin(), load.platforms.end());
         cs.groups.assign(load.groups.begin(), load.groups.end());
 

@@ -122,7 +122,7 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
             ct.inner_size.x = item["inner_size"]["x"].get<int32_t>();
             ct.inner_size.y = item["inner_size"]["y"].get<int32_t>();
             ct.inner_size.z = item["inner_size"]["z"].get<int32_t>();
-            ct.max_weight = item["max_weight"].get<double>();
+            ct.max_weight = json_opt_double(item, "max_weight");
             ct.quantity_limit = json_opt_int(item, "quantity_limit");
             p.container_types.push_back(std::move(ct));
         }
@@ -149,7 +149,7 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
             Box bx;
             bx.id = item["id"].get<std::string>();
             bx.box_type_id = item["box_type_id"].get<std::string>();
-            bx.weight = item["weight"].get<double>();
+            bx.weight = json_opt_double(item, "weight");
             bx.group = item.value("group", std::string());
             bx.platform = item.value("platform", std::string());
             p.boxes.push_back(std::move(bx));
@@ -272,6 +272,37 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
         if (!bt_ids.count(bx.box_type_id))
         {
             out.push_back({"unknown_box_type", {bx.id, bx.box_type_id}, "unknown_box_type"});
+        }
+    }
+
+    // 重量信息一致性校验：
+    // - 任一箱子有重量 -> 所有箱子和容器都必须有重量信息
+    // - 容器有限重而箱子无重量 -> 允许（重量视为 0）
+    bool any_box_has_weight = false;
+    bool all_boxes_have_weight = true;
+    for (const auto& bx : problem.boxes)
+    {
+        if (bx.weight.has_value())
+        {
+            any_box_has_weight = true;
+        }
+        else
+        {
+            all_boxes_have_weight = false;
+        }
+    }
+    if (any_box_has_weight)
+    {
+        if (!all_boxes_have_weight)
+        {
+            out.push_back({"weight", {}, reason::k_inconsistent_weight});
+        }
+        for (const auto& ct : problem.container_types)
+        {
+            if (!ct.max_weight.has_value())
+            {
+                out.push_back({"weight", {ct.id}, reason::k_inconsistent_weight});
+            }
         }
     }
 
@@ -404,7 +435,7 @@ json solution_to_json(const Solution& sol) noexcept
         ls["used_volume"] = cs.used_volume;
         ls["total_volume"] = cs.total_volume;
         ls["volume_rate"] = cs.volume_rate;
-        ls["total_weight"] = cs.total_weight;
+        ls["total_weight"] = cs.total_weight.has_value() ? json(cs.total_weight.value()) : json(nullptr);
         ls["platforms"] = cs.platforms;
         ls["groups"] = cs.groups;
         cj["load_summary"] = std::move(ls);

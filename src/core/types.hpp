@@ -59,7 +59,7 @@ struct ContainerType
 {
     std::string id;
     Size inner_size;
-    double max_weight = 0.0;
+    std::optional<double> max_weight = std::nullopt;
     std::optional<int> quantity_limit; // null 表示无限制
 };
 
@@ -74,7 +74,7 @@ struct Box
 {
     std::string id;
     std::string box_type_id;
-    double weight = 0.0;
+    std::optional<double> weight = std::nullopt;
     std::string group;    // 空字符串表示未设置
     std::string platform; // 空字符串表示未设置
 };
@@ -217,7 +217,7 @@ struct ContainerSummary
     int64_t used_volume = 0;
     int64_t total_volume = 0;
     double volume_rate = 0.0;
-    double total_weight = 0.0;
+    std::optional<double> total_weight = std::nullopt;
     std::vector<std::string> platforms;
     std::vector<std::string> groups;
 };
@@ -260,6 +260,7 @@ inline constexpr const char* k_final_check = "final_check";
 inline constexpr const char* k_invalid_range = "invalid_range";
 inline constexpr const char* k_duplicate_id = "duplicate_id";
 inline constexpr const char* k_route_missing_platform = "route_missing_platform";
+inline constexpr const char* k_inconsistent_weight = "inconsistent_weight";
 } // namespace reason
 
 } // namespace hypercube

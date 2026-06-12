@@ -82,6 +82,7 @@ private:
     std::map<std::string, BoxType> box_type_map_;
     std::map<std::string, ContainerType> container_type_map_;
     std::map<std::string, Box> box_map_;
+    bool has_weight_info_ = false;
 
     // --- 内部辅助 ---
 

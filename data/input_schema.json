@@ -12,7 +12,7 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "inner_size", "max_weight"],
+        "required": ["id", "inner_size"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
@@ -26,7 +26,7 @@
               "z": { "type": "integer", "minimum": 1 }
             }
           },
-          "max_weight": { "type": "number", "exclusiveMinimum": 0 },
+          "max_weight": { "type": ["number", "null"], "exclusiveMinimum": 0 },
           "quantity_limit": { "type": ["integer", "null"], "minimum": 1 }
         }
       }
@@ -68,12 +68,12 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "box_type_id", "weight"],
+        "required": ["id", "box_type_id"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
           "box_type_id": { "type": "string" },
-          "weight": { "type": "number", "exclusiveMinimum": 0 },
+          "weight": { "type": ["number", "null"], "exclusiveMinimum": 0 },
           "group": { "type": "string" },
           "platform": { "type": "string" }
         }

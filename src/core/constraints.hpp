@@ -54,6 +54,7 @@ struct ConstraintResult
     const Solution& solution,
     const Problem& problem,
     const std::map<std::string, BoxType>& box_type_map,
-    const std::map<std::string, Box>& box_map) noexcept;
+    const std::map<std::string, Box>& box_map,
+    bool has_weight_info = true) noexcept;
 
 } // namespace hypercube

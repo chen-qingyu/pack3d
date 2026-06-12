@@ -36,7 +36,11 @@ ConstraintResult check_weight_constraint(const ContainerLoad& load,
                                          const OrientedSize& osize,
                                          double box_weight) noexcept
 {
-    if (load.total_weight + box_weight > load.type->max_weight + 1e-9)
+    if (!load.type->max_weight.has_value())
+    {
+        return {true, std::nullopt};
+    }
+    if (load.total_weight + box_weight > load.type->max_weight.value() + 1e-9)
     {
         return {false, Violation{"weight", {}, "container_weight_limit_exceeded"}};
     }
@@ -153,7 +157,8 @@ std::vector<Violation> final_check_solution(
     const Solution& solution,
     const Problem& problem,
     const std::map<std::string, BoxType>& box_type_map,
-    const std::map<std::string, Box>& box_map) noexcept
+    const std::map<std::string, Box>& box_map,
+    bool has_weight_info) noexcept
 {
     std::vector<Violation> out;
 
@@ -192,7 +197,7 @@ std::vector<Violation> final_check_solution(
 
             // 查找箱子重量
             auto bit = box_map.find(pl.box_id);
-            double box_weight = (bit != box_map.end()) ? bit->second.weight : 0.0;
+            double box_weight = (bit != box_map.end()) ? bit->second.weight.value_or(0.0) : 0.0;
             total_w += box_weight;
 
             // 边界检查
@@ -216,7 +221,7 @@ std::vector<Violation> final_check_solution(
         }
 
         // 重量检查
-        if (total_w > ctype->max_weight + 1e-9)
+        if (has_weight_info && ctype->max_weight.has_value() && total_w > ctype->max_weight.value() + 1e-9)
         {
             out.push_back({"weight", {summary.id}, "final_weight_violation"});
         }
