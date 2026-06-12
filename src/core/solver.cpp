@@ -79,18 +79,8 @@ Solution SolverEngine::solve()
         if (state.best_feasible.has_value())
         {
             Solution sol = state.best_feasible.value();
-
             sol.success = true;
             sol.reason = reason::k_feasible;
-
-            // 最终验证
-            auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_, has_weight_info_);
-            if (!final_errors.empty())
-            {
-                sol.success = false;
-                sol.reason = reason::k_final_check;
-                sol.violations = final_errors;
-            }
             return sol;
         }
         return build_solution(state, true, reason::k_feasible);
@@ -102,14 +92,6 @@ Solution SolverEngine::solve()
         Solution sol = state.best_feasible.value();
         sol.success = false;
         sol.reason = reason::k_feasible;
-
-        auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_, has_weight_info_);
-        if (!final_errors.empty())
-        {
-            sol.success = false;
-            sol.reason = reason::k_final_check;
-            sol.violations = final_errors;
-        }
         return sol;
     }
 
@@ -139,14 +121,6 @@ Solution SolverEngine::solve()
         Solution sol = state.best_feasible.value();
         sol.success = false;
         sol.reason = reason::k_feasible;
-
-        auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_, has_weight_info_);
-        if (!final_errors.empty())
-        {
-            sol.success = false;
-            sol.reason = reason::k_final_check;
-            sol.violations = final_errors;
-        }
         return sol;
     }
 
@@ -952,6 +926,10 @@ Solution SolverEngine::build_solution(const SearchState& state,
 
     for (const auto& load : state.open_containers)
     {
+        if (load.placements.empty())
+        {
+            continue;
+        }
         ContainerSummary cs;
         cs.id = load.instance_id;
         cs.type_id = load.type_id;

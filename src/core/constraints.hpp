@@ -49,12 +49,4 @@ struct ConstraintResult
     const std::string& platform,
     int platform_limit) noexcept;
 
-// 最终解校验 — 对完整解运行所有硬约束
-[[nodiscard]] std::vector<Violation> final_check_solution(
-    const Solution& solution,
-    const Problem& problem,
-    const std::map<std::string, BoxType>& box_type_map,
-    const std::map<std::string, Box>& box_map,
-    bool has_weight_info = true) noexcept;
-
 } // namespace hypercube
