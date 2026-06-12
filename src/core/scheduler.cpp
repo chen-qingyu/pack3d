@@ -32,43 +32,33 @@ Solution GlobalScheduler::schedule()
     next_instance_ = 0;
     container_type_usage_.clear();
 
-    // 定义渐进参数档位：每档为 beam_width
-    // 档位越高，beam 越宽，搜索越充分但越慢
-    const int stages[] = {1, 2, 4, 8, 12, 16};
-    const int max_stage = std::min(
-        std::max(problem_.solver_config.max_stage, 1),
-        static_cast<int>(sizeof(stages) / sizeof(stages[0])));
+    // 判断是否使用渐进参数：三个参数全为 0 时自动渐进
+    const auto& cfg = problem_.solver_config;
+    bool progressive = (cfg.beam_width == 0 && cfg.effort == 0 && cfg.look_ahead_depth == 0);
+
+    // 渐进参数档位：(beam_width, effort, look_ahead_depth)
+    static const int stage_beam[] = {1, 2, 4, 6, 8, 12};
+    static const int stage_effort[] = {0, 3, 9, 18, 36, 72};
+    static const int stage_depth[] = {1, 1, 2, 2, 2, 3};
+    const int num_stages = progressive ? 6 : 1;
 
     std::optional<Assignment> best_assign;
-    Solution best_solution;
 
-    for (int stage = 0; stage < max_stage; ++stage)
+    for (int stage = 0; stage < num_stages; ++stage)
     {
         if (!check_time())
         {
             break;
         }
 
-        int bw = beam_width_ > 0 ? beam_width_ : stages[stage];
+        int bw = progressive ? stage_beam[stage] : cfg.beam_width;
+        int eff = progressive ? stage_effort[stage] : cfg.effort;
+        int dep = progressive ? stage_depth[stage] : cfg.look_ahead_depth;
 
-        if (stage > 0)
+        if (progressive && stage > 0)
         {
-            spdlog::info("Stage {}/{}: beam_width={}", stage + 1, max_stage, bw);
+            spdlog::info("Stage {}/{}: beam={} effort={} depth={}", stage + 1, num_stages, bw, eff, dep);
         }
-
-        // 用当前 beam_width 创建临时调度器
-        GlobalScheduler stage_sched(
-            problem_, box_type_map_, box_map_, has_weight_info_, bw);
-        stage_sched.start_time_ = start_time_;
-        stage_sched.next_instance_ = next_instance_;
-        stage_sched.container_type_usage_ = container_type_usage_;
-
-        Assignment curr = stage_sched.greedy_assign(problem_.boxes);
-        stage_sched.local_search(curr, problem_.boxes);
-
-        // 更新全局状态
-        next_instance_ = stage_sched.next_instance_;
-        container_type_usage_ = stage_sched.container_type_usage_;
 
         if (!best_assign.has_value() || curr.is_better_than(best_assign.value()))
         {

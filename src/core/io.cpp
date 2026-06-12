@@ -179,8 +179,9 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
         {
             const auto& s = j["solver"];
             p.solver_config.random_seed = s.value("random_seed", 42);
-            p.solver_config.beam_width = s.value("beam_width", 1);
-            p.solver_config.max_stage = s.value("max_stage", 1);
+            p.solver_config.beam_width = s.value("beam_width", 0);
+            p.solver_config.effort = s.value("effort", 0);
+            p.solver_config.look_ahead_depth = s.value("look_ahead_depth", 0);
 
             std::string strategy_str = s.value("strategy", "extreme_points");
             if (strategy_str == "mlhs_blocks")

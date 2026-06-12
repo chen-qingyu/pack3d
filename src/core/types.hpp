@@ -122,8 +122,9 @@ struct SolverConfig
 {
     Strategy strategy = Strategy::ExtremePoints;
     int random_seed = 42;
-    int beam_width = 1; // beam 宽度（1=贪心，>1=beam搜索）
-    int max_stage = 1;  // 渐进参数档位（1-6，仅 MLHS 策略有效）
+    int beam_width = 0;       // beam 宽度（0=自动渐进，1=贪心，>1=beam搜索）
+    int effort = 0;           // 前瞻评估预算（0=自动渐进）
+    int look_ahead_depth = 0; // 前瞻深度（0=自动渐进）
 };
 
 // 完整问题描述

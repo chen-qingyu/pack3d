@@ -92,6 +92,23 @@ private:
         const PartialState& ps,
         const std::vector<SimpleBlock>& all_blocks,
         int beam_width) const;
+
+    /// 从部分方案开始贪心完成剩余装载，返回最终填充率
+    [[nodiscard]] double greedy_complete(
+        ContainerLoad state,
+        std::map<std::string, int> available,
+        std::vector<Space> stack,
+        const std::vector<SimpleBlock>& all_blocks) const;
+
+    /// 对候选块进行前瞻评估：模拟放置后贪心完成，按填充率打分
+    void evaluate_blocks(
+        const std::vector<const SimpleBlock*>& viable,
+        const Space& space,
+        const ContainerLoad& state,
+        const std::map<std::string, int>& available,
+        const std::vector<SimpleBlock>& all_blocks,
+        int effort,
+        std::vector<double>& scores) const;
 };
 
 } // namespace hypercube
