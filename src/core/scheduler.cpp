@@ -30,6 +30,65 @@ Solution GlobalScheduler::schedule()
     next_instance_ = 0;
     container_type_usage_.clear();
 
+    if (problem_.container_types.size() == 1 &&
+        problem_.container_types[0].quantity_limit.has_value() &&
+        problem_.container_types[0].quantity_limit.value() == 1)
+    {
+        std::vector<const Box*> all_boxes;
+        all_boxes.reserve(problem_.boxes.size());
+        for (const auto& bx : problem_.boxes)
+        {
+            all_boxes.push_back(&bx);
+        }
+
+        Assignment direct;
+        ContainerSlot slot;
+        slot.instance_id = fmt::format("container_{}", next_instance_++);
+        slot.type = &problem_.container_types[0];
+        for (const auto& bx : problem_.boxes)
+        {
+            slot.box_ids.push_back(bx.id);
+        }
+        slot.pack_result = pack_container(slot.type, all_boxes);
+        if (slot.pack_result.has_value())
+        {
+            direct.slots.push_back(std::move(slot));
+        }
+        direct.objective = compute_objective(direct);
+
+        bool all_packed = false;
+        if (!direct.slots.empty() && direct.slots[0].pack_result.has_value())
+        {
+            all_packed = direct.slots[0].pack_result->placements.size() == problem_.boxes.size();
+        }
+
+        int idx = 1;
+        int packed_sofar = 0;
+        int total_boxes = static_cast<int>(problem_.boxes.size());
+        for (const auto& out_slot : direct.slots)
+        {
+            const auto& pr = out_slot.pack_result.value();
+            int packed = static_cast<int>(pr.placements.size());
+            packed_sofar += packed;
+            int left = total_boxes - packed_sofar;
+            int64_t container_vol = static_cast<int64_t>(out_slot.type->inner_size.x) *
+                                    out_slot.type->inner_size.y *
+                                    out_slot.type->inner_size.z;
+            double vol_rate = container_vol > 0
+                                  ? static_cast<double>(pr.used_volume) / static_cast<double>(container_vol) * 100.0
+                                  : 0.0;
+            double wt_rate = has_weight_info_ && out_slot.type->max_weight.has_value() && out_slot.type->max_weight.value() > 0
+                                 ? pr.total_weight / out_slot.type->max_weight.value() * 100.0
+                                 : 0.0;
+            spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {:.2f}%",
+                         idx, out_slot.type->id, packed, left, vol_rate, wt_rate);
+            ++idx;
+        }
+
+        return to_solution(direct, problem_.boxes, all_packed,
+                           all_packed ? reason::k_feasible : reason::k_no_solution);
+    }
+
     // 直接使用配置参数运行一次分配+局部搜索
     Assignment best = greedy_assign(problem_.boxes);
     local_search(best, problem_.boxes);
