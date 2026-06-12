@@ -72,11 +72,22 @@ struct SimpleBlock
     }
 };
 
+enum class SpaceKind : uint8_t
+{
+    Root,
+    Z,
+    X,
+    Y,
+};
+
 // 剩余空间（轴对齐长方体）
 struct Space
 {
     Position pos;
     int32_t lx = 0, ly = 0, lz = 0;
+    int64_t id = 0;
+    int64_t parent_id = -1;
+    SpaceKind kind = SpaceKind::Root;
 };
 
 struct ContainerType

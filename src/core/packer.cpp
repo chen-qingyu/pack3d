@@ -407,7 +407,9 @@ PackResult ContainerPacker::make_result(
 
 PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
 {
-    const int kMaxHeap = 6; // 每层保留的部分方案数（论文 MaxHeap）
+    const int kKeepTopN = std::max(1, std::min(width, 16));
+    const int kMaxRefineRounds = 6;
+    PackResult greedy_baseline = pack(boxes);
 
     std::map<std::string, int> all_available;
     for (const auto& bx : boxes)
@@ -417,140 +419,99 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
 
     auto all_blocks = block_gen_.generate_all(container_.inner_size, all_available);
 
-    std::vector<PartialState> beam(1);
-    beam[0].state.type = &container_;
-    beam[0].state.type_id = container_.id;
-    beam[0].available = all_available;
-    beam[0].stack.push_back({{0, 0, 0}, container_.inner_size.x, container_.inner_size.y, container_.inner_size.z});
+    ContainerLoad state;
+    state.type = &container_;
+    state.type_id = container_.id;
 
-    while (!beam.empty())
+    auto available = all_available;
+    std::vector<Space> stack;
+    stack.push_back({{0, 0, 0}, container_.inner_size.x, container_.inner_size.y, container_.inner_size.z});
+
+    while (!stack.empty() && !available.empty() && !all_blocks.empty())
     {
-        bool all_done = true;
-        for (const auto& ps : beam)
+        all_blocks.erase(
+            std::remove_if(all_blocks.begin(), all_blocks.end(),
+                           [&](const SimpleBlock& b)
+                           {
+                               auto it = available.find(b.box_type_id);
+                               return it == available.end() || it->second < b.box_count;
+                           }),
+            all_blocks.end());
+        if (all_blocks.empty())
         {
-            if (!ps.stack.empty() && !ps.available.empty())
-            {
-                all_done = false;
-                break;
-            }
-        }
-        if (all_done)
             break;
+        }
 
-        std::vector<PartialState> candidates;
+        Space space = stack.back();
+        stack.pop_back();
 
-        for (const auto& ps : beam)
+        auto viable = filter_viable_blocks(all_blocks, space, available, state);
+        if (viable.empty())
         {
-            if (ps.stack.empty() || ps.available.empty())
+            stack.push_back(space);
+            if (!transfer_space(stack))
             {
-                candidates.push_back(ps);
-                continue;
+                stack.pop_back();
             }
+            continue;
+        }
 
-            auto live_blocks = all_blocks;
-            live_blocks.erase(
-                std::remove_if(live_blocks.begin(), live_blocks.end(),
-                               [&](const SimpleBlock& b)
-                               {
-                                   auto it = ps.available.find(b.box_type_id);
-                                   return it == ps.available.end() || it->second < b.box_count;
-                               }),
-                live_blocks.end());
+        int eval_limit = std::min(static_cast<int>(viable.size()), std::max(width, kKeepTopN * 4));
+        std::vector<const SimpleBlock*> candidates(viable.begin(), viable.begin() + eval_limit);
 
-            if (live_blocks.empty())
+        for (int round = 0; round < kMaxRefineRounds && candidates.size() > 1; ++round)
+        {
+            struct CandidateScore
             {
-                // 有箱子但无可匹配的块，此路径死亡
-                continue;
-            }
+                const SimpleBlock* block{nullptr};
+                double fitness = 0.0;
+            };
 
-            Space space = ps.stack.back();
-            auto viable = filter_viable_blocks(live_blocks, space, ps.available, ps.state);
-
-            if (viable.empty())
+            std::vector<CandidateScore> scored;
+            scored.reserve(candidates.size());
+            for (const SimpleBlock* block : candidates)
             {
-                auto mut_stack = ps.stack;
-                bool recycled = transfer_space(mut_stack);
-                if (recycled)
-                {
-                    PartialState next = ps;
-                    next.stack = std::move(mut_stack);
-                    candidates.push_back(std::move(next));
-                }
-                continue;
-            }
+                ContainerLoad sim = state;
+                auto sim_avail = available;
+                auto sim_stack = stack;
+                place_block(*block, space, sim, sim_avail, sim_stack);
 
-            // 取前 width 个候选块做前瞻评估
-            int eval_count = std::min(width, static_cast<int>(viable.size()));
-            std::vector<double> scores(eval_count, 0.0);
-
-            for (int ci = 0; ci < eval_count; ++ci)
-            {
-                // 模拟放置候选块
-                ContainerLoad sim = ps.state;
-                auto sim_avail = ps.available;
-                std::vector<Space> sim_stack = {space};
-                place_block(*viable[ci], space, sim, sim_avail, sim_stack);
-
-                // 贪心完成
-                double fill_rate = greedy_complete(
+                double fitness = greedy_complete(
                     std::move(sim), std::move(sim_avail),
-                    std::move(sim_stack), live_blocks);
-
-                scores[ci] = fill_rate;
+                    std::move(sim_stack), all_blocks);
+                scored.push_back({block, fitness});
             }
 
-            // 按分数降序排列，展开前 kMaxHeap 个
-            std::vector<size_t> idx(eval_count);
-            for (int i = 0; i < eval_count; ++i)
-                idx[i] = i;
-            std::sort(idx.begin(), idx.end(),
-                      [&](size_t a, size_t b)
-                      { return scores[a] > scores[b]; });
-
-            int expand_n = std::min(kMaxHeap, eval_count);
-            for (int ci = 0; ci < expand_n; ++ci)
-            {
-                PartialState next = ps;
-                auto mut_stack = ps.stack;
-                mut_stack.pop_back();
-                place_block(*viable[idx[ci]], space, next.state, next.available, mut_stack);
-                next.stack = std::move(mut_stack);
-                next.boxes_placed = static_cast<int>(next.state.placements.size());
-                candidates.push_back(std::move(next));
-            }
-        }
-
-        // 保留 top kMaxHeap
-        if (candidates.size() > 1)
-        {
-            std::partial_sort(candidates.begin(),
-                              candidates.begin() + std::min(kMaxHeap, static_cast<int>(candidates.size())),
-                              candidates.end(),
-                              [](const PartialState& a, const PartialState& b)
-                              {
-                                  return a.boxes_placed > b.boxes_placed;
-                              });
-        }
-        beam.resize(std::min(kMaxHeap, static_cast<int>(candidates.size())));
-        for (int i = 0; i < static_cast<int>(beam.size()); ++i)
-        {
-            beam[i] = std::move(candidates[i]);
-        }
-    }
-
-    // 选最佳方案
-    if (beam.empty())
-    {
-        return make_result(ContainerLoad{}, all_available, boxes);
-    }
-
-    std::partial_sort(beam.begin(), beam.begin() + 1, beam.end(),
-                      [](const PartialState& a, const PartialState& b)
+            std::sort(scored.begin(), scored.end(),
+                      [](const CandidateScore& a, const CandidateScore& b)
                       {
-                          return a.boxes_placed > b.boxes_placed;
+                          if (a.fitness != b.fitness)
+                          {
+                              return a.fitness > b.fitness;
+                          }
+                          return a.block->volume() > b.block->volume();
                       });
 
-    auto& best_state = beam[0].state;
+            int next_size = 1;
+            if (static_cast<int>(scored.size()) > 2 * kKeepTopN)
+            {
+                next_size = static_cast<int>((scored.size() + 1) / 2);
+            }
+            else
+            {
+                next_size = std::min(kKeepTopN, static_cast<int>(scored.size()));
+            }
+
+            candidates.clear();
+            candidates.reserve(next_size);
+            for (int i = 0; i < next_size; ++i)
+            {
+                candidates.push_back(scored[i].block);
+            }
+        }
+
+        place_block(*candidates.front(), space, state, available, stack);
+    }
 
     std::map<std::string, std::vector<std::string>> real_ids_by_type;
     for (const auto& bx : boxes)
@@ -559,7 +520,7 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
     }
 
     std::map<std::string, size_t> consume_idx;
-    for (auto& pl : best_state.placements)
+    for (auto& pl : state.placements)
     {
         if (pl.box_id.find("__block_") == 0)
         {
@@ -572,7 +533,12 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
         }
     }
 
-    return make_result(best_state, beam[0].available, boxes);
+    PackResult beam_result = make_result(state, available, boxes);
+    if (greedy_baseline.used_volume > beam_result.used_volume)
+    {
+        return greedy_baseline;
+    }
+    return beam_result;
 }
 
 double ContainerPacker::greedy_complete(
@@ -581,9 +547,75 @@ double ContainerPacker::greedy_complete(
     std::vector<Space> stack,
     const std::vector<SimpleBlock>& all_blocks) const
 {
+    const int kEvalWidth = 4;
+
+    while (!stack.empty())
+    {
+        auto blocks = all_blocks;
+        blocks.erase(
+            std::remove_if(blocks.begin(), blocks.end(),
+                           [&](const SimpleBlock& b)
+                           {
+                               auto it = available.find(b.box_type_id);
+                               return it == available.end() || it->second < b.box_count;
+                           }),
+            blocks.end());
+        if (blocks.empty())
+        {
+            break;
+        }
+
+        Space space = stack.back();
+        stack.pop_back();
+
+        auto viable = filter_viable_blocks(blocks, space, available, state);
+        if (viable.empty())
+        {
+            stack.push_back(space);
+            if (!transfer_space(stack))
+            {
+                stack.pop_back();
+            }
+            continue;
+        }
+
+        int eval_count = std::min(kEvalWidth, static_cast<int>(viable.size()));
+        const SimpleBlock* best = viable.front();
+        double best_score = -1.0;
+        for (int i = 0; i < eval_count; ++i)
+        {
+            ContainerLoad sim = state;
+            auto sim_avail = available;
+            auto sim_stack = stack;
+            place_block(*viable[i], space, sim, sim_avail, sim_stack);
+            double score = complete_largest(std::move(sim), std::move(sim_avail), std::move(sim_stack), blocks);
+            if (score > best_score)
+            {
+                best_score = score;
+                best = viable[i];
+            }
+        }
+
+        place_block(*best, space, state, available, stack);
+    }
+
+    int64_t total_vol = container_.inner_size.volume();
+    return total_vol > 0
+               ? static_cast<double>(state.used_volume) / static_cast<double>(total_vol) * 100.0
+               : 0.0;
+}
+
+double ContainerPacker::complete_largest(
+    ContainerLoad state,
+    std::map<std::string, int> available,
+    std::vector<Space> stack,
+    const std::vector<SimpleBlock>& all_blocks) const
+{
     int64_t total_vol = container_.inner_size.volume();
     if (total_vol <= 0)
+    {
         return 0.0;
+    }
 
     auto blocks = all_blocks;
 

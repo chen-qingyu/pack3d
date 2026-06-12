@@ -51,6 +51,7 @@ private:
         ContainerLoad state;
         std::map<std::string, int> available;
         std::vector<Space> stack;
+        double fitness = 0.0;
         int64_t volume_filled = 0;
         int boxes_placed = 0;
     };
@@ -89,6 +90,12 @@ private:
 
     /// 贪心完成：从给定状态开始，不断放置最大可行块直到装不下，返回最终填充率
     [[nodiscard]] double greedy_complete(
+        ContainerLoad state,
+        std::map<std::string, int> available,
+        std::vector<Space> stack,
+        const std::vector<SimpleBlock>& all_blocks) const;
+
+    [[nodiscard]] double complete_largest(
         ContainerLoad state,
         std::map<std::string, int> available,
         std::vector<Space> stack,

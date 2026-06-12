@@ -7,12 +7,34 @@
 namespace hypercube
 {
 
+namespace
+{
+
+int64_t next_space_id() noexcept
+{
+    static int64_t next_id = 1;
+    return next_id++;
+}
+
+bool same_layer_siblings(const Space& a, const Space& b) noexcept
+{
+    return a.parent_id >= 0 &&
+           a.parent_id == b.parent_id &&
+           a.pos.z == b.pos.z &&
+           a.lz == b.lz;
+}
+
+} // namespace
+
 void split_space(const Space& space, const OrientedSize& block_osize,
                  std::vector<Space>& stack) noexcept
 {
     int32_t dx = block_osize.dx;
     int32_t dy = block_osize.dy;
     int32_t dz = block_osize.dz;
+    int32_t mx = space.lx - dx;
+    int32_t my = space.ly - dy;
+    int32_t mz = space.lz - dz;
 
     // 三个子空间：
     // spaceZ: 块上方（高度方向剩余）
@@ -22,39 +44,64 @@ void split_space(const Space& space, const OrientedSize& block_osize,
     spaceZ.pos = {space.pos.x, space.pos.y, space.pos.z + dz};
     spaceZ.lx = space.lx;
     spaceZ.ly = space.ly;
-    spaceZ.lz = space.lz - dz;
+    spaceZ.lz = mz;
+    spaceZ.id = next_space_id();
+    spaceZ.parent_id = space.id;
+    spaceZ.kind = SpaceKind::Z;
 
     Space spaceX;
     spaceX.pos = {space.pos.x + dx, space.pos.y, space.pos.z};
-    spaceX.lx = space.lx - dx;
-    spaceX.ly = dy;
+    spaceX.lx = mx;
     spaceX.lz = dz;
+    spaceX.id = next_space_id();
+    spaceX.parent_id = space.id;
+    spaceX.kind = SpaceKind::X;
 
     Space spaceY;
     spaceY.pos = {space.pos.x, space.pos.y + dy, space.pos.z};
-    spaceY.lx = dx;
-    spaceY.ly = space.ly - dy;
     spaceY.lz = dz;
+    spaceY.id = next_space_id();
+    spaceY.parent_id = space.id;
+    spaceY.kind = SpaceKind::Y;
 
-    // 按原始 MLHS 策略决定入栈顺序
-    // 优先让更大的一面留在栈顶（更容易被后续块利用）
-    if (space.lx >= space.ly)
+    // MLHS 切分策略：比较 mx/my，选择一个地面剩余空间扩展为整条带状空间。
+    if (mx >= my)
     {
+        spaceX.ly = space.ly;
+        spaceY.lx = dx;
+        spaceY.ly = my;
+
         if (spaceZ.lz > 0)
+        {
             stack.push_back(spaceZ);
+        }
         if (spaceX.lx > 0 && spaceX.ly > 0 && spaceX.lz > 0)
+        {
             stack.push_back(spaceX);
+        }
         if (spaceY.lx > 0 && spaceY.ly > 0 && spaceY.lz > 0)
+        {
             stack.push_back(spaceY);
+        }
     }
     else
     {
+        spaceX.ly = dy;
+        spaceY.lx = space.lx;
+        spaceY.ly = my;
+
         if (spaceZ.lz > 0)
+        {
             stack.push_back(spaceZ);
+        }
         if (spaceY.lx > 0 && spaceY.ly > 0 && spaceY.lz > 0)
+        {
             stack.push_back(spaceY);
+        }
         if (spaceX.lx > 0 && spaceX.ly > 0 && spaceX.lz > 0)
+        {
             stack.push_back(spaceX);
+        }
     }
 }
 
@@ -82,13 +129,29 @@ bool transfer_space(std::vector<Space>& stack) noexcept
         return true;
     }
 
-    // 尝试与栈中同面相邻的空间合并（简单合并）
-    // 遍历栈中其他空间，看是否有可以与 top 合并的
     for (size_t i = 0; i + 1 < stack.size(); ++i)
     {
         auto& other = stack[i];
 
-        // 检查是否在 Y 方向相邻（同 X、同 Z）
+        if (same_layer_siblings(other, top))
+        {
+            if (top.kind == SpaceKind::X && other.kind == SpaceKind::Y)
+            {
+                int32_t right = std::max(other.pos.x + other.lx, top.pos.x + top.lx);
+                other.lx = right - other.pos.x;
+                stack.pop_back();
+                return true;
+            }
+            if (top.kind == SpaceKind::Y && other.kind == SpaceKind::X)
+            {
+                int32_t back = std::max(other.pos.y + other.ly, top.pos.y + top.ly);
+                other.ly = back - other.pos.y;
+                stack.pop_back();
+                return true;
+            }
+        }
+
+        // 退化到一般相邻合并，保留原有启发式。
         if (other.pos.x == top.pos.x &&
             other.pos.z == top.pos.z &&
             other.lx == top.lx &&
@@ -96,7 +159,6 @@ bool transfer_space(std::vector<Space>& stack) noexcept
             (other.pos.y + other.ly == top.pos.y ||
              top.pos.y + top.ly == other.pos.y))
         {
-            // 合并
             int32_t new_y = std::min(other.pos.y, top.pos.y);
             int32_t new_ly = std::max(other.pos.y + other.ly, top.pos.y + top.ly) - new_y;
             other.pos.y = new_y;
@@ -105,7 +167,6 @@ bool transfer_space(std::vector<Space>& stack) noexcept
             return true;
         }
 
-        // 检查是否在 X 方向相邻（同 Y、同 Z）
         if (other.pos.y == top.pos.y &&
             other.pos.z == top.pos.z &&
             other.ly == top.ly &&
