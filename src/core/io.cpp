@@ -15,25 +15,6 @@
 namespace hypercube
 {
 
-// Status 字符串互转
-std::string status_to_string(Status s) noexcept
-{
-    switch (s)
-    {
-        case Status::Success:
-            return "success";
-        case Status::Timeout:
-            return "timeout";
-        case Status::FailedConstraint:
-            return "failed_constraint";
-        case Status::InvalidInput:
-            return "invalid_input";
-        default:
-            assert(false && "Unhandled Status enum value");
-            return "unknown";
-    }
-}
-
 std::string orientation_to_string(Orientation o) noexcept
 {
     switch (o)
@@ -344,7 +325,7 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
         if (!schema_errors.empty())
         {
             Solution s;
-            s.status = Status::InvalidInput;
+            s.success = false;
             s.reason = reason::k_invalid_range;
             s.violations = std::move(schema_errors);
             return s;
@@ -354,7 +335,7 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
         if (!problem.has_value())
         {
             Solution s;
-            s.status = Status::InvalidInput;
+            s.success = false;
             s.reason = reason::k_invalid_range;
             s.violations.push_back({"json_parse", {}, "failed_to_parse_json_structure"});
             return s;
@@ -365,7 +346,7 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
         if (!violations.empty())
         {
             Solution s;
-            s.status = Status::InvalidInput;
+            s.success = false;
             // 用首个违规的 details 作为 reason（仅含 schema 无法表达的跨字段校验）
             s.reason = violations.empty() ? reason::k_invalid_range : violations[0].details;
             s.violations = std::move(violations);
@@ -377,7 +358,7 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
     catch (const json::parse_error& e)
     {
         Solution s;
-        s.status = Status::InvalidInput;
+        s.success = false;
         s.reason = reason::k_invalid_range;
         s.violations.push_back({"json_syntax", {}, e.what()});
         return s;
@@ -385,7 +366,7 @@ std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcep
     catch (const std::exception& e)
     {
         Solution s;
-        s.status = Status::InvalidInput;
+        s.success = false;
         s.reason = reason::k_invalid_range;
         s.violations.push_back({"json_parse", {}, e.what()});
         return s;
@@ -396,7 +377,7 @@ json solution_to_json(const Solution& sol) noexcept
 {
     json j;
 
-    j["status"] = status_to_string(sol.status);
+    j["success"] = sol.success;
     j["reason"] = sol.reason;
 
     json summary;

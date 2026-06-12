@@ -193,15 +193,6 @@ struct ObjectiveVector
     }
 };
 
-// 输出 / 终止状态类型
-enum class Status
-{
-    Success,
-    Timeout,
-    FailedConstraint,
-    InvalidInput,
-};
-
 struct Violation
 {
     std::string kind;
@@ -225,7 +216,7 @@ struct ContainerSummary
 
 struct Solution
 {
-    Status status = Status::Success;
+    bool success = true;
     std::string reason;
 
     double elapsed_second = 0.0;
@@ -251,7 +242,6 @@ struct Solution
 namespace reason
 {
 
-inline constexpr const char* k_optimal = "optimal";
 inline constexpr const char* k_feasible = "feasible";
 inline constexpr const char* k_no_solution = "no_solution";
 inline constexpr const char* k_tender_limit = "tender_limit";

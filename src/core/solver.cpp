@@ -70,7 +70,7 @@ Solution SolverEngine::solve()
     // --- 收尾 ---
     if (state.proven_infeasible)
     {
-        return build_solution(state, Status::FailedConstraint,
+        return build_solution(state, false,
                               state.failure_reason.c_str());
     }
 
@@ -80,41 +80,33 @@ Solution SolverEngine::solve()
         {
             Solution sol = state.best_feasible.value();
 
-            if (!check_time(state))
-            {
-                sol.status = Status::Success;
-                sol.reason = reason::k_feasible;
-            }
-            else
-            {
-                sol.status = Status::Success;
-                sol.reason = reason::k_optimal;
-            }
+            sol.success = true;
+            sol.reason = reason::k_feasible;
 
             // 最终验证
             auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_, has_weight_info_);
             if (!final_errors.empty())
             {
-                sol.status = Status::FailedConstraint;
+                sol.success = false;
                 sol.reason = reason::k_final_check;
                 sol.violations = final_errors;
             }
             return sol;
         }
-        return build_solution(state, Status::Success, reason::k_feasible);
+        return build_solution(state, true, reason::k_feasible);
     }
 
     // 未全部装箱：检查 best_feasible、超时或多起点
     if (state.best_feasible.has_value())
     {
         Solution sol = state.best_feasible.value();
-        sol.status = Status::Success;
+        sol.success = false;
         sol.reason = reason::k_feasible;
 
         auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_, has_weight_info_);
         if (!final_errors.empty())
         {
-            sol.status = Status::FailedConstraint;
+            sol.success = false;
             sol.reason = reason::k_final_check;
             sol.violations = final_errors;
         }
@@ -145,13 +137,13 @@ Solution SolverEngine::solve()
     if (state.best_feasible.has_value())
     {
         Solution sol = state.best_feasible.value();
-        sol.status = Status::Success;
+        sol.success = false;
         sol.reason = reason::k_feasible;
 
         auto final_errors = final_check_solution(sol, problem_, box_type_map_, box_map_, has_weight_info_);
         if (!final_errors.empty())
         {
-            sol.status = Status::FailedConstraint;
+            sol.success = false;
             sol.reason = reason::k_final_check;
             sol.violations = final_errors;
         }
@@ -159,7 +151,7 @@ Solution SolverEngine::solve()
     }
 
     // 完全无可行解
-    return build_solution(state, Status::Timeout, reason::k_no_solution);
+    return build_solution(state, false, reason::k_no_solution);
 }
 
 SearchState SolverEngine::make_initial_state(BoxOrder order) const
@@ -896,25 +888,25 @@ void SolverEngine::update_best(SearchState& state)
 
     if (!state.best_feasible.has_value())
     {
-        state.best_feasible = build_solution(state, Status::Success, reason::k_feasible);
+        state.best_feasible = build_solution(state, true, reason::k_feasible);
         state.best_feasible->objective = ov;
     }
     else
     {
         if (ov.is_better_than(state.best_feasible->objective, state.objective_keys))
         {
-            state.best_feasible = build_solution(state, Status::Success, reason::k_feasible);
+            state.best_feasible = build_solution(state, true, reason::k_feasible);
             state.best_feasible->objective = ov;
         }
     }
 }
 
 Solution SolverEngine::build_solution(const SearchState& state,
-                                      Status status,
+                                      bool success,
                                       const std::string& reason) const
 {
     Solution sol;
-    sol.status = status;
+    sol.success = success;
     sol.reason = reason;
 
     auto elapsed = std::chrono::steady_clock::now() - state.start_time;

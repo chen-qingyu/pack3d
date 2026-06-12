@@ -17,7 +17,7 @@ using json = nlohmann::ordered_json;
 // JSON 反序列化（输入）
 
 /// 将 JSON 字符串解析为 Problem。成功返回 Problem，
-/// 失败返回 status=InvalidInput 的 Solution
+/// 失败返回 success=false 的 Solution
 [[nodiscard]] std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcept;
 
 /// 从 json 对象反序列化 Problem
@@ -30,7 +30,5 @@ using json = nlohmann::ordered_json;
 
 /// 将 Solution 转换为 json 对象（保留插入顺序）
 [[nodiscard]] json solution_to_json(const Solution& sol) noexcept;
-
-[[nodiscard]] std::string status_to_string(Status s) noexcept;
 
 } // namespace hypercube

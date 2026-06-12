@@ -37,7 +37,7 @@ TEST_CASE("independent_objectives", "[solver]")
     {
         base["objectives"] = {key};
         auto res = run_solver(base.dump());
-        REQUIRE(res["status"] == "success");
+        REQUIRE(res["success"] == true);
         REQUIRE(res["summary"]["objective_keys"].size() == 1);
         REQUIRE(res["summary"]["objective_keys"][0] == key);
         REQUIRE(res["result"]["containers"].size() >= 1);

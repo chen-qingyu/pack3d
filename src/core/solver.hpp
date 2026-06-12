@@ -96,7 +96,7 @@ private:
     bool check_time(const SearchState& state) const;
     void update_best(SearchState& state);
 
-    Solution build_solution(const SearchState& state, Status status,
+    Solution build_solution(const SearchState& state, bool success,
                             const std::string& reason) const;
 
     void multi_start_solve(SearchState& state);
