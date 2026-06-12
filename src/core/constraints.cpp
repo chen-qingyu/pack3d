@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <set>
 
 namespace hypercube
 {
@@ -161,6 +162,7 @@ std::vector<Violation> final_check_solution(
     bool has_weight_info) noexcept
 {
     std::vector<Violation> out;
+    std::set<std::string> all_placed_boxes;
 
     for (size_t ci = 0; ci < solution.container_summaries.size(); ++ci)
     {
@@ -192,13 +194,21 @@ std::vector<Violation> final_check_solution(
 
         for (const auto& pl : placements)
         {
+            // 箱子唯一性检查
+            if (!all_placed_boxes.insert(pl.box_id).second)
+            {
+                out.push_back({"duplicate_box", {pl.box_id}, "final_duplicate_box_violation"});
+            }
+
             auto& bt = box_type_map.at(pl.box_type_id);
             auto osize = orient_size(bt.size, pl.orientation);
 
-            // 查找箱子重量
+            // 查找箱子信息
             auto bit = box_map.find(pl.box_id);
             double box_weight = (bit != box_map.end()) ? bit->second.weight.value_or(0.0) : 0.0;
             total_w += box_weight;
+
+            std::string box_platform = (bit != box_map.end()) ? bit->second.platform : std::string();
 
             // 边界检查
             if (!check_boundary(*ctype, pl.position, osize))
@@ -217,7 +227,57 @@ std::vector<Violation> final_check_solution(
                 }
             }
 
+            // 支撑率检查
+            if (problem.support_rate > 0.0)
+            {
+                double ratio = calc_support_ratio(pl.position, osize, load, box_type_map);
+                if (ratio + 1e-9 < problem.support_rate)
+                {
+                    out.push_back({"support", {pl.box_id}, "final_insufficient_support"});
+                }
+            }
+
+            // 平台数量限制检查
+            if (!box_platform.empty() && problem.platform_limit.has_value() && problem.platform_limit.value() > 0)
+            {
+                auto pr = check_platform_limit_constraint(load, box_platform, problem.platform_limit.value());
+                if (!pr.ok)
+                {
+                    out.push_back({"platform_limit", {pl.box_id}, "final_platform_limit_violation"});
+                }
+            }
+
+            // 路线顺序检查
+            if (!box_platform.empty() && problem.route.has_value())
+            {
+                auto rr = check_route_order_constraint(load, box_platform, pl.position, osize, problem.route.value());
+                if (!rr.ok)
+                {
+                    out.push_back({"route_order", {pl.box_id}, "final_route_order_violation"});
+                }
+            }
+
+            // 更新容器跟踪状态（供后续支撑率 / 路线 / 平台检查使用）
             load.placements.push_back(pl);
+            if (!box_platform.empty())
+            {
+                load.platforms.insert(box_platform);
+
+                int32_t box_min_x = pl.position.x;
+                int32_t box_max_x = pl.position.x + osize.dx;
+
+                auto xmax_it = load.platform_x_max.find(box_platform);
+                if (xmax_it == load.platform_x_max.end() || box_max_x > xmax_it->second)
+                {
+                    load.platform_x_max[box_platform] = box_max_x;
+                }
+
+                auto xmin_it = load.platform_x_min.find(box_platform);
+                if (xmin_it == load.platform_x_min.end() || box_min_x < xmin_it->second)
+                {
+                    load.platform_x_min[box_platform] = box_min_x;
+                }
+            }
         }
 
         // 重量检查

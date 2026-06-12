@@ -289,41 +289,51 @@ bool SolverEngine::open_new_container(SearchState& state)
                   return a->inner_size.volume() < b->inner_size.volume();
               });
 
-    // 选择能装下全部剩余体积的最小容器
-    // 若均无法装下，则退回最大的可用容器
-    const ContainerType* best = available.back();
+    // 选能装下全部剩余体积的最小容器
+    // 优先检查所有箱子维度能否放入；都不行则退回最大的可用容器
+    const ContainerType* fallback = available.back();
+    const ContainerType* best = nullptr;
     for (auto* ct : available)
     {
-        if (ct->inner_size.volume() >= remaining_volume)
+        if (ct->inner_size.volume() < remaining_volume)
         {
-            // 检查至少一个维度能容纳最大的箱子
-            bool dim_ok = false;
-            for (const auto& bx : state.remaining_boxes)
+            continue;
+        }
+        // 记住当前最小有足够容积的容器（可能维度不行）
+        fallback = ct;
+
+        // 检查所有剩余箱子能否在某个朝向下放入此容器
+        bool all_fit = true;
+        for (const auto& bx : state.remaining_boxes)
+        {
+            auto& bt = box_type_map_.at(bx.box_type_id);
+            bool box_fits = false;
+            for (auto o : bt.allowed_orientations)
             {
-                auto& bt = box_type_map_.at(bx.box_type_id);
-                for (auto o : bt.allowed_orientations)
+                auto os = orient_size(bt.size, o);
+                if (os.dx <= ct->inner_size.x &&
+                    os.dy <= ct->inner_size.y &&
+                    os.dz <= ct->inner_size.z)
                 {
-                    auto os = orient_size(bt.size, o);
-                    if (os.dx <= ct->inner_size.x &&
-                        os.dy <= ct->inner_size.y &&
-                        os.dz <= ct->inner_size.z)
-                    {
-                        dim_ok = true;
-                        break;
-                    }
-                }
-                if (!dim_ok)
-                {
+                    box_fits = true;
                     break;
                 }
             }
-            if (dim_ok)
+            if (!box_fits)
             {
-                best = ct;
+                all_fit = false;
                 break;
             }
-            best = ct;
         }
+        if (all_fit)
+        {
+            best = ct;
+            break;
+        }
+    }
+    if (!best)
+    {
+        best = fallback;
     }
 
     // 创建新容器实例
@@ -706,6 +716,9 @@ bool SolverEngine::check_tender_limit(SearchState& state)
                 continue;
             }
 
+            const auto& box = *bit;
+            auto& bt = box_type_map_.at(box.box_type_id);
+
             bool can_place = false;
             for (const auto& cid : touched_containers)
             {
@@ -718,11 +731,28 @@ bool SolverEngine::check_tender_limit(SearchState& state)
                     continue;
                 }
 
-                if (!cit->extreme_points.empty())
+                const auto& container = *cit;
+                for (const auto& ep : container.extreme_points)
                 {
-                    can_place = true;
-                    break;
+                    for (auto orient : bt.allowed_orientations)
+                    {
+                        auto osize = orient_size(bt.size, orient);
+                        if (!check_boundary(*container.type, ep, osize))
+                        {
+                            continue;
+                        }
+                        if (check_overlap_any(ep, osize, container.placements, box_type_map_))
+                        {
+                            continue;
+                        }
+                        can_place = true;
+                        break;
+                    }
+                    if (can_place)
+                        break;
                 }
+                if (can_place)
+                    break;
             }
 
             if (!can_place)
