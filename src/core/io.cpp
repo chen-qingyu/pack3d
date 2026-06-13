@@ -333,65 +333,6 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
     return out;
 }
 
-std::variant<Problem, Solution> parse_json(const std::string& json_text) noexcept
-{
-    try
-    {
-        auto j = json::parse(json_text);
-
-        // schema 校验
-        auto schema_errors = validate_schema(j);
-        if (!schema_errors.empty())
-        {
-            Solution s;
-            s.success = false;
-            s.reason = reason::k_invalid_range;
-            s.violations = std::move(schema_errors);
-            return s;
-        }
-
-        auto problem = problem_from_json(j);
-        if (!problem.has_value())
-        {
-            Solution s;
-            s.success = false;
-            s.reason = reason::k_invalid_range;
-            s.violations.push_back({"json_parse", {}, "failed_to_parse_json_structure"});
-            return s;
-        }
-
-        // 运行预校验
-        auto violations = pre_validate_input(problem.value());
-        if (!violations.empty())
-        {
-            Solution s;
-            s.success = false;
-            // 用首个违规的 details 作为 reason（仅含 schema 无法表达的跨字段校验）
-            s.reason = violations.empty() ? reason::k_invalid_range : violations[0].details;
-            s.violations = std::move(violations);
-            return s;
-        }
-
-        return problem.value();
-    }
-    catch (const json::parse_error& e)
-    {
-        Solution s;
-        s.success = false;
-        s.reason = reason::k_invalid_range;
-        s.violations.push_back({"json_syntax", {}, e.what()});
-        return s;
-    }
-    catch (const std::exception& e)
-    {
-        Solution s;
-        s.success = false;
-        s.reason = reason::k_invalid_range;
-        s.violations.push_back({"json_parse", {}, e.what()});
-        return s;
-    }
-}
-
 json solution_to_json(const Solution& sol) noexcept
 {
     json j;

@@ -57,6 +57,7 @@ Solution SolverEngine::solve()
     log_container_stats(solution.container_summaries);
 
     spdlog::info("===Algorithm End===");
+    spdlog::info("Time used: {:.3f} s", solution.elapsed_second);
     return solution;
 }
 
