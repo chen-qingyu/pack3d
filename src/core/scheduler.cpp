@@ -133,9 +133,9 @@ std::optional<PackResult> GlobalScheduler::pack_container(
 
     ContainerPacker packer(*ct, box_type_map_, box_map_, problem_, has_weight_info_);
     PackResult pr;
-    if (problem_.solver_config.width > 1)
+    if (problem_.algorithm.width > 1)
     {
-        pr = packer.pack_beam(box_list, problem_.solver_config.width);
+        pr = packer.pack_beam(box_list, problem_.algorithm.width);
     }
     else
     {
@@ -254,7 +254,7 @@ Solution GlobalScheduler::to_solution(
 bool GlobalScheduler::check_time() const
 {
     auto elapsed = std::chrono::steady_clock::now() - start_time_;
-    return std::chrono::duration<double>(elapsed).count() < problem_.time_limit_seconds;
+    return std::chrono::duration<double>(elapsed).count() < problem_.time_limit;
 }
 
 } // namespace hypercube

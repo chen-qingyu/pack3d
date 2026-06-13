@@ -79,34 +79,53 @@
         }
       }
     },
-    "constraints": {
+    "route": {
+      "type": "array",
+      "description": "路线顺序：按装货顺序排列的平台 ID（先装平台在深处 X 小，后装平台在近门处 X 大）",
+      "items": { "type": "string" }
+    },
+    "algorithm": {
       "type": "object",
-      "description": "约束配置",
+      "description": "算法配置",
       "additionalProperties": false,
       "properties": {
-        "time_limit_seconds": {
-          "type": "number",
-          "exclusiveMinimum": 0,
-          "default": 120
+        "use": {
+          "type": "string",
+          "enum": ["sgep", "mlhs"],
+          "default": "sgep"
         },
-        "support_rate": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1,
-          "default": 0
-        },
-        "platform_limit": { "type": ["integer", "null"], "minimum": 1 },
-        "tender_limit": { "type": ["integer", "null"], "minimum": 1 },
-        "route": {
-          "type": "array",
-          "description": "路线顺序：按装货顺序排列的平台 ID（先装平台在深处 X 小，后装平台在近门处 X 大）",
-          "items": { "type": "string" }
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mlhs": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "default": 27,
+                  "description": "前瞻宽度：每步评估的候选块数上限（越大搜索越充分，耗时线性增长）"
+                }
+              }
+            },
+            "sgep": {
+              "type": "object"
+            }
+          }
         }
       }
     },
     "objectives": {
       "type": "array",
       "description": "目标函数键列表（按优先级排序）",
+      "default": [
+        "min_container_count",
+        "min_platform_count",
+        "max_volume_rate",
+        "min_group_split"
+      ],
       "items": {
         "type": "string",
         "enum": [
@@ -117,21 +136,31 @@
         ]
       }
     },
-    "solver": {
+    "constraints": {
       "type": "object",
-      "description": "求解器配置",
+      "description": "约束配置",
       "additionalProperties": false,
       "properties": {
-        "strategy": {
-          "type": "string",
-          "enum": ["sgep", "mlhs"],
-          "default": "sgep"
+        "time_limit": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 120
         },
-        "width": {
-          "type": "integer",
+        "support_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0
+        },
+        "platform_limit": {
+          "type": ["integer", "null"],
           "minimum": 1,
-          "default": 27,
-          "description": "前瞻宽度：每步评估的候选块数上限（越大搜索越充分，耗时线性增长）"
+          "default": null
+        },
+        "tender_limit": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "default": null
         }
       }
     }

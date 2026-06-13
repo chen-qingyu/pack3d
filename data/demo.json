@@ -33,7 +33,7 @@
     { "id": "b5", "box_type_id": "box_l", "weight": 30.0 }
   ],
   "constraints": {
-    "time_limit_seconds": 30,
+    "time_limit": 30,
     "support_rate": 0.6
   }
 }

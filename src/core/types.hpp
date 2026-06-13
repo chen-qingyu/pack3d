@@ -122,16 +122,16 @@ struct RouteOrder
 };
 
 // 求解器配置
-// 求解策略
-enum class Strategy : uint8_t
+// 求解算法
+enum class Algorithm : uint8_t
 {
     SGEP, // 简单贪心极点算法（默认）
     MLHS, // 多层启发式搜索
 };
 
-struct SolverConfig
+struct AlgorithmConfig
 {
-    Strategy strategy = Strategy::SGEP;
+    Algorithm algorithm = Algorithm::SGEP;
     int width = 27; // 前瞻宽度（每步评估的候选块数上限）
 };
 
@@ -143,7 +143,7 @@ struct Problem
     std::vector<Box> boxes;
 
     // 约束
-    double time_limit_seconds = 120.0;
+    double time_limit = 120.0;
     double support_rate = 0.0;
     std::optional<int> platform_limit;
     std::optional<int> tender_limit;
@@ -152,8 +152,8 @@ struct Problem
     // 目标 — 有序列表；空列表则使用默认值
     std::vector<std::string> objective_keys;
 
-    // 求解器配置
-    SolverConfig solver_config;
+    // 算法配置
+    AlgorithmConfig algorithm;
 };
 
 // 放置结果（内部 + 输出）

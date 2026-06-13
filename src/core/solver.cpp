@@ -40,8 +40,8 @@ SolverEngine::SolverEngine(const Problem& problem)
 // 主入口
 Solution SolverEngine::solve()
 {
-    // 按策略分发
-    if (problem_.solver_config.strategy == Strategy::MLHS)
+    // 按算法分发
+    if (problem_.algorithm.algorithm == Algorithm::MLHS)
     {
         return solve_mlhs();
     }
@@ -51,7 +51,7 @@ Solution SolverEngine::solve()
 
     spdlog::info("Successfully validated input.");
     spdlog::info("Time limit: {} s, Boxes count: {}, Support rate: {:.2f}%, Platform limit: {}, Tender limit: {}",
-                 problem_.time_limit_seconds,
+                 problem_.time_limit,
                  problem_.boxes.size(),
                  problem_.support_rate * 100.0,
                  opt_str(problem_.platform_limit),
@@ -153,8 +153,8 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
     s.container_type_map = container_type_map_;
     s.remaining_boxes = problem_.boxes;
     s.start_time = std::chrono::steady_clock::now();
-    s.time_limit_seconds = problem_.time_limit_seconds;
-    s.config = &problem_.solver_config;
+    s.time_limit = problem_.time_limit;
+    s.config = &problem_.algorithm;
     s.problem = &problem_;
     s.objective_keys = problem_.objective_keys.empty() ? default_objective_keys() : problem_.objective_keys;
 
@@ -896,7 +896,7 @@ bool SolverEngine::check_time(const SearchState& state) const
 {
     auto elapsed = std::chrono::steady_clock::now() - state.start_time;
     auto elapsed_sec = std::chrono::duration<double>(elapsed).count();
-    return elapsed_sec < state.time_limit_seconds;
+    return elapsed_sec < state.time_limit;
 }
 
 // 更新最佳解
@@ -1011,7 +1011,7 @@ void SolverEngine::multi_start_solve(SearchState& state)
 
             SearchState fresh = make_initial_state(order);
             fresh.start_time = state.start_time;
-            fresh.time_limit_seconds = state.time_limit_seconds;
+            fresh.time_limit = state.time_limit;
 
             if (order == BoxOrder::ByMixed)
             {
@@ -1049,7 +1049,7 @@ void SolverEngine::multi_start_solve(SearchState& state)
 Solution SolverEngine::solve_mlhs()
 {
     spdlog::info("Time limit: {} s, Boxes count: {}, Support rate: {:.2f}%, Platform limit: {}, Tender limit: {}",
-                 problem_.time_limit_seconds,
+                 problem_.time_limit,
                  problem_.boxes.size(),
                  problem_.support_rate * 100.0,
                  opt_str(problem_.platform_limit),

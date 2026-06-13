@@ -147,22 +147,23 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
         if (j.contains("constraints"))
         {
             const auto& c = j["constraints"];
-            p.time_limit_seconds = c.value("time_limit_seconds", 120.0);
+            p.time_limit = c.value("time_limit", 120.0);
             p.support_rate = c.value("support_rate", 0.0);
             p.platform_limit = json_opt_int(c, "platform_limit");
             p.tender_limit = json_opt_int(c, "tender_limit");
+        }
 
-            if (c.contains("route"))
+        // route
+        if (j.contains("route"))
+        {
+            RouteOrder route;
+            for (const auto& plat : j["route"])
             {
-                RouteOrder route;
-                for (const auto& plat : c["route"])
-                {
-                    std::string pname = plat.get<std::string>();
-                    route.index_of[pname] = route.platform_order.size();
-                    route.platform_order.push_back(std::move(pname));
-                }
-                p.route = std::move(route);
+                std::string pname = plat.get<std::string>();
+                route.index_of[pname] = route.platform_order.size();
+                route.platform_order.push_back(std::move(pname));
             }
+            p.route = std::move(route);
         }
 
         // objectives
@@ -174,20 +175,23 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
             }
         }
 
-        // solver
-        if (j.contains("solver"))
+        // algorithm
+        if (j.contains("algorithm"))
         {
-            const auto& s = j["solver"];
-            p.solver_config.width = s.value("width", 27);
-
-            std::string strategy_str = s.value("strategy", "sgep");
-            if (strategy_str == "mlhs")
+            const auto& a = j["algorithm"];
+            std::string use = a.value("use", "sgep");
+            if (use == "mlhs")
             {
-                p.solver_config.strategy = Strategy::MLHS;
+                p.algorithm.algorithm = Algorithm::MLHS;
+                const auto& cfg = a["config"];
+                if (cfg.contains("mlhs") && cfg["mlhs"].contains("width"))
+                {
+                    p.algorithm.width = cfg["mlhs"]["width"].get<int>();
+                }
             }
             else
             {
-                p.solver_config.strategy = Strategy::SGEP;
+                p.algorithm.algorithm = Algorithm::SGEP;
             }
         }
 
