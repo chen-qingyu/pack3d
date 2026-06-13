@@ -111,6 +111,9 @@ private:
     Position compactify_placement(const ContainerLoad& container,
                                   const Box& box,
                                   Position pos, const OrientedSize& osize) const;
+
+    void log_problem_info() const;
+    void log_container_stats(const std::vector<ContainerSummary>& summaries) const;
 };
 
 } // namespace hypercube

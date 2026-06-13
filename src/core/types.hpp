@@ -251,6 +251,7 @@ struct ContainerSummary
     double volume_rate = 0.0;
     std::optional<double> used_weight = std::nullopt;
     std::optional<double> weight_rate = std::nullopt;
+    int packed_count = 0; // 本容器内放置的箱子数
     std::vector<std::string> platforms;
     std::vector<std::string> groups;
 };

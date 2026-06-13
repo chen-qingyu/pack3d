@@ -40,49 +40,33 @@ SolverEngine::SolverEngine(const Problem& problem)
 // 主入口
 Solution SolverEngine::solve()
 {
-    // 按算法分发
-    if (problem_.algorithm.algorithm == Algorithm::MLHS)
-    {
-        return solve_mlhs();
-    }
-
-    // --- 初始状态 ---
-    SearchState state = make_initial_state();
-
-    spdlog::info("Successfully validated input.");
-    spdlog::info("Time limit: {} s, Boxes count: {}, Support rate: {:.2f}%, Platform limit: {}, Tender limit: {}",
-                 problem_.time_limit,
-                 problem_.boxes.size(),
-                 problem_.support_rate * 100.0,
-                 opt_str(problem_.platform_limit),
-                 opt_str(problem_.tender_limit));
+    log_problem_info();
 
     spdlog::info("===Algorithm Start===");
 
-    // --- 运行构造式搜索 ---
-    bool all_packed = construct_solution(state);
-
-    // 记录最终状态的容器统计
-    int idx = 1;
-    int packed_sofar = 0;
-    int total_boxes = static_cast<int>(problem_.boxes.size());
-    for (const auto& c : state.open_containers)
+    Solution solution;
+    if (problem_.algorithm.algorithm == Algorithm::MLHS)
     {
-        int packed = static_cast<int>(c.placements.size());
-        packed_sofar += packed;
-        int left = total_boxes - packed_sofar;
-        double weight_rate = c.type->max_weight.has_value()
-                                 ? c.total_weight / c.type->max_weight.value() * 100.0
-                                 : 0.0;
-        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {:.2f}%",
-                     idx, c.type_id,
-                     packed, left,
-                     c.volume_rate() * 100.0,
-                     weight_rate);
-        ++idx;
+        solution = solve_mlhs();
+    }
+    else
+    {
+        solution = solve_sgep();
     }
 
+    log_container_stats(solution.container_summaries);
+
     spdlog::info("===Algorithm End===");
+    return solution;
+}
+
+Solution SolverEngine::solve_sgep()
+{
+    // --- 初始状态 ---
+    SearchState state = make_initial_state();
+
+    // --- 运行构造式搜索 ---
+    bool all_packed = construct_solution(state);
 
     // --- 收尾 ---
     if (state.infeasible)
@@ -954,6 +938,7 @@ Solution SolverEngine::build_solution(const SearchState& state,
         {
             cs.inner_size = load.type->inner_size;
         }
+        cs.packed_count = static_cast<int>(load.placements.size());
         cs.used_volume = load.used_volume;
         cs.volume_rate = load.volume_rate();
         cs.used_weight = has_weight_info_ ? std::optional<double>(load.total_weight) : std::nullopt;
@@ -1048,20 +1033,76 @@ void SolverEngine::multi_start_solve(SearchState& state)
 
 Solution SolverEngine::solve_mlhs()
 {
-    spdlog::info("Time limit: {} s, Boxes count: {}, Support rate: {:.2f}%, Platform limit: {}, Tender limit: {}",
-                 problem_.time_limit,
+    GlobalScheduler scheduler(problem_, box_type_map_, box_map_, has_weight_info_);
+    return scheduler.schedule();
+}
+
+void SolverEngine::log_problem_info() const
+{
+    std::set<std::string> unique_box_types;
+    for (const auto& bx : problem_.boxes)
+    {
+        unique_box_types.insert(bx.box_type_id);
+    }
+
+    spdlog::info("Input: {} boxes, {} box types, {} container types",
                  problem_.boxes.size(),
+                 unique_box_types.size(),
+                 problem_.container_types.size());
+
+    if (problem_.algorithm.algorithm == Algorithm::MLHS)
+    {
+        spdlog::info("Algorithm: MLHS, width: {}", problem_.algorithm.width);
+    }
+    else
+    {
+        spdlog::info("Algorithm: SGEP");
+    }
+
+    const auto& keys = problem_.objective_keys.empty() ? default_objective_keys() : problem_.objective_keys;
+    std::string obj_str;
+    for (size_t i = 0; i < keys.size(); ++i)
+    {
+        if (i > 0)
+            obj_str += ", ";
+        obj_str += keys[i];
+    }
+    spdlog::info("Objectives: {}", obj_str);
+
+    spdlog::info("Constraints: time limit {} s, support rate {:.2f}%, platform limit {}, tender limit {}",
+                 problem_.time_limit,
                  problem_.support_rate * 100.0,
                  opt_str(problem_.platform_limit),
                  opt_str(problem_.tender_limit));
+}
 
-    spdlog::info("===MLHS Algorithm Start===");
+void SolverEngine::log_container_stats(const std::vector<ContainerSummary>& summaries) const
+{
+    int total_boxes = static_cast<int>(problem_.boxes.size());
+    int packed_sofar = 0;
+    int idx = 1;
+    for (const auto& cs : summaries)
+    {
+        packed_sofar += cs.packed_count;
+        int left = total_boxes - packed_sofar;
 
-    GlobalScheduler scheduler(problem_, box_type_map_, box_map_, has_weight_info_);
-    Solution solution = scheduler.schedule();
+        std::string weight_str;
+        if (cs.weight_rate.has_value())
+        {
+            weight_str = fmt::format("{:.2f}%", cs.weight_rate.value() * 100.0);
+        }
+        else
+        {
+            weight_str = "null";
+        }
 
-    spdlog::info("===MLHS Algorithm End===");
-    return solution;
+        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {}",
+                     idx, cs.type_id,
+                     cs.packed_count, left,
+                     cs.volume_rate * 100.0,
+                     weight_str);
+        ++idx;
+    }
 }
 
 } // namespace hypercube

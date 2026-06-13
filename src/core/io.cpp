@@ -437,6 +437,7 @@ json solution_to_json(const Solution& sol) noexcept
         ls["used_weight"] = opt_json(cs.used_weight);
         ls["volume_rate"] = cs.volume_rate;
         ls["weight_rate"] = opt_json(cs.weight_rate);
+        ls["packed_count"] = cs.packed_count;
         ls["platforms"] = cs.platforms;
         ls["groups"] = cs.groups;
         cj["load_summary"] = std::move(ls);

@@ -92,30 +92,6 @@ Solution GlobalScheduler::schedule()
         container_type_usage_[best_ct->id]++;
     }
 
-    // 日志输出
-    int idx = 1;
-    int packed_sofar = 0;
-    int total_boxes = static_cast<int>(problem_.boxes.size());
-    for (const auto& slot : slots)
-    {
-        if (!slot.pack_result.has_value())
-            continue;
-        const auto& pr = slot.pack_result.value();
-        int packed = static_cast<int>(pr.placements.size());
-        packed_sofar += packed;
-        int left = total_boxes - packed_sofar;
-        int64_t cv = static_cast<int64_t>(slot.type->inner_size.x) *
-                     slot.type->inner_size.y *
-                     slot.type->inner_size.z;
-        double vr = cv > 0 ? static_cast<double>(pr.used_volume) / static_cast<double>(cv) * 100.0 : 0.0;
-        double wr = has_weight_info_ && slot.type->max_weight.has_value() && slot.type->max_weight.value() > 0
-                        ? pr.total_weight / slot.type->max_weight.value() * 100.0
-                        : 0.0;
-        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.2f}%, weight rate: {:.2f}%",
-                     idx, slot.type->id, packed, left, vr, wr);
-        ++idx;
-    }
-
     bool all_packed = remaining_ids.empty();
     return to_solution(slots, problem_.boxes, all_packed,
                        all_packed ? reason::k_feasible : reason::k_no_solution);
@@ -177,6 +153,7 @@ Solution GlobalScheduler::to_solution(
         cs.id = slot.instance_id;
         cs.type_id = slot.type->id;
         cs.inner_size = slot.type->inner_size;
+        cs.packed_count = static_cast<int>(pr.placements.size());
         cs.used_volume = pr.used_volume;
         cs.volume_rate = slot.type->inner_size.volume() > 0
                              ? static_cast<double>(pr.used_volume) / static_cast<double>(slot.type->inner_size.volume())
