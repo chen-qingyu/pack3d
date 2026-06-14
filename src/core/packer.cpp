@@ -9,6 +9,7 @@
 #include "block.hpp"
 #include "constraints.hpp"
 #include "geometry.hpp"
+#include "objectives.hpp"
 #include "space.hpp"
 
 namespace hypercube
@@ -65,8 +66,13 @@ PackResult ContainerPacker::pack(const std::vector<Box>& boxes)
 
         if (!candidates.empty())
         {
-            // 选体积最大的可行块
-            const SimpleBlock* best = candidates.front();
+            const SimpleBlock* best = pick_best_block(
+                candidates, space, state, available, stack, all_blocks,
+                static_cast<int>(candidates.size()));
+            if (best == nullptr)
+            {
+                break;
+            }
 
             // 用 place_block 放置（使用占位 ID）
             size_t before = state.placements.size();
@@ -405,6 +411,152 @@ PackResult ContainerPacker::make_result(
     return r;
 }
 
+ContainerPacker::LocalPackScore ContainerPacker::score_state(const ContainerLoad& state) const
+{
+    LocalPackScore score;
+    score.platform_count = static_cast<int>(state.platforms.size());
+    score.group_count = static_cast<int>(state.groups.size());
+    score.used_volume = state.used_volume;
+    score.placed_count = static_cast<int>(state.placements.size());
+    return score;
+}
+
+ContainerPacker::LocalPackScore ContainerPacker::score_result(const PackResult& result) const
+{
+    LocalPackScore score;
+    score.platform_count = static_cast<int>(result.platforms.size());
+    score.group_count = static_cast<int>(result.groups.size());
+    score.used_volume = result.used_volume;
+    score.placed_count = static_cast<int>(result.placements.size());
+    return score;
+}
+
+int ContainerPacker::compare_local_scores(const LocalPackScore& a,
+                                          const LocalPackScore& b) const
+{
+    const auto& keys = problem_.objective_keys.empty()
+                           ? default_objective_keys()
+                           : problem_.objective_keys;
+
+    for (const auto& key : keys)
+    {
+        if (key == "min_platform_count")
+        {
+            if (a.platform_count < b.platform_count)
+            {
+                return -1;
+            }
+            if (a.platform_count > b.platform_count)
+            {
+                return 1;
+            }
+        }
+        else if (key == "max_volume_rate")
+        {
+            if (a.used_volume > b.used_volume)
+            {
+                return -1;
+            }
+            if (a.used_volume < b.used_volume)
+            {
+                return 1;
+            }
+        }
+        else if (key == "min_group_split")
+        {
+            if (a.group_count < b.group_count)
+            {
+                return -1;
+            }
+            if (a.group_count > b.group_count)
+            {
+                return 1;
+            }
+        }
+    }
+
+    if (a.used_volume > b.used_volume)
+    {
+        return -1;
+    }
+    if (a.used_volume < b.used_volume)
+    {
+        return 1;
+    }
+    if (a.placed_count > b.placed_count)
+    {
+        return -1;
+    }
+    if (a.placed_count < b.placed_count)
+    {
+        return 1;
+    }
+    if (a.platform_count < b.platform_count)
+    {
+        return -1;
+    }
+    if (a.platform_count > b.platform_count)
+    {
+        return 1;
+    }
+    if (a.group_count < b.group_count)
+    {
+        return -1;
+    }
+    if (a.group_count > b.group_count)
+    {
+        return 1;
+    }
+    return 0;
+}
+
+const SimpleBlock* ContainerPacker::pick_best_block(
+    const std::vector<const SimpleBlock*>& viable,
+    const Space& space,
+    const ContainerLoad& state,
+    const std::map<std::string, int>& available,
+    const std::vector<Space>& stack,
+    const std::vector<SimpleBlock>& all_blocks,
+    int eval_count) const
+{
+    assert(!viable.empty());
+
+    const SimpleBlock* best = viable.front();
+    LocalPackScore best_score;
+    bool found = false;
+
+    int limit = std::min(eval_count, static_cast<int>(viable.size()));
+    for (int i = 0; i < limit; ++i)
+    {
+        ContainerLoad sim = state;
+        auto sim_avail = available;
+        auto sim_stack = stack;
+        place_block(*viable[i], space, sim, sim_avail, sim_stack);
+
+        LocalPackScore score = complete_largest(
+            std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks);
+        int cmp = found ? compare_local_scores(score, best_score) : -1;
+        if (!found || cmp < 0 ||
+            (cmp == 0 && viable[i]->volume() > best->volume()))
+        {
+            found = true;
+            best = viable[i];
+            best_score = score;
+        }
+    }
+
+    if (!state.placements.empty())
+    {
+        LocalPackScore current_score = score_state(state);
+        if (compare_local_scores(current_score, best_score) <= 0)
+        {
+            return nullptr;
+        }
+    }
+
+    return best;
+}
+
 PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
 {
     const int kKeepTopN = std::max(1, std::min(width, 16));
@@ -464,7 +616,7 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
             struct CandidateScore
             {
                 const SimpleBlock* block{nullptr};
-                double fitness = 0.0;
+                LocalPackScore fitness;
             };
 
             std::vector<CandidateScore> scored;
@@ -476,18 +628,19 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
                 auto sim_stack = stack;
                 place_block(*block, space, sim, sim_avail, sim_stack);
 
-                double fitness = greedy_complete(
+                LocalPackScore fitness = greedy_complete(
                     std::move(sim), std::move(sim_avail),
                     std::move(sim_stack), all_blocks);
                 scored.push_back({block, fitness});
             }
 
             std::sort(scored.begin(), scored.end(),
-                      [](const CandidateScore& a, const CandidateScore& b)
+                      [&](const CandidateScore& a, const CandidateScore& b)
                       {
-                          if (a.fitness != b.fitness)
+                          int cmp = compare_local_scores(a.fitness, b.fitness);
+                          if (cmp != 0)
                           {
-                              return a.fitness > b.fitness;
+                              return cmp < 0;
                           }
                           return a.block->volume() > b.block->volume();
                       });
@@ -510,7 +663,15 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
             }
         }
 
-        place_block(*candidates.front(), space, state, available, stack);
+        const SimpleBlock* best = pick_best_block(
+            candidates, space, state, available, stack, all_blocks,
+            static_cast<int>(candidates.size()));
+        if (best == nullptr)
+        {
+            break;
+        }
+
+        place_block(*best, space, state, available, stack);
     }
 
     std::map<std::string, std::vector<std::string>> real_ids_by_type;
@@ -534,14 +695,14 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
     }
 
     PackResult beam_result = make_result(state, available, boxes);
-    if (greedy_baseline.used_volume > beam_result.used_volume)
+    if (compare_local_scores(score_result(greedy_baseline), score_result(beam_result)) < 0)
     {
         return greedy_baseline;
     }
     return beam_result;
 }
 
-double ContainerPacker::greedy_complete(
+ContainerPacker::LocalPackScore ContainerPacker::greedy_complete(
     ContainerLoad state,
     std::map<std::string, int> available,
     std::vector<Space> stack,
@@ -580,43 +741,25 @@ double ContainerPacker::greedy_complete(
         }
 
         int eval_count = std::min(kEvalWidth, static_cast<int>(viable.size()));
-        const SimpleBlock* best = viable.front();
-        double best_score = -1.0;
-        for (int i = 0; i < eval_count; ++i)
+        const SimpleBlock* best = pick_best_block(
+            viable, space, state, available, stack, blocks, eval_count);
+        if (best == nullptr)
         {
-            ContainerLoad sim = state;
-            auto sim_avail = available;
-            auto sim_stack = stack;
-            place_block(*viable[i], space, sim, sim_avail, sim_stack);
-            double score = complete_largest(std::move(sim), std::move(sim_avail), std::move(sim_stack), blocks);
-            if (score > best_score)
-            {
-                best_score = score;
-                best = viable[i];
-            }
+            break;
         }
 
         place_block(*best, space, state, available, stack);
     }
 
-    int64_t total_vol = container_.inner_size.volume();
-    return total_vol > 0
-               ? static_cast<double>(state.used_volume) / static_cast<double>(total_vol) * 100.0
-               : 0.0;
+    return score_state(state);
 }
 
-double ContainerPacker::complete_largest(
+ContainerPacker::LocalPackScore ContainerPacker::complete_largest(
     ContainerLoad state,
     std::map<std::string, int> available,
     std::vector<Space> stack,
     const std::vector<SimpleBlock>& all_blocks) const
 {
-    int64_t total_vol = container_.inner_size.volume();
-    if (total_vol <= 0)
-    {
-        return 0.0;
-    }
-
     auto blocks = all_blocks;
 
     while (!stack.empty() && !blocks.empty())
@@ -647,9 +790,7 @@ double ContainerPacker::complete_largest(
             blocks.end());
     }
 
-    return total_vol > 0
-               ? static_cast<double>(state.used_volume) / static_cast<double>(total_vol) * 100.0
-               : 0.0;
+    return score_state(state);
 }
 
 } // namespace hypercube

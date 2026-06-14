@@ -45,6 +45,14 @@ public:
     [[nodiscard]] PackResult pack_beam(const std::vector<Box>& boxes, int beam_width);
 
 private:
+    struct LocalPackScore
+    {
+        int platform_count = 0;
+        int group_count = 0;
+        int64_t used_volume = 0;
+        int placed_count = 0;
+    };
+
     /// beam 搜索中的一个部分方案
     struct PartialState
     {
@@ -88,14 +96,30 @@ private:
                                          const std::map<std::string, int>& available,
                                          const std::vector<Box>& all_boxes) const;
 
+    [[nodiscard]] LocalPackScore score_state(const ContainerLoad& state) const;
+
+    [[nodiscard]] LocalPackScore score_result(const PackResult& result) const;
+
+    [[nodiscard]] int compare_local_scores(const LocalPackScore& a,
+                                           const LocalPackScore& b) const;
+
+    [[nodiscard]] const SimpleBlock* pick_best_block(
+        const std::vector<const SimpleBlock*>& viable,
+        const Space& space,
+        const ContainerLoad& state,
+        const std::map<std::string, int>& available,
+        const std::vector<Space>& stack,
+        const std::vector<SimpleBlock>& all_blocks,
+        int eval_count) const;
+
     /// 贪心完成：从给定状态开始，不断放置最大可行块直到装不下，返回最终填充率
-    [[nodiscard]] double greedy_complete(
+    [[nodiscard]] LocalPackScore greedy_complete(
         ContainerLoad state,
         std::map<std::string, int> available,
         std::vector<Space> stack,
         const std::vector<SimpleBlock>& all_blocks) const;
 
-    [[nodiscard]] double complete_largest(
+    [[nodiscard]] LocalPackScore complete_largest(
         ContainerLoad state,
         std::map<std::string, int> available,
         std::vector<Space> stack,
