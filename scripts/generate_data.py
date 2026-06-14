@@ -28,7 +28,6 @@ def parse_br_file(file):
         container_type = {
             "id": container_id,
             "inner_size": {"x": cx, "y": cy, "z": cz},
-            "max_weight": 10000000.0,
             "quantity_limit": 1,
         }
 
@@ -69,7 +68,6 @@ def parse_br_file(file):
                 boxes.append({
                     "id": f"b{box_id}",
                     "box_type_id": box_type_map[i],
-                    "weight": 1.0,
                 })
                 box_id += 1
 
