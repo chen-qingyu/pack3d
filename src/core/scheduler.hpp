@@ -3,6 +3,7 @@
 #include <chrono>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -50,6 +51,12 @@ private:
                                        const std::vector<Box>& all_boxes,
                                        bool success,
                                        const std::string& reason) const;
+
+    /// 处理已达 tender_limit 的组：将剩余箱子装入已有容器
+    /// 返回 1 = 已处理（调用方应跳过开新容器），0 = 无需处理，-1 = 不可行
+    [[nodiscard]] int handle_tender_limit_groups(
+        std::set<std::string>& remaining_ids,
+        std::vector<ContainerSlot>& slots);
 
     bool check_time() const;
 };

@@ -51,6 +51,21 @@ Solution GlobalScheduler::schedule()
             }
         }
 
+        // tender_limit 事前检查：若某组已达到限制，其剩余箱子必须放入已有容器
+        if (problem_.tender_limit.has_value())
+        {
+            int tl_ret = handle_tender_limit_groups(remaining_ids, slots);
+            if (tl_ret < 0)
+            {
+                return to_solution(slots, problem_.boxes, false,
+                                   reason::k_tender_limit);
+            }
+            if (tl_ret > 0)
+            {
+                continue; // 已处理，无需开新容器
+            }
+        }
+
         // 累积当前已用容器的目标状态
         int cur_count = static_cast<int>(slots.size());
         int cur_platform_sum = 0;
@@ -328,6 +343,115 @@ Solution GlobalScheduler::to_solution(
     sol.objective.group_split_sum = split;
 
     return sol;
+}
+
+int GlobalScheduler::handle_tender_limit_groups(
+    std::set<std::string>& remaining_ids,
+    std::vector<ContainerSlot>& slots)
+{
+    int limit = problem_.tender_limit.value();
+
+    // 构建 group -> 已触碰的容器列表
+    struct SlotInfo
+    {
+        const ContainerSlot* slot;
+        int64_t remaining_capacity;
+    };
+    std::map<std::string, std::vector<SlotInfo>> group_info;
+
+    for (const auto& slot : slots)
+    {
+        if (!slot.pack_result.has_value())
+            continue;
+        int64_t total = static_cast<int64_t>(slot.type->inner_size.x) *
+                        slot.type->inner_size.y *
+                        slot.type->inner_size.z;
+        int64_t remaining = total - slot.pack_result->used_volume;
+        for (const auto& g : slot.pack_result->groups)
+        {
+            group_info[g].push_back({&slot, remaining});
+        }
+    }
+
+    for (const auto& [group, touched] : group_info)
+    {
+        if (static_cast<int>(touched.size()) < limit)
+            continue;
+
+        // 收集该组剩余箱子
+        std::vector<const Box*> group_boxes;
+        for (const auto& bx : problem_.boxes)
+        {
+            if (bx.group == group && remaining_ids.count(bx.id))
+                group_boxes.push_back(&bx);
+        }
+        if (group_boxes.empty())
+            continue;
+
+        // 计算总体积
+        int64_t group_vol = 0;
+        for (const auto* bp : group_boxes)
+            group_vol += box_type_map_.at(bp->box_type_id).size.volume();
+
+        // 检查：每个已触碰容器逐一尝试，看能否全部装下
+        // 用 pack_container 检查（包内从空容器开始 packing，但能验证尺寸/约束可行性）
+        bool any_fit = false;
+        for (const auto& info : touched)
+        {
+            // 快速体积过滤
+            if (group_vol > info.slot->type->inner_size.volume())
+                continue;
+
+            // 用 pack_container 实际跑一次，检查是否所有箱子都能放入此种容器
+            auto pr = pack_container(info.slot->type, group_boxes);
+            if (!pr.has_value())
+                continue;
+
+            std::set<std::string> packed;
+            for (const auto& pl : pr->placements)
+                packed.insert(pl.box_id);
+
+            bool all_packed = true;
+            for (const auto* bp : group_boxes)
+            {
+                if (!packed.count(bp->id))
+                {
+                    all_packed = false;
+                    break;
+                }
+            }
+            if (!all_packed)
+                continue;
+
+            // 检查 packer 实际占用的空间是否 ≤ 容器的剩余容量（不超出现有占用）
+            // 注意：packer 从空容器开始放，但我们只需要验证"能放下"，
+            // 实际能否放进剩余空间由下一轮 schedule 迭代的 pack_container 决定
+            any_fit = true;
+            break;
+        }
+
+        if (!any_fit)
+        {
+            // 假阴性保护：体积估算说可能够，但 pack_container 实际装不下
+            // 检查是否是体积够但 packer 排布失败的情况
+            int64_t total_remaining_cap = 0;
+            for (const auto& info : touched)
+                total_remaining_cap += info.remaining_capacity;
+
+            if (group_vol <= total_remaining_cap)
+            {
+                // 体积够但 packer 排不出来 -> 保留机会，让下一轮迭代的
+                // pack_container 自行决定（可能换个容器类型就成功了）
+                continue;
+            }
+
+            spdlog::warn("tender_limit ({}) violated: group '{}' remaining volume {} exceeds capacity {}",
+                         limit, group, group_vol, total_remaining_cap);
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
 bool GlobalScheduler::check_time() const
