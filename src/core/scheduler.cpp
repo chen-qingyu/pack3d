@@ -51,10 +51,35 @@ Solution GlobalScheduler::schedule()
             }
         }
 
-        // 选一个容器类型来装
+        // 累积当前已用容器的目标状态
+        int cur_count = static_cast<int>(slots.size());
+        int cur_platform_sum = 0;
+        double cur_rate_sum = 0.0;
+        std::map<std::string, int> group_seen_count;
+
+        for (const auto& slot : slots)
+        {
+            if (!slot.pack_result.has_value())
+                continue;
+            const auto& pr = slot.pack_result.value();
+            cur_platform_sum += static_cast<int>(pr.platforms.size());
+            int64_t cv = static_cast<int64_t>(slot.type->inner_size.x) *
+                         slot.type->inner_size.y *
+                         slot.type->inner_size.z;
+            cur_rate_sum += cv > 0
+                                ? static_cast<double>(pr.used_volume) / static_cast<double>(cv)
+                                : 0.0;
+            for (const auto& g : pr.groups)
+            {
+                group_seen_count[g]++;
+            }
+        }
+
+        // 选一个容器类型来装（字典序目标投影）
         const ContainerType* best_ct = nullptr;
         PackResult best_pr;
-        size_t best_count = 0;
+        ObjectiveVector best_proj;
+        bool found = false;
 
         for (const auto& ct : problem_.container_types)
         {
@@ -66,15 +91,92 @@ Solution GlobalScheduler::schedule()
             }
 
             auto pr = pack_container(&ct, remaining);
-            if (pr.has_value() && pr->placements.size() > best_count)
+            if (!pr.has_value() || pr->placements.empty())
             {
-                best_count = pr->placements.size();
+                continue;
+            }
+
+            // 计算此容器本身的填充率
+            int64_t ct_vol = static_cast<int64_t>(ct.inner_size.x) *
+                             ct.inner_size.y *
+                             ct.inner_size.z;
+            double this_rate = ct_vol > 0
+                                   ? static_cast<double>(pr->used_volume) / static_cast<double>(ct_vol)
+                                   : 0.0;
+
+            // 估算剩余箱子还需要多少容器
+            int64_t remain_vol = 0;
+            std::set<std::string> packed_ids;
+            for (const auto& pl : pr->placements)
+            {
+                packed_ids.insert(pl.box_id);
+            }
+            for (const auto* bp : remaining)
+            {
+                if (!packed_ids.count(bp->id))
+                {
+                    remain_vol += box_type_map_.at(bp->box_type_id).size.volume();
+                }
+            }
+            int future = ct_vol > 0
+                             ? static_cast<int>((remain_vol + ct_vol - 1) / ct_vol)
+                             : 0;
+
+            // 估算剩余箱子会引入的额外平台数
+            std::set<std::string> future_platforms;
+            for (const auto* bp : remaining)
+            {
+                if (!packed_ids.count(bp->id) && !bp->platform.empty())
+                {
+                    future_platforms.insert(bp->platform);
+                }
+            }
+
+            // 估算剩余箱子会引入的额外分组拆分
+            std::set<std::string> future_groups;
+            for (const auto* bp : remaining)
+            {
+                if (!packed_ids.count(bp->id) && !bp->group.empty())
+                {
+                    future_groups.insert(bp->group);
+                }
+            }
+
+            // 投影目标向量
+            ObjectiveVector proj;
+            proj.container_count = cur_count + 1 + future;
+            proj.platform_count = cur_platform_sum + static_cast<int>(pr->platforms.size()) + static_cast<int>(future_platforms.size());
+            proj.avg_volume_rate = cur_count > 0
+                                       ? (cur_rate_sum + this_rate) / (cur_count + 1)
+                                       : this_rate;
+
+            proj.group_split_sum = 0;
+            for (const auto& [g, cnt] : group_seen_count)
+            {
+                proj.group_split_sum += cnt - 1;
+            }
+            for (const auto& g : pr->groups)
+            {
+                if (group_seen_count.count(g) && group_seen_count.at(g) >= 1)
+                {
+                    proj.group_split_sum += 1;
+                }
+            }
+            proj.group_split_sum += static_cast<int>(future_groups.size());
+
+            const auto& keys = problem_.objective_keys.empty()
+                                   ? default_objective_keys()
+                                   : problem_.objective_keys;
+            if (!found || compare_objectives(proj, best_proj, keys) < 0)
+            {
+                found = true;
                 best_ct = &ct;
                 best_pr = std::move(pr.value());
+                best_proj = proj;
             }
         }
 
-        if (best_ct == nullptr || best_count == 0)
+        if (!found)
         {
             break; // 没有容器能装下任何箱子
         }
