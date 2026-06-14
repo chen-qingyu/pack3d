@@ -561,7 +561,6 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
 {
     const int kKeepTopN = std::max(1, std::min(width, 16));
     const int kMaxRefineRounds = 6;
-    PackResult greedy_baseline = pack(boxes);
 
     std::map<std::string, int> all_available;
     for (const auto& bx : boxes)
@@ -663,12 +662,22 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
             }
         }
 
-        const SimpleBlock* best = pick_best_block(
-            candidates, space, state, available, stack, all_blocks,
-            static_cast<int>(candidates.size()));
-        if (best == nullptr)
+        // 从 beam 精炼中选择最佳候选，并检查多目标提前停止
+        const SimpleBlock* best = candidates.front();
+
+        if (!state.placements.empty())
         {
-            break;
+            ContainerLoad sim = state;
+            auto sim_avail = available;
+            auto sim_stack = stack;
+            place_block(*best, space, sim, sim_avail, sim_stack);
+            LocalPackScore current_score = score_state(state);
+            LocalPackScore new_score = complete_largest(
+                std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks);
+            if (compare_local_scores(current_score, new_score) <= 0)
+            {
+                break;
+            }
         }
 
         place_block(*best, space, state, available, stack);
@@ -694,12 +703,7 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
         }
     }
 
-    PackResult beam_result = make_result(state, available, boxes);
-    if (compare_local_scores(score_result(greedy_baseline), score_result(beam_result)) < 0)
-    {
-        return greedy_baseline;
-    }
-    return beam_result;
+    return make_result(state, available, boxes);
 }
 
 ContainerPacker::LocalPackScore ContainerPacker::greedy_complete(
