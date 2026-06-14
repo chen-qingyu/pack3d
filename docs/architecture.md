@@ -26,7 +26,6 @@ solve()
   │   ├─ infeasible -> 返回失败
   │   ├─ all_packed -> 返回成功
   │   ├─ 部分装箱 -> 返回 best_feasible
-  │   ├─ 无解且有时 -> multi_start_solve() 多起点重试
   │   └─ 完全无解 -> 返回 no_solution
   │
   └─ build_solution()            ── 组装输出
@@ -137,22 +136,16 @@ SearchState
 
 ---
 
-## 4. 多起点重试
+## 4. 箱子排序策略
 
-当首次搜索未找到可行解时，`multi_start_solve()` 尝试不同的箱子排序策略，增加找到解的几率。
+`make_initial_state()` 对待装箱子进行一次排序，之后不再重试。
+排序策略固定为**按平台分组，同平台内按体积降序**：
 
-排序策略列表：
+1. 空平台箱子视为默认平台，与有平台箱子统一按平台名字典序分组
+2. 同平台内按体积从大到小排序（大箱优先）
+3. 使用 `stable_sort`，同体积箱子保持原始相对顺序
 
-1. ByVolume 大体积优先（默认）
-2. ByVolumeAsc 小体积优先
-3. ByHeight 高箱子优先
-4. ByPlatformThenVolume 按路线平台分组，再按体积
-5. ByMixed 随机打乱（3 次）
-
-对每个排序策略执行 2 次（ByMixed 3 次），
-保留所有尝试中的最优解（字典序比较）。
-
-只有全部装箱（`all_packed == true`）且优于当前 `best_feasible` 的结果才会被采纳。
+这种排序鼓励同平台箱子在搜索中被连续放置到同一容器中，有利于降低 `platform_count` 目标。
 
 ---
 

@@ -4,7 +4,6 @@
 #include <cassert>
 #include <cmath>
 #include <numeric>
-#include <random>
 #include <set>
 
 #include <spdlog/spdlog.h>
@@ -14,6 +13,9 @@
 
 namespace hypercube
 {
+
+// 默认空平台标识
+inline const std::string empty_platform_id;
 
 // 有值则 to_string，无值则 "null"
 template <typename T>
@@ -88,36 +90,7 @@ Solution SolverEngine::solve_sgep()
         return build_solution(state, true, reason::k_feasible);
     }
 
-    // 未全部装箱：检查 best_feasible、超时或多起点
-    if (state.best_feasible.has_value())
-    {
-        Solution sol = state.best_feasible.value();
-        sol.success = false;
-        sol.reason = reason::k_feasible;
-        return sol;
-    }
-
-    // 尚无可行解：若还有容器类型可用则尝试多起点
-    if (check_time(state))
-    {
-        // 检查是否还有未耗尽的容器类型，没有的话多起点也是白费功夫
-        bool can_open_any = false;
-        for (const auto& ct : problem_.container_types)
-        {
-            auto it = state.container_type_usage.find(ct.id);
-            int used = (it != state.container_type_usage.end()) ? it->second : 0;
-            if (!ct.quantity_limit.has_value() || used < ct.quantity_limit.value())
-            {
-                can_open_any = true;
-                break;
-            }
-        }
-        if (can_open_any)
-        {
-            multi_start_solve(state);
-        }
-    }
-
+    // 未全部装箱：检查 best_feasible
     if (state.best_feasible.has_value())
     {
         Solution sol = state.best_feasible.value();
@@ -130,7 +103,7 @@ Solution SolverEngine::solve_sgep()
     return build_solution(state, false, reason::k_no_solution);
 }
 
-SearchState SolverEngine::make_initial_state(BoxOrder order) const
+SearchState SolverEngine::make_initial_state() const
 {
     SearchState s;
     // 复用构造时已建好的 maps，避免每次重建
@@ -143,61 +116,21 @@ SearchState SolverEngine::make_initial_state(BoxOrder order) const
     s.problem = &problem_;
     s.objective_keys = problem_.objective_keys.empty() ? default_objective_keys() : problem_.objective_keys;
 
-    switch (order)
-    {
-        case BoxOrder::ByVolume:
-            std::sort(s.remaining_boxes.begin(), s.remaining_boxes.end(),
-                      [&](const Box& a, const Box& b)
-                      {
-                          auto& at = box_type_map_.at(a.box_type_id);
-                          auto& bt = box_type_map_.at(b.box_type_id);
-                          return at.size.volume() > bt.size.volume();
-                      });
-            break;
-
-        case BoxOrder::ByVolumeAsc:
-            std::sort(s.remaining_boxes.begin(), s.remaining_boxes.end(),
-                      [&](const Box& a, const Box& b)
-                      {
-                          auto& at = box_type_map_.at(a.box_type_id);
-                          auto& bt = box_type_map_.at(b.box_type_id);
-                          return at.size.volume() < bt.size.volume();
-                      });
-            break;
-
-        case BoxOrder::ByHeight:
-            std::sort(s.remaining_boxes.begin(), s.remaining_boxes.end(),
-                      [&](const Box& a, const Box& b)
-                      {
-                          auto& at = box_type_map_.at(a.box_type_id);
-                          auto& bt = box_type_map_.at(b.box_type_id);
-                          return at.size.z > bt.size.z;
-                      });
-            break;
-
-        case BoxOrder::ByPlatformThenVolume:
-            std::stable_sort(s.remaining_boxes.begin(), s.remaining_boxes.end(),
-                             [&](const Box& a, const Box& b)
-                             {
-                                 // 空平台排在最后
-                                 if (a.platform.empty() != b.platform.empty())
-                                 {
-                                     return b.platform.empty();
-                                 }
-                                 // 同平台内按体积降序
-                                 auto& at = box_type_map_.at(a.box_type_id);
-                                 auto& bt = box_type_map_.at(b.box_type_id);
-                                 return at.size.volume() > bt.size.volume();
-                             });
-            break;
-
-        case BoxOrder::ByMixed:
-            // 不排序，调用者会打乱
-            break;
-
-        default:
-            assert(false && "Unhandled BoxOrder enum value");
-    }
+    // 按平台分组（空平台视为默认平台），同平台内按体积降序
+    std::stable_sort(s.remaining_boxes.begin(), s.remaining_boxes.end(),
+                     [&](const Box& a, const Box& b)
+                     {
+                         const auto& pa = a.platform.empty() ? empty_platform_id : a.platform;
+                         const auto& pb = b.platform.empty() ? empty_platform_id : b.platform;
+                         if (pa != pb)
+                         {
+                             return pa < pb;
+                         }
+                         // 同平台内按体积降序
+                         auto& at = box_type_map_.at(a.box_type_id);
+                         auto& bt = box_type_map_.at(b.box_type_id);
+                         return at.size.volume() > bt.size.volume();
+                     });
 
     return s;
 }
@@ -965,71 +898,6 @@ Solution SolverEngine::build_solution(const SearchState& state,
     sol.objective_keys = state.objective_keys;
 
     return sol;
-}
-
-// 尝试不同排序 + 打乱
-void SolverEngine::multi_start_solve(SearchState& state)
-{
-    std::mt19937 rng(42);
-
-    const BoxOrder orders[] = {
-        BoxOrder::ByVolume,
-        BoxOrder::ByVolumeAsc,
-        BoxOrder::ByHeight,
-        BoxOrder::ByPlatformThenVolume,
-        BoxOrder::ByMixed,
-    };
-
-    for (auto order : orders)
-    {
-        if (!check_time(state))
-        {
-            break;
-        }
-
-        int seeds = (order == BoxOrder::ByMixed) ? 3 : 2;
-        for (int s = 0; s < seeds; ++s)
-        {
-            if (!check_time(state))
-            {
-                break;
-            }
-
-            SearchState fresh = make_initial_state(order);
-            fresh.start_time = state.start_time;
-            fresh.time_limit = state.time_limit;
-
-            if (order == BoxOrder::ByMixed)
-            {
-                std::shuffle(fresh.remaining_boxes.begin(),
-                             fresh.remaining_boxes.end(), rng);
-            }
-
-            bool all_packed = construct_solution(fresh);
-
-            if (all_packed && fresh.best_feasible.has_value())
-            {
-                auto cand_ov = compute_objective(fresh.open_containers);
-
-                if (!state.best_feasible.has_value() ||
-                    cand_ov.is_better_than(state.best_feasible->objective, fresh.objective_keys))
-                {
-                    Solution& cand = fresh.best_feasible.value();
-                    state.best_feasible = std::move(cand);
-                    state.best_feasible->objective = cand_ov;
-                }
-
-                // 单容器已达到 min_container_count 最优，跳过剩余搜索
-                if (fresh.open_containers.size() == 1 &&
-                    state.best_feasible.has_value() &&
-                    state.objective_keys.size() == 1 &&
-                    state.objective_keys[0] == "min_container_count")
-                {
-                    return;
-                }
-            }
-        }
-    }
 }
 
 Solution SolverEngine::solve_mlhs()

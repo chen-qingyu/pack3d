@@ -58,16 +58,6 @@ struct SearchState
     const Problem* problem = nullptr;
 };
 
-// 箱子排序策略
-enum class BoxOrder : uint8_t
-{
-    ByVolume,             // 大体积优先（默认）
-    ByVolumeAsc,          // 小体积优先
-    ByHeight,             // 高箱子优先（Z 方向最受限）
-    ByPlatformThenVolume, // 按路线平台分组，再按体积
-    ByMixed,              // 打乱（增加多样性）
-};
-
 // 求解器引擎
 class SolverEngine
 {
@@ -91,7 +81,7 @@ private:
 
     // --- 内部辅助 ---
 
-    SearchState make_initial_state(BoxOrder order = BoxOrder::ByVolume) const;
+    SearchState make_initial_state() const;
 
     bool construct_solution(SearchState& state);
     bool open_new_container(SearchState& state);
@@ -103,8 +93,6 @@ private:
 
     Solution build_solution(const SearchState& state, bool success,
                             const std::string& reason) const;
-
-    void multi_start_solve(SearchState& state);
 
     bool check_tender_limit(SearchState& state);
 
