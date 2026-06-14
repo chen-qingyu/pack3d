@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <map>
 #include <optional>
 #include <string>
@@ -41,6 +42,11 @@ public:
     /// beam_width: 每层保留的部分方案数（MLHS 论文取 6~16）
     [[nodiscard]] PackResult pack_beam(const std::vector<Box>& boxes, int beam_width);
 
+    void set_deadline(std::chrono::steady_clock::time_point dl)
+    {
+        deadline_ = dl;
+    }
+
 private:
     struct LocalPackScore
     {
@@ -68,6 +74,13 @@ private:
     bool has_weight_info_;
 
     BlockGenerator block_gen_;
+    std::chrono::steady_clock::time_point deadline_{
+        std::chrono::steady_clock::time_point::max()};
+
+    [[nodiscard]] bool check_time() const
+    {
+        return std::chrono::steady_clock::now() < deadline_;
+    }
 
     /// 从块表中筛选当前空间可行的候选块
     [[nodiscard]] std::vector<const SimpleBlock*> filter_viable_blocks(

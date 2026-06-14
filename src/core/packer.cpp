@@ -468,6 +468,11 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
 
     while (!stack.empty() && !available.empty() && !all_blocks.empty())
     {
+        if (!check_time())
+        {
+            break;
+        }
+
         all_blocks.erase(
             std::remove_if(all_blocks.begin(), all_blocks.end(),
                            [&](const SimpleBlock& b)
@@ -500,6 +505,11 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
 
         for (int round = 0; round < kMaxRefineRounds && candidates.size() > 1; ++round)
         {
+            if (!check_time())
+            {
+                break;
+            }
+
             struct CandidateScore
             {
                 const SimpleBlock* block{nullptr};

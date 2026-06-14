@@ -225,6 +225,9 @@ std::optional<PackResult> GlobalScheduler::pack_container(
     }
 
     ContainerPacker packer(*ct, box_type_map_, box_map_, problem_, has_weight_info_);
+    auto deadline = start_time_ + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                                      std::chrono::duration<double>(problem_.time_limit));
+    packer.set_deadline(deadline);
     PackResult pr = packer.pack_beam(box_list, problem_.algorithm.width);
     if (pr.success || !pr.placements.empty())
     {
