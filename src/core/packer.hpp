@@ -37,9 +37,6 @@ public:
         const Problem& problem,
         bool has_weight_info);
 
-    /// 贪心装载（beam = 1）
-    [[nodiscard]] PackResult pack(const std::vector<Box>& boxes);
-
     /// Beam 搜索装载
     /// beam_width: 每层保留的部分方案数（MLHS 论文取 6~16）
     [[nodiscard]] PackResult pack_beam(const std::vector<Box>& boxes, int beam_width);

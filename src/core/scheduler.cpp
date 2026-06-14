@@ -225,15 +225,7 @@ std::optional<PackResult> GlobalScheduler::pack_container(
     }
 
     ContainerPacker packer(*ct, box_type_map_, box_map_, problem_, has_weight_info_);
-    PackResult pr;
-    if (problem_.algorithm.width > 1)
-    {
-        pr = packer.pack_beam(box_list, problem_.algorithm.width);
-    }
-    else
-    {
-        pr = packer.pack(box_list);
-    }
+    PackResult pr = packer.pack_beam(box_list, problem_.algorithm.width);
     if (pr.success || !pr.placements.empty())
     {
         return pr;
