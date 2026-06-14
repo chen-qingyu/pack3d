@@ -36,11 +36,16 @@ TEST_CASE("independent_objectives", "[solver]")
     for (auto key : all_keys)
     {
         base["objectives"] = {key};
-        auto res = run(base);
-        REQUIRE(res["success"] == true);
-        REQUIRE(res["summary"]["objective_keys"].size() == 1);
-        REQUIRE(res["summary"]["objective_keys"][0] == key);
-        REQUIRE(res["result"]["containers"].size() >= 1);
+
+        for (auto algo : {"sgep", "mlhs"})
+        {
+            base["algorithm"] = {{"use", algo}};
+            auto res = run(base);
+            REQUIRE(res["success"] == true);
+            REQUIRE(res["summary"]["objective_keys"].size() == 1);
+            REQUIRE(res["summary"]["objective_keys"][0] == key);
+            REQUIRE(res["result"]["containers"].size() >= 1);
+        }
     }
 }
 
@@ -52,22 +57,32 @@ TEST_CASE("min_container_count", "[solver]")
     SECTION("default -> 1 个大容器")
     {
         base["objectives"] = json::array();
-        auto res = run(base);
-        REQUIRE(res["summary"]["container_count"] == 1);
-        REQUIRE(res["summary"]["volume_rate"] < 1.0);
-        REQUIRE(res["result"]["containers"].size() == 1);
-        REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
+
+        for (auto algo : {"sgep", "mlhs"})
+        {
+            base["algorithm"] = {{"use", algo}};
+            auto res = run(base);
+            REQUIRE(res["summary"]["container_count"] == 1);
+            REQUIRE(res["summary"]["volume_rate"] < 1.0);
+            REQUIRE(res["result"]["containers"].size() == 1);
+            REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
+        }
     }
 
     SECTION("max_volume_rate -> 2 个小容器，各 100%")
     {
         base["objectives"] = {"max_volume_rate", "min_container_count"};
-        auto res = run(base);
-        REQUIRE(res["summary"]["container_count"] == 2);
-        REQUIRE(res["summary"]["volume_rate"] == 1.0);
-        REQUIRE(res["result"]["containers"].size() == 2);
-        REQUIRE(res["result"]["containers"][0]["type_id"] == "small");
-        REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
+
+        for (auto algo : {"sgep", "mlhs"})
+        {
+            base["algorithm"] = {{"use", algo}};
+            auto res = run(base);
+            REQUIRE(res["summary"]["container_count"] == 2);
+            REQUIRE(res["summary"]["volume_rate"] == 1.0);
+            REQUIRE(res["result"]["containers"].size() == 2);
+            REQUIRE(res["result"]["containers"][0]["type_id"] == "small");
+            REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
+        }
     }
 }
 
@@ -79,27 +94,37 @@ TEST_CASE("min_platform_count", "[solver]")
     SECTION("default -> 两个大容器，各一个平台")
     {
         base["objectives"] = json::array();
-        auto res = run(base);
-        REQUIRE(res["summary"]["platform_count"] == 2);
-        REQUIRE(res["summary"]["volume_rate"] < 1.0);
-        REQUIRE(res["result"]["containers"].size() == 2);
-        REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
-        REQUIRE(res["result"]["containers"][0]["load_summary"]["platforms"] == json::array({"A"}));
-        REQUIRE(res["result"]["containers"][1]["type_id"] == "big");
-        REQUIRE(res["result"]["containers"][1]["load_summary"]["platforms"] == json::array({"B"}));
+
+        for (auto algo : {"sgep", "mlhs"})
+        {
+            base["algorithm"] = {{"use", algo}};
+            auto res = run(base);
+            REQUIRE(res["summary"]["platform_count"] == 2);
+            REQUIRE(res["summary"]["volume_rate"] < 1.0);
+            REQUIRE(res["result"]["containers"].size() == 2);
+            REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
+            REQUIRE(res["result"]["containers"][0]["load_summary"]["platforms"] == json::array({"A"}));
+            REQUIRE(res["result"]["containers"][1]["type_id"] == "big");
+            REQUIRE(res["result"]["containers"][1]["load_summary"]["platforms"] == json::array({"B"}));
+        }
     }
 
     SECTION("max_volume_rate -> 一大一小，均 100%")
     {
         base["objectives"] = {"max_volume_rate", "min_platform_count"};
-        auto res = run(base);
-        REQUIRE(res["summary"]["platform_count"] == 3);
-        REQUIRE(res["summary"]["volume_rate"] == 1.0);
-        REQUIRE(res["result"]["containers"].size() == 2);
-        REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
-        REQUIRE(res["result"]["containers"][0]["load_summary"]["platforms"] == json::array({"A", "B"}));
-        REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
-        REQUIRE(res["result"]["containers"][1]["load_summary"]["platforms"] == json::array({"B"}));
+
+        for (auto algo : {"sgep", "mlhs"})
+        {
+            base["algorithm"] = {{"use", algo}};
+            auto res = run(base);
+            REQUIRE(res["summary"]["platform_count"] == 3);
+            REQUIRE(res["summary"]["volume_rate"] == 1.0);
+            REQUIRE(res["result"]["containers"].size() == 2);
+            REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
+            REQUIRE(res["result"]["containers"][0]["load_summary"]["platforms"] == json::array({"A", "B"}));
+            REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
+            REQUIRE(res["result"]["containers"][1]["load_summary"]["platforms"] == json::array({"B"}));
+        }
     }
 }
 
@@ -111,23 +136,33 @@ TEST_CASE("max_volume_rate", "[solver]")
     SECTION("default -> 1 个大容器")
     {
         base["objectives"] = json::array();
-        auto res = run(base);
-        REQUIRE(res["summary"]["volume_rate"] < 1.0);
-        REQUIRE(res["summary"]["container_count"] == 1);
-        REQUIRE(res["result"]["containers"].size() == 1);
-        REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
+
+        for (auto algo : {"sgep", "mlhs"})
+        {
+            base["algorithm"] = {{"use", algo}};
+            auto res = run(base);
+            REQUIRE(res["summary"]["volume_rate"] < 1.0);
+            REQUIRE(res["summary"]["container_count"] == 1);
+            REQUIRE(res["result"]["containers"].size() == 1);
+            REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
+        }
     }
 
     SECTION("max_volume_rate -> 3 个小容器，各 100%")
     {
         base["objectives"] = {"max_volume_rate", "min_container_count"};
-        auto res = run(base);
-        REQUIRE(res["summary"]["volume_rate"] == 1.0);
-        REQUIRE(res["summary"]["container_count"] == 3);
-        REQUIRE(res["result"]["containers"].size() == 3);
-        REQUIRE(res["result"]["containers"][0]["type_id"] == "small");
-        REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
-        REQUIRE(res["result"]["containers"][2]["type_id"] == "small");
+
+        for (auto algo : {"sgep", "mlhs"})
+        {
+            base["algorithm"] = {{"use", algo}};
+            auto res = run(base);
+            REQUIRE(res["summary"]["volume_rate"] == 1.0);
+            REQUIRE(res["summary"]["container_count"] == 3);
+            REQUIRE(res["result"]["containers"].size() == 3);
+            REQUIRE(res["result"]["containers"][0]["type_id"] == "small");
+            REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
+            REQUIRE(res["result"]["containers"][2]["type_id"] == "small");
+        }
     }
 }
 
@@ -139,22 +174,32 @@ TEST_CASE("min_group_split", "[solver]")
     SECTION("default -> 一大一小，组分散")
     {
         base["objectives"] = json::array();
-        auto res = run(base);
-        REQUIRE(res["summary"]["group_split"] == 1);
-        REQUIRE(res["summary"]["volume_rate"] == 1.0);
-        REQUIRE(res["result"]["containers"].size() == 2);
-        REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
-        REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
+
+        for (auto algo : {"sgep", "mlhs"})
+        {
+            base["algorithm"] = {{"use", algo}};
+            auto res = run(base);
+            REQUIRE(res["summary"]["group_split"] == 1);
+            REQUIRE(res["summary"]["volume_rate"] == 1.0);
+            REQUIRE(res["result"]["containers"].size() == 2);
+            REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
+            REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
+        }
     }
 
     SECTION("min_group_split -> 两个大容器，同组不分散")
     {
         base["objectives"] = {"min_group_split", "max_volume_rate"};
-        auto res = run(base);
-        REQUIRE(res["summary"]["group_split"] == 0);
-        REQUIRE(res["summary"]["volume_rate"] < 1.0);
-        REQUIRE(res["result"]["containers"].size() == 2);
-        REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
-        REQUIRE(res["result"]["containers"][1]["type_id"] == "big");
+
+        for (auto algo : {"sgep", "mlhs"})
+        {
+            base["algorithm"] = {{"use", algo}};
+            auto res = run(base);
+            REQUIRE(res["summary"]["group_split"] == 0);
+            REQUIRE(res["summary"]["volume_rate"] < 1.0);
+            REQUIRE(res["result"]["containers"].size() == 2);
+            REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
+            REQUIRE(res["result"]["containers"][1]["type_id"] == "big");
+        }
     }
 }
