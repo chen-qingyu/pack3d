@@ -71,7 +71,16 @@ int main(int argc, char** argv)
     }
 
     spdlog::info("Reading input: \"{}\"", input_file);
-    json j = json::parse(ifs);
+    json j;
+    try
+    {
+        j = json::parse(ifs);
+    }
+    catch (const std::exception& e)
+    {
+        spdlog::error("Failed to parse JSON: {}", e.what());
+        return 1;
+    }
 
     // CLI 覆盖
     if (!try_set<double>(j, program, "-t", "/constraints/time_limit") ||
