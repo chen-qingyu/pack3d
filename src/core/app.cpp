@@ -21,10 +21,10 @@ json run(const json& j) noexcept
         Solution s;
         s.status = "invalid";
         s.violations = std::move(schema_errors);
-        return solution_to_json(s);
+        return json(s);
     }
 
-    auto problem = problem_from_json(j);
+    auto problem = j.get<Problem>();
 
     // 语义校验
     auto violations = pre_validate_input(problem);
@@ -34,12 +34,12 @@ json run(const json& j) noexcept
         Solution s;
         s.status = "invalid";
         s.violations = std::move(violations);
-        return solution_to_json(s);
+        return json(s);
     }
 
     SolverEngine engine(problem);
     Solution solution = engine.solve();
-    return solution_to_json(solution);
+    return json(solution);
 }
 
 } // namespace hypercube

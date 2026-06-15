@@ -96,52 +96,52 @@ std::optional<double> json_opt_double(const json& j, const char* key)
     return it->get<double>();
 }
 
-Problem problem_from_json(const json& j) noexcept
+void from_json(const json& j, ContainerType& ct)
 {
-    Problem p;
+    j["id"].get_to(ct.id);
+    j["inner_size"]["x"].get_to(ct.inner_size.x);
+    j["inner_size"]["y"].get_to(ct.inner_size.y);
+    j["inner_size"]["z"].get_to(ct.inner_size.z);
+    ct.max_weight = json_opt_double(j, "max_weight");
+    ct.quantity_limit = json_opt_int(j, "quantity_limit");
+}
 
-    // container_types
+void from_json(const json& j, BoxType& bt)
+{
+    j["id"].get_to(bt.id);
+    j["size"]["x"].get_to(bt.size.x);
+    j["size"]["y"].get_to(bt.size.y);
+    j["size"]["z"].get_to(bt.size.z);
+    for (const auto& o_str : j["allowed_orientations"])
+    {
+        bt.allowed_orientations.push_back(orientation_from_string(o_str.get<std::string>()));
+    }
+}
+
+void from_json(const json& j, Box& bx)
+{
+    j["id"].get_to(bx.id);
+    j["box_type_id"].get_to(bx.box_type_id);
+    bx.weight = json_opt_double(j, "weight");
+    bx.group = j.value("group", std::string());
+    bx.platform = j.value("platform", std::string());
+}
+
+void from_json(const json& j, Problem& p)
+{
     for (const auto& item : j["container_types"])
     {
-        ContainerType ct;
-        ct.id = item["id"].get<std::string>();
-        ct.inner_size.x = item["inner_size"]["x"].get<int32_t>();
-        ct.inner_size.y = item["inner_size"]["y"].get<int32_t>();
-        ct.inner_size.z = item["inner_size"]["z"].get<int32_t>();
-        ct.max_weight = json_opt_double(item, "max_weight");
-        ct.quantity_limit = json_opt_int(item, "quantity_limit");
-        p.container_types.push_back(std::move(ct));
+        p.container_types.push_back(item.get<ContainerType>());
     }
-
-    // box_types
     for (const auto& item : j["box_types"])
     {
-        BoxType bt;
-        bt.id = item["id"].get<std::string>();
-        bt.size.x = item["size"]["x"].get<int32_t>();
-        bt.size.y = item["size"]["y"].get<int32_t>();
-        bt.size.z = item["size"]["z"].get<int32_t>();
-        for (const auto& o_str : item["allowed_orientations"])
-        {
-            bt.allowed_orientations.push_back(
-                orientation_from_string(o_str.get<std::string>()));
-        }
-        p.box_types.push_back(std::move(bt));
+        p.box_types.push_back(item.get<BoxType>());
     }
-
-    // boxes
     for (const auto& item : j["boxes"])
     {
-        Box bx;
-        bx.id = item["id"].get<std::string>();
-        bx.box_type_id = item["box_type_id"].get<std::string>();
-        bx.weight = json_opt_double(item, "weight");
-        bx.group = item.value("group", std::string());
-        bx.platform = item.value("platform", std::string());
-        p.boxes.push_back(std::move(bx));
+        p.boxes.push_back(item.get<Box>());
     }
 
-    // constraints
     if (j.contains("constraints"))
     {
         const auto& c = j["constraints"];
@@ -151,7 +151,6 @@ Problem problem_from_json(const json& j) noexcept
         p.tender_limit = json_opt_int(c, "tender_limit");
     }
 
-    // route
     if (j.contains("route"))
     {
         RouteOrder route;
@@ -164,7 +163,6 @@ Problem problem_from_json(const json& j) noexcept
         p.route = std::move(route);
     }
 
-    // objectives
     if (j.contains("objectives"))
     {
         for (const auto& obj : j["objectives"])
@@ -173,7 +171,6 @@ Problem problem_from_json(const json& j) noexcept
         }
     }
 
-    // algorithm
     if (j.contains("algorithm"))
     {
         const auto& a = j["algorithm"];
@@ -192,8 +189,6 @@ Problem problem_from_json(const json& j) noexcept
             p.algorithm.algorithm = Algorithm::SGEP;
         }
     }
-
-    return p;
 }
 
 // 从 data/input_schema.json 读取 schema 并校验 JSON
@@ -325,10 +320,8 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     return out;
 }
 
-json solution_to_json(const Solution& sol) noexcept
+void to_json(json& j, const Solution& sol)
 {
-    json j;
-
     j["status"] = sol.status;
 
     json summary;
@@ -419,8 +412,6 @@ json solution_to_json(const Solution& sol) noexcept
     {
         j["violations"] = sol.violations;
     }
-
-    return j;
 }
 
 } // namespace hypercube
