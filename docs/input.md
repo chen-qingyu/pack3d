@@ -2,6 +2,14 @@
 
 JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_types`、`box_types`、`boxes`。
 
+## 坐标系
+
+约定程序统一采用右手坐标系，定义如下：
+
+- X 轴：长度，向右为正方向。
+- Y 轴：宽度，向后为正方向。
+- Z 轴：高度，向上为正方向。
+
 ## 容器类型 `container_types`
 
 ```json
@@ -30,11 +38,20 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段                   | 类型            | 必填 | 说明                                      |
-| ---------------------- | --------------- | ---- | ----------------------------------------- |
-| `id`                   | string          | 是   | 唯一标识                                  |
-| `size`                 | {x,y,z: int>=1} | 是   | 原始尺寸                                  |
-| `allowed_orientations` | string[]        | 是   | 允许朝向，枚举值: xyz/xzy/yxz/yzx/zxy/zyx |
+| 字段                   | 类型            | 必填 | 说明                 |
+| ---------------------- | --------------- | ---- | -------------------- |
+| `id`                   | string          | 是   | 唯一标识             |
+| `size`                 | {x,y,z: int>=1} | 是   | 原始尺寸             |
+| `allowed_orientations` | string[]        | 是   | 允许朝向，枚举值见下 |
+
+朝向枚举，表示原始尺寸的 x/y/z 分别映射到容器坐标轴的 X/Y/Z：
+
+- xyz: x->X, y->Y, z->Z
+- yxz: x->Y, y->X, z->Z
+- xzy: x->X, y->Z, z->Y
+- zxy: x->Z, y->X, z->Y
+- yzx: x->Y, y->Z, z->X
+- zyx: x->Z, y->Y, z->X
 
 ## 箱子实例 `boxes`
 
