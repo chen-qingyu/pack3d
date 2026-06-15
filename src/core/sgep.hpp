@@ -83,10 +83,6 @@ private:
     void update_best(SearchState& state);
     Solution build_solution(const SearchState& state, const std::string& status) const;
     bool check_tender_limit(SearchState& state);
-    Position compactify_placement(const ContainerLoad& container,
-                                  const Box& box,
-                                  Position pos,
-                                  const OrientedSize& osize) const;
 };
 
 } // namespace hypercube

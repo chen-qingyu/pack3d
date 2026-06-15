@@ -104,11 +104,10 @@ SearchState
 
 选定最优放置后，`apply_placement` 执行以下操作：
 
-1. 紧凑化 -> 向 Z-（地板）、Y-（墙面）、X-（车头）方向滑动，消除间隙
-2. 记录 Placement（box_id, position, orientation）
-3. 更新容器状态
-4. 生成新极点，过滤极点
-5. 更新 current_objective
+1. 记录 Placement（box_id, position, orientation）
+2. 更新容器状态
+3. 生成新极点，过滤极点
+4. 更新 current_objective
 
 #### 极点生成
 

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <functional>
 #include <numeric>
 #include <set>
 
@@ -627,52 +626,6 @@ bool SgepSolver::check_tender_limit(SearchState& state)
     return false;
 }
 
-Position SgepSolver::compactify_placement(const ContainerLoad& container,
-                                          const Box& box,
-                                          Position pos,
-                                          const OrientedSize& osize) const
-{
-    using MakePos = std::function<Position(int32_t)>;
-    auto slide = [&](int32_t start, int32_t limit, MakePos make_pos) -> int32_t
-    {
-        if (start <= limit)
-        {
-            return start;
-        }
-        int32_t cur = start;
-        int32_t step = 1;
-        while (cur - step > limit)
-        {
-            auto tp = make_pos(cur - step);
-            if (check_overlap_any(tp, osize, container.placements, box_type_map_))
-            {
-                break;
-            }
-            cur -= step;
-            step = std::min(step * 2, cur - limit);
-        }
-        for (int32_t t = cur - 1; t >= limit; --t)
-        {
-            auto tp = make_pos(t);
-            if (check_overlap_any(tp, osize, container.placements, box_type_map_))
-            {
-                break;
-            }
-            cur = t;
-        }
-        return cur;
-    };
-
-    pos.z = slide(pos.z, 0, [&](int32_t v)
-                  { return Position{pos.x, pos.y, v}; });
-    pos.y = slide(pos.y, 0, [&](int32_t v)
-                  { return Position{pos.x, v, pos.z}; });
-    pos.x = slide(pos.x, 0, [&](int32_t v)
-                  { return Position{v, pos.y, pos.z}; });
-
-    return pos;
-}
-
 void SgepSolver::apply_placement(SearchState& state, Candidate& cand)
 {
     auto cit = std::find_if(state.open_containers.begin(),
@@ -696,9 +649,6 @@ void SgepSolver::apply_placement(SearchState& state, Candidate& cand)
     }
 
     const Box& box = *bit;
-
-    cand.position = compactify_placement(container, box,
-                                         cand.position, cand.osize);
 
     Placement pl;
     pl.box_id = cand.box_id;
