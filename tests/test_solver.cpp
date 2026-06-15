@@ -41,7 +41,7 @@ TEST_CASE("independent_objectives", "[solver]")
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
-            REQUIRE(res["success"] == true);
+            REQUIRE(res["status"] == "complete");
             REQUIRE(res["summary"]["objective_keys"].size() == 1);
             REQUIRE(res["summary"]["objective_keys"][0] == key);
             REQUIRE(res["result"]["containers"].size() >= 1);

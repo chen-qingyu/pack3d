@@ -38,10 +38,12 @@ Solution SgepSolver::solve()
     bool all_packed = construct_solution(state);
 
     // --- 收尾 ---
+    auto now = std::chrono::steady_clock::now();
+    bool timed_out = std::chrono::duration<double>(now - state.start_time).count() >= state.time_limit;
+
     if (state.infeasible)
     {
-        return build_solution(state, false,
-                              state.failure_reason.c_str());
+        return build_solution(state, "blocked");
     }
 
     if (all_packed)
@@ -49,24 +51,22 @@ Solution SgepSolver::solve()
         if (state.best_feasible.has_value())
         {
             Solution sol = state.best_feasible.value();
-            sol.success = true;
-            sol.reason = reason::k_feasible;
+            sol.status = "complete";
             return sol;
         }
-        return build_solution(state, true, reason::k_feasible);
+        return build_solution(state, "complete");
     }
 
     // 未全部装箱：检查 best_feasible
     if (state.best_feasible.has_value())
     {
         Solution sol = state.best_feasible.value();
-        sol.success = false;
-        sol.reason = reason::k_feasible;
+        sol.status = "complete";
         return sol;
     }
 
     // 完全无可行解
-    return build_solution(state, false, reason::k_no_solution);
+    return build_solution(state, timed_out ? "timeout" : "partial");
 }
 
 SearchState SgepSolver::make_initial_state() const
@@ -622,7 +622,6 @@ bool SgepSolver::check_tender_limit(SearchState& state)
             if (!can_place)
             {
                 state.infeasible = true;
-                state.failure_reason = reason::k_tender_limit;
                 return true;
             }
         }
@@ -774,26 +773,24 @@ void SgepSolver::update_best(SearchState& state)
 
     if (!state.best_feasible.has_value())
     {
-        state.best_feasible = build_solution(state, true, reason::k_feasible);
+        state.best_feasible = build_solution(state, "complete");
         state.best_feasible->objective = ov;
     }
     else
     {
         if (ov.is_better_than(state.best_feasible->objective, state.objective_keys))
         {
-            state.best_feasible = build_solution(state, true, reason::k_feasible);
+            state.best_feasible = build_solution(state, "complete");
             state.best_feasible->objective = ov;
         }
     }
 }
 
 Solution SgepSolver::build_solution(const SearchState& state,
-                                    bool success,
-                                    const std::string& reason) const
+                                    const std::string& status) const
 {
     Solution sol;
-    sol.success = success;
-    sol.reason = reason;
+    sol.status = status;
 
     auto elapsed = std::chrono::steady_clock::now() - state.start_time;
     sol.elapsed_second = std::chrono::duration<double>(elapsed).count();

@@ -86,8 +86,7 @@ private:
     void apply_placement(SearchState& state, Candidate& cand);
     bool check_time(const SearchState& state) const;
     void update_best(SearchState& state);
-    Solution build_solution(const SearchState& state, bool success,
-                            const std::string& reason) const;
+    Solution build_solution(const SearchState& state, const std::string& status) const;
     bool check_tender_limit(SearchState& state);
     Position compactify_placement(const ContainerLoad& container,
                                   const Box& box,

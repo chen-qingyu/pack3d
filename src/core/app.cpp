@@ -19,8 +19,7 @@ json run(const json& j) noexcept
     {
         spdlog::error("Input schema validation failed");
         Solution s;
-        s.success = false;
-        s.reason = reason::k_invalid_range;
+        s.status = "invalid";
         s.violations = std::move(schema_errors);
         return solution_to_json(s);
     }
@@ -29,9 +28,8 @@ json run(const json& j) noexcept
     if (!problem.has_value())
     {
         Solution s;
-        s.success = false;
-        s.reason = reason::k_invalid_range;
-        s.violations.push_back({"json_parse", {}, "failed_to_parse_json_structure"});
+        s.status = "invalid";
+        s.violations.push_back("failed to parse json structure");
         return solution_to_json(s);
     }
 
@@ -40,8 +38,7 @@ json run(const json& j) noexcept
     if (!violations.empty())
     {
         Solution s;
-        s.success = false;
-        s.reason = violations.empty() ? reason::k_invalid_range : violations[0].details;
+        s.status = "invalid";
         s.violations = std::move(violations);
         return solution_to_json(s);
     }

@@ -234,13 +234,6 @@ struct ObjectiveVector
     }
 };
 
-struct Violation
-{
-    std::string kind;
-    std::vector<std::string> subject_ids;
-    std::string details; // 机器可读的短字符串
-};
-
 struct ContainerSummary
 {
     std::string id;
@@ -258,8 +251,7 @@ struct ContainerSummary
 
 struct Solution
 {
-    bool success = true;
-    std::string reason;
+    std::string status = "complete";
 
     double elapsed_second = 0.0;
     int packed_box_count = 0;
@@ -277,20 +269,7 @@ struct Solution
     /// 实际使用的目标键顺序（输入决定或默认）
     std::vector<std::string> objective_keys;
 
-    std::vector<Violation> violations;
+    std::vector<std::string> violations;
 };
-
-// 原因常量
-namespace reason
-{
-
-inline constexpr const char* k_feasible = "feasible";
-inline constexpr const char* k_no_solution = "no_solution";
-inline constexpr const char* k_tender_limit = "tender_limit";
-inline constexpr const char* k_invalid_range = "invalid_range";
-inline constexpr const char* k_duplicate_id = "duplicate_id";
-inline constexpr const char* k_route_missing_platform = "route_missing_platform";
-inline constexpr const char* k_inconsistent_weight = "inconsistent_weight";
-} // namespace reason
 
 } // namespace hypercube

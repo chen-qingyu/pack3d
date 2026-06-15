@@ -18,7 +18,7 @@ TEST_CASE("pre_validate_input 检测重复 ID", "[parser]")
     bool found_dup = false;
     for (const auto& v : violations)
     {
-        if (v.details == reason::k_duplicate_id)
+        if (v.find("duplicate") != std::string::npos)
         {
             found_dup = true;
         }
@@ -44,7 +44,7 @@ TEST_CASE("pre_validate_input 检测路线缺失平台", "[parser]")
     bool found_route = false;
     for (const auto& v : violations)
     {
-        if (v.details == reason::k_route_missing_platform)
+        if (v.find("not in route") != std::string::npos)
         {
             found_route = true;
         }

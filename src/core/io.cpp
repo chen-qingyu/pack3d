@@ -204,15 +204,15 @@ std::optional<Problem> problem_from_json(const json& j) noexcept
 }
 
 // 从 data/input_schema.json 读取 schema 并校验 JSON
-std::vector<Violation> validate_schema(const json& j) noexcept
+std::vector<std::string> validate_schema(const json& j) noexcept
 {
-    std::vector<Violation> out;
+    std::vector<std::string> out;
     try
     {
         std::ifstream ifs("data/input_schema.json");
         if (!ifs.is_open())
         {
-            out.push_back({"schema_internal", {}, "cannot open data/input_schema.json"});
+            out.push_back("cannot open data/input_schema.json");
             return out;
         }
         std::stringstream buf;
@@ -224,43 +224,46 @@ std::vector<Violation> validate_schema(const json& j) noexcept
     }
     catch (const std::exception& e)
     {
-        out.push_back({"schema_validation", {}, e.what()});
+        out.push_back(std::string("schema validation failed: ") + e.what());
     }
     return out;
 }
 
-// 重复 ID 检查
-template <typename T>
-std::vector<Violation> check_duplicate_ids(const std::vector<T>& items,
-                                           const char* kind)
+std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
 {
-    std::vector<Violation> out;
-    std::set<std::string> seen;
-    for (const auto& item : items)
+    std::vector<std::string> out;
+
+    // 重复 ID
     {
-        if (!seen.insert(item.id).second)
+        std::set<std::string> seen;
+        for (const auto& ct : problem.container_types)
         {
-            out.push_back({std::string(kind),
-                           {item.id},
-                           reason::k_duplicate_id});
+            if (!seen.insert(ct.id).second)
+            {
+                out.push_back("duplicate container_type id: " + ct.id);
+            }
         }
     }
-    return out;
-}
-
-// 预校验输入（schema 无法表达的跨字段校验），空列表表示通过
-std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
-{
-    std::vector<Violation> out;
-
-    auto dup_ct = check_duplicate_ids(problem.container_types, "container_type");
-    out.insert(out.end(), dup_ct.begin(), dup_ct.end());
-
-    auto dup_bt = check_duplicate_ids(problem.box_types, "box_type");
-    out.insert(out.end(), dup_bt.begin(), dup_bt.end());
-
-    auto dup_bx = check_duplicate_ids(problem.boxes, "box");
-    out.insert(out.end(), dup_bx.begin(), dup_bx.end());
+    {
+        std::set<std::string> seen;
+        for (const auto& bt : problem.box_types)
+        {
+            if (!seen.insert(bt.id).second)
+            {
+                out.push_back("duplicate box_type id: " + bt.id);
+            }
+        }
+    }
+    {
+        std::set<std::string> seen;
+        for (const auto& bx : problem.boxes)
+        {
+            if (!seen.insert(bx.id).second)
+            {
+                out.push_back("duplicate box id: " + bx.id);
+            }
+        }
+    }
 
     std::set<std::string> bt_ids;
     for (const auto& bt : problem.box_types)
@@ -271,13 +274,11 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
     {
         if (!bt_ids.count(bx.box_type_id))
         {
-            out.push_back({"unknown_box_type", {bx.id, bx.box_type_id}, "unknown_box_type"});
+            out.push_back("unknown box_type_id '" + bx.box_type_id + "' for box " + bx.id);
         }
     }
 
-    // 重量信息一致性校验：
-    // - 任一箱子有重量 -> 所有箱子和容器都必须有重量信息
-    // - 容器有限重而箱子无重量 -> 允许（此时整个重量约束被禁用）
+    // 重量信息一致性校验
     bool any_box_has_weight = false;
     bool all_boxes_have_weight = true;
     for (const auto& bx : problem.boxes)
@@ -295,13 +296,13 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
     {
         if (!all_boxes_have_weight)
         {
-            out.push_back({"weight", {}, reason::k_inconsistent_weight});
+            out.push_back("inconsistent weight: some boxes have weight, some don't");
         }
         for (const auto& ct : problem.container_types)
         {
             if (!ct.max_weight.has_value())
             {
-                out.push_back({"weight", {ct.id}, reason::k_inconsistent_weight});
+                out.push_back("inconsistent weight: container_type " + ct.id + " missing max_weight");
             }
         }
     }
@@ -315,7 +316,7 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
         {
             if (!rseen.insert(p).second)
             {
-                out.push_back({"route_duplicate", {p}, reason::k_route_missing_platform});
+                out.push_back("duplicate platform in route: " + p);
             }
         }
 
@@ -323,9 +324,7 @@ std::vector<Violation> pre_validate_input(const Problem& problem) noexcept
         {
             if (!bx.platform.empty() && !route.index_of.count(bx.platform))
             {
-                out.push_back({"route_platform_missing",
-                               {bx.id, bx.platform},
-                               reason::k_route_missing_platform});
+                out.push_back("platform '" + bx.platform + "' not in route, box " + bx.id);
             }
         }
     }
@@ -337,8 +336,7 @@ json solution_to_json(const Solution& sol) noexcept
 {
     json j;
 
-    j["success"] = sol.success;
-    j["reason"] = sol.reason;
+    j["status"] = sol.status;
 
     json summary;
     summary["elapsed_second"] = sol.elapsed_second;
@@ -430,16 +428,7 @@ json solution_to_json(const Solution& sol) noexcept
 
     if (!sol.violations.empty())
     {
-        json violations_json = json::array();
-        for (const auto& v : sol.violations)
-        {
-            json vj;
-            vj["kind"] = v.kind;
-            vj["subject_ids"] = v.subject_ids;
-            vj["details"] = v.details;
-            violations_json.push_back(std::move(vj));
-        }
-        j["violations"] = std::move(violations_json);
+        j["violations"] = sol.violations;
     }
 
     return j;

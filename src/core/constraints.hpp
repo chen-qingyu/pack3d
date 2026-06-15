@@ -1,6 +1,5 @@
 #pragma once
 
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,7 +13,6 @@ namespace hypercube
 struct ConstraintResult
 {
     bool ok = true;
-    std::optional<Violation> violation;
 };
 
 [[nodiscard]] ConstraintResult check_boundary_constraint(const ContainerLoad& load,

@@ -57,8 +57,7 @@ Solution GlobalScheduler::schedule()
             int tl_ret = handle_tender_limit_groups(remaining_ids, slots);
             if (tl_ret < 0)
             {
-                return to_solution(slots, problem_.boxes, false,
-                                   reason::k_tender_limit);
+                return to_solution(slots, problem_.boxes, "blocked");
             }
             if (tl_ret > 0)
             {
@@ -210,8 +209,20 @@ Solution GlobalScheduler::schedule()
     }
 
     bool all_packed = remaining_ids.empty();
-    return to_solution(slots, problem_.boxes, all_packed,
-                       all_packed ? reason::k_feasible : reason::k_no_solution);
+    std::string final_status;
+    if (all_packed)
+    {
+        final_status = "complete";
+    }
+    else if (!check_time())
+    {
+        final_status = "timeout";
+    }
+    else
+    {
+        final_status = "partial";
+    }
+    return to_solution(slots, problem_.boxes, final_status);
 }
 
 std::optional<PackResult> GlobalScheduler::pack_container(
@@ -239,12 +250,10 @@ std::optional<PackResult> GlobalScheduler::pack_container(
 Solution GlobalScheduler::to_solution(
     const std::vector<ContainerSlot>& slots,
     const std::vector<Box>& all_boxes,
-    bool success,
-    const std::string& reason) const
+    const std::string& status) const
 {
     Solution sol;
-    sol.success = success;
-    sol.reason = reason;
+    sol.status = status;
     sol.box_types = problem_.box_types;
     sol.objective_keys = problem_.objective_keys.empty()
                              ? default_objective_keys()
