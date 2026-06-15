@@ -54,6 +54,13 @@ Solution SolverEngine::solve()
     log_container_stats(solution.container_summaries);
 
     spdlog::info("===Algorithm End===");
+
+    if (solution.status != "complete")
+    {
+        spdlog::warn("Result status: {} ({} packed / {} unpacked)",
+                     solution.status, solution.packed_box_count, solution.unpacked_box_count);
+    }
+
     spdlog::info("Time used: {:.3f} s", solution.elapsed_second);
     return solution;
 }

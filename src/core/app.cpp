@@ -27,6 +27,7 @@ json run(const json& j) noexcept
     auto problem = problem_from_json(j);
     if (!problem.has_value())
     {
+        spdlog::error("Failed to parse input json structure");
         Solution s;
         s.status = "invalid";
         s.violations.push_back("failed to parse json structure");
@@ -37,6 +38,7 @@ json run(const json& j) noexcept
     auto violations = pre_validate_input(problem.value());
     if (!violations.empty())
     {
+        spdlog::error("Input validation failed");
         Solution s;
         s.status = "invalid";
         s.violations = std::move(violations);
