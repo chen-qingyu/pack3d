@@ -18,7 +18,7 @@ namespace hypercube
 [[nodiscard]] std::vector<std::string> validate_schema(const json& j) noexcept;
 
 /// 从 json 对象反序列化 Problem
-[[nodiscard]] std::optional<Problem> problem_from_json(const json& j) noexcept;
+[[nodiscard]] Problem problem_from_json(const json& j) noexcept;
 
 /// 输入语义校验（schema 无法表达的跨字段校验：重复 ID、引用完整性、路线等）
 [[nodiscard]] std::vector<std::string> pre_validate_input(const Problem& problem) noexcept;

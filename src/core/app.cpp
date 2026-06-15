@@ -25,17 +25,9 @@ json run(const json& j) noexcept
     }
 
     auto problem = problem_from_json(j);
-    if (!problem.has_value())
-    {
-        spdlog::error("Failed to parse input json structure");
-        Solution s;
-        s.status = "invalid";
-        s.violations.push_back("failed to parse json structure");
-        return solution_to_json(s);
-    }
 
-    // 语义预校验
-    auto violations = pre_validate_input(problem.value());
+    // 语义校验
+    auto violations = pre_validate_input(problem);
     if (!violations.empty())
     {
         spdlog::error("Input validation failed");
@@ -45,7 +37,7 @@ json run(const json& j) noexcept
         return solution_to_json(s);
     }
 
-    SolverEngine engine(problem.value());
+    SolverEngine engine(problem);
     Solution solution = engine.solve();
     return solution_to_json(solution);
 }

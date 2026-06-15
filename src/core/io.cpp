@@ -96,111 +96,104 @@ std::optional<double> json_opt_double(const json& j, const char* key)
     return it->get<double>();
 }
 
-std::optional<Problem> problem_from_json(const json& j) noexcept
+Problem problem_from_json(const json& j) noexcept
 {
-    try
+    Problem p;
+
+    // container_types
+    for (const auto& item : j["container_types"])
     {
-        Problem p;
-
-        // container_types
-        for (const auto& item : j["container_types"])
-        {
-            ContainerType ct;
-            ct.id = item["id"].get<std::string>();
-            ct.inner_size.x = item["inner_size"]["x"].get<int32_t>();
-            ct.inner_size.y = item["inner_size"]["y"].get<int32_t>();
-            ct.inner_size.z = item["inner_size"]["z"].get<int32_t>();
-            ct.max_weight = json_opt_double(item, "max_weight");
-            ct.quantity_limit = json_opt_int(item, "quantity_limit");
-            p.container_types.push_back(std::move(ct));
-        }
-
-        // box_types
-        for (const auto& item : j["box_types"])
-        {
-            BoxType bt;
-            bt.id = item["id"].get<std::string>();
-            bt.size.x = item["size"]["x"].get<int32_t>();
-            bt.size.y = item["size"]["y"].get<int32_t>();
-            bt.size.z = item["size"]["z"].get<int32_t>();
-            for (const auto& o_str : item["allowed_orientations"])
-            {
-                bt.allowed_orientations.push_back(
-                    orientation_from_string(o_str.get<std::string>()));
-            }
-            p.box_types.push_back(std::move(bt));
-        }
-
-        // boxes
-        for (const auto& item : j["boxes"])
-        {
-            Box bx;
-            bx.id = item["id"].get<std::string>();
-            bx.box_type_id = item["box_type_id"].get<std::string>();
-            bx.weight = json_opt_double(item, "weight");
-            bx.group = item.value("group", std::string());
-            bx.platform = item.value("platform", std::string());
-            p.boxes.push_back(std::move(bx));
-        }
-
-        // constraints
-        if (j.contains("constraints"))
-        {
-            const auto& c = j["constraints"];
-            p.time_limit = c.value("time_limit", 120.0);
-            p.support_rate = c.value("support_rate", 0.0);
-            p.platform_limit = json_opt_int(c, "platform_limit");
-            p.tender_limit = json_opt_int(c, "tender_limit");
-        }
-
-        // route
-        if (j.contains("route"))
-        {
-            RouteOrder route;
-            for (const auto& plat : j["route"])
-            {
-                std::string pname = plat.get<std::string>();
-                route.index_of[pname] = route.platform_order.size();
-                route.platform_order.push_back(std::move(pname));
-            }
-            p.route = std::move(route);
-        }
-
-        // objectives
-        if (j.contains("objectives"))
-        {
-            for (const auto& obj : j["objectives"])
-            {
-                p.objective_keys.push_back(obj.get<std::string>());
-            }
-        }
-
-        // algorithm
-        if (j.contains("algorithm"))
-        {
-            const auto& a = j["algorithm"];
-            std::string use = a.value("use", "sgep");
-            if (use == "mlhs")
-            {
-                p.algorithm.algorithm = Algorithm::MLHS;
-                const auto& cfg = a["config"];
-                if (cfg.contains("mlhs") && cfg["mlhs"].contains("width"))
-                {
-                    p.algorithm.width = cfg["mlhs"]["width"].get<int>();
-                }
-            }
-            else
-            {
-                p.algorithm.algorithm = Algorithm::SGEP;
-            }
-        }
-
-        return p;
+        ContainerType ct;
+        ct.id = item["id"].get<std::string>();
+        ct.inner_size.x = item["inner_size"]["x"].get<int32_t>();
+        ct.inner_size.y = item["inner_size"]["y"].get<int32_t>();
+        ct.inner_size.z = item["inner_size"]["z"].get<int32_t>();
+        ct.max_weight = json_opt_double(item, "max_weight");
+        ct.quantity_limit = json_opt_int(item, "quantity_limit");
+        p.container_types.push_back(std::move(ct));
     }
-    catch (const std::exception&)
+
+    // box_types
+    for (const auto& item : j["box_types"])
     {
-        return std::nullopt;
+        BoxType bt;
+        bt.id = item["id"].get<std::string>();
+        bt.size.x = item["size"]["x"].get<int32_t>();
+        bt.size.y = item["size"]["y"].get<int32_t>();
+        bt.size.z = item["size"]["z"].get<int32_t>();
+        for (const auto& o_str : item["allowed_orientations"])
+        {
+            bt.allowed_orientations.push_back(
+                orientation_from_string(o_str.get<std::string>()));
+        }
+        p.box_types.push_back(std::move(bt));
     }
+
+    // boxes
+    for (const auto& item : j["boxes"])
+    {
+        Box bx;
+        bx.id = item["id"].get<std::string>();
+        bx.box_type_id = item["box_type_id"].get<std::string>();
+        bx.weight = json_opt_double(item, "weight");
+        bx.group = item.value("group", std::string());
+        bx.platform = item.value("platform", std::string());
+        p.boxes.push_back(std::move(bx));
+    }
+
+    // constraints
+    if (j.contains("constraints"))
+    {
+        const auto& c = j["constraints"];
+        p.time_limit = c.value("time_limit", 120.0);
+        p.support_rate = c.value("support_rate", 0.0);
+        p.platform_limit = json_opt_int(c, "platform_limit");
+        p.tender_limit = json_opt_int(c, "tender_limit");
+    }
+
+    // route
+    if (j.contains("route"))
+    {
+        RouteOrder route;
+        for (const auto& plat : j["route"])
+        {
+            std::string pname = plat.get<std::string>();
+            route.index_of[pname] = route.platform_order.size();
+            route.platform_order.push_back(std::move(pname));
+        }
+        p.route = std::move(route);
+    }
+
+    // objectives
+    if (j.contains("objectives"))
+    {
+        for (const auto& obj : j["objectives"])
+        {
+            p.objective_keys.push_back(obj.get<std::string>());
+        }
+    }
+
+    // algorithm
+    if (j.contains("algorithm"))
+    {
+        const auto& a = j["algorithm"];
+        std::string use = a.value("use", "sgep");
+        if (use == "mlhs")
+        {
+            p.algorithm.algorithm = Algorithm::MLHS;
+            const auto& cfg = a["config"];
+            if (cfg.contains("mlhs") && cfg["mlhs"].contains("width"))
+            {
+                p.algorithm.width = cfg["mlhs"]["width"].get<int>();
+            }
+        }
+        else
+        {
+            p.algorithm.algorithm = Algorithm::SGEP;
+        }
+    }
+
+    return p;
 }
 
 // 从 data/input_schema.json 读取 schema 并校验 JSON
