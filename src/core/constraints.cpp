@@ -6,33 +6,33 @@
 namespace hypercube
 {
 
-ConstraintResult check_boundary_constraint(const ContainerLoad& load,
-                                           const Position& pos,
-                                           const OrientedSize& osize) noexcept
+bool check_boundary_constraint(const ContainerLoad& load,
+                               const Position& pos,
+                               const OrientedSize& osize) noexcept
 {
-    return {check_boundary(*load.type, pos, osize)};
+    return check_boundary(*load.type, pos, osize);
 }
 
-ConstraintResult check_overlap_constraint(
+bool check_overlap_constraint(
     const ContainerLoad& load,
     const Position& pos, const OrientedSize& osize,
     const std::map<std::string, BoxType>& box_type_map) noexcept
 {
-    return {!check_overlap_any(pos, osize, load.placements, box_type_map)};
+    return !check_overlap_any(pos, osize, load.placements, box_type_map);
 }
 
-ConstraintResult check_weight_constraint(const ContainerLoad& load,
-                                         const OrientedSize& osize,
-                                         double box_weight) noexcept
+bool check_weight_constraint(const ContainerLoad& load,
+                             const OrientedSize& osize,
+                             double box_weight) noexcept
 {
     if (!load.type->max_weight.has_value())
     {
-        return {true};
+        return true;
     }
-    return {load.total_weight + box_weight <= load.type->max_weight.value() + 1e-9};
+    return load.total_weight + box_weight <= load.type->max_weight.value() + 1e-9;
 }
 
-ConstraintResult check_support_constraint(
+bool check_support_constraint(
     const ContainerLoad& load,
     const Position& pos, const OrientedSize& osize,
     double support_rate,
@@ -40,13 +40,13 @@ ConstraintResult check_support_constraint(
 {
     if (support_rate <= 0.0)
     {
-        return {true};
+        return true;
     }
     double ratio = calc_support_ratio(pos, osize, load, box_type_map);
-    return {ratio + 1e-9 >= support_rate};
+    return ratio + 1e-9 >= support_rate;
 }
 
-ConstraintResult check_route_order_constraint(
+bool check_route_order_constraint(
     const ContainerLoad& load,
     const std::string& platform,
     const Position& pos, const OrientedSize& osize,
@@ -54,13 +54,13 @@ ConstraintResult check_route_order_constraint(
 {
     if (platform.empty())
     {
-        return {true};
+        return true;
     }
 
     auto it = route.index_of.find(platform);
     if (it == route.index_of.end())
     {
-        return {true};
+        return true;
     }
 
     size_t my_idx = it->second;
@@ -83,7 +83,7 @@ ConstraintResult check_route_order_constraint(
         {
             if (pos.x < other_min_x)
             {
-                return {false};
+                return false;
             }
         }
         else
@@ -93,29 +93,29 @@ ConstraintResult check_route_order_constraint(
             {
                 if (pos.x + osize.dx > max_it->second)
                 {
-                    return {false};
+                    return false;
                 }
             }
         }
     }
 
-    return {true};
+    return true;
 }
 
-ConstraintResult check_platform_limit_constraint(
+bool check_platform_limit_constraint(
     const ContainerLoad& load,
     const std::string& platform,
     int platform_limit) noexcept
 {
     if (platform_limit <= 0)
     {
-        return {true};
+        return true;
     }
     if (load.platforms.count(platform))
     {
-        return {true};
+        return true;
     }
-    return {static_cast<int>(load.platforms.size()) < platform_limit};
+    return static_cast<int>(load.platforms.size()) < platform_limit;
 }
 
 } // namespace hypercube

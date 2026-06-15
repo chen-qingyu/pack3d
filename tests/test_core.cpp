@@ -109,14 +109,11 @@ TEST_CASE("平台数量限制约束", "[core]")
     load.type = &ct;
     load.platforms.insert("A");
 
-    auto r1 = check_platform_limit_constraint(load, "B", 1);
-    REQUIRE_FALSE(r1.ok);
+    REQUIRE_FALSE(check_platform_limit_constraint(load, "B", 1));
 
-    auto r2 = check_platform_limit_constraint(load, "A", 1);
-    REQUIRE(r2.ok);
+    REQUIRE(check_platform_limit_constraint(load, "A", 1));
 
-    auto r3 = check_platform_limit_constraint(load, "B", 0);
-    REQUIRE(r3.ok);
+    REQUIRE(check_platform_limit_constraint(load, "B", 0));
 }
 
 TEST_CASE("ObjectiveVector 字典序比较", "[core]")

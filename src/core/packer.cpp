@@ -149,9 +149,8 @@ bool ContainerPacker::check_block_feasible(
                 // 路线顺序检查
                 if (!block.platform.empty() && problem_.route.has_value())
                 {
-                    auto rr = check_route_order_constraint(
-                        sim, block.platform, pos, single, problem_.route.value());
-                    if (!rr.ok)
+                    if (!check_route_order_constraint(
+                            sim, block.platform, pos, single, problem_.route.value()))
                     {
                         return false;
                     }

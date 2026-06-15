@@ -258,9 +258,8 @@ bool SgepSolver::place_next_box(SearchState& state)
 
             if (problem_.platform_limit.has_value() && !box.platform.empty())
             {
-                auto pr = check_platform_limit_constraint(
-                    container, box.platform, problem_.platform_limit.value());
-                if (!pr.ok)
+                if (!check_platform_limit_constraint(
+                        container, box.platform, problem_.platform_limit.value()))
                 {
                     continue;
                 }
@@ -274,28 +273,27 @@ bool SgepSolver::place_next_box(SearchState& state)
                 {
                     OrientedSize osize = orient_size(bt.size, orient);
 
-                    if (!check_boundary_constraint(container, ep, osize).ok)
+                    if (!check_boundary_constraint(container, ep, osize))
                     {
                         continue;
                     }
-                    if (!check_overlap_constraint(container, ep, osize, box_type_map_).ok)
+                    if (!check_overlap_constraint(container, ep, osize, box_type_map_))
                     {
                         continue;
                     }
-                    if (has_weight_info_ && !check_weight_constraint(container, osize, box.weight.value()).ok)
+                    if (has_weight_info_ && !check_weight_constraint(container, osize, box.weight.value()))
                     {
                         continue;
                     }
-                    if (!check_support_constraint(container, ep, osize, problem_.support_rate, box_type_map_).ok)
+                    if (!check_support_constraint(container, ep, osize, problem_.support_rate, box_type_map_))
                     {
                         continue;
                     }
 
                     if (problem_.route.has_value() && !box.platform.empty())
                     {
-                        auto rr = check_route_order_constraint(
-                            container, box.platform, ep, osize, problem_.route.value());
-                        if (!rr.ok)
+                        if (!check_route_order_constraint(
+                                container, box.platform, ep, osize, problem_.route.value()))
                         {
                             continue;
                         }
