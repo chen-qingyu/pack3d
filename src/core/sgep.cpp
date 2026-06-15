@@ -72,13 +72,10 @@ Solution SgepSolver::solve()
 SearchState SgepSolver::make_initial_state() const
 {
     SearchState s;
-    s.box_type_map = box_type_map_;
     s.container_type_map = container_type_map_;
     s.remaining_boxes = problem_.boxes;
     s.start_time = std::chrono::steady_clock::now();
     s.time_limit = problem_.time_limit;
-    s.config = &problem_.algorithm;
-    s.problem = &problem_;
     s.objective_keys = problem_.objective_keys.empty() ? default_objective_keys() : problem_.objective_keys;
 
     // 按平台分组（空平台视为默认平台），同平台内按体积降序

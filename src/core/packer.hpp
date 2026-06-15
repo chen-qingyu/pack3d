@@ -56,17 +56,6 @@ private:
         int placed_count = 0;
     };
 
-    /// beam 搜索中的一个部分方案
-    struct PartialState
-    {
-        ContainerLoad state;
-        std::map<std::string, int> available;
-        std::vector<Space> stack;
-        double fitness = 0.0;
-        int64_t volume_filled = 0;
-        int boxes_placed = 0;
-    };
-
     const ContainerType& container_;
     const std::map<std::string, BoxType>& box_type_map_;
     const std::map<std::string, Box>& box_map_;
@@ -107,8 +96,6 @@ private:
                                          const std::vector<Box>& all_boxes) const;
 
     [[nodiscard]] LocalPackScore score_state(const ContainerLoad& state) const;
-
-    [[nodiscard]] LocalPackScore score_result(const PackResult& result) const;
 
     [[nodiscard]] int compare_local_scores(const LocalPackScore& a,
                                            const LocalPackScore& b) const;

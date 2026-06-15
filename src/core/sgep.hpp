@@ -29,7 +29,6 @@ struct Candidate
 struct SearchState
 {
     std::vector<Box> remaining_boxes;
-    std::map<std::string, BoxType> box_type_map;
     std::map<std::string, ContainerType> container_type_map;
 
     std::vector<ContainerLoad> open_containers;
@@ -47,16 +46,12 @@ struct SearchState
     std::optional<Solution> best_feasible;
 
     bool infeasible = false;
-    std::string failure_reason;
 
     std::chrono::steady_clock::time_point start_time;
     double time_limit = 120.0;
 
     /// 用户指定的目标键顺序（或默认），比较时只关注这些维度
     std::vector<std::string> objective_keys;
-
-    const AlgorithmConfig* config = nullptr;
-    const Problem* problem = nullptr;
 };
 
 // SGEP 简单贪心极点算法

@@ -309,16 +309,6 @@ ContainerPacker::LocalPackScore ContainerPacker::score_state(const ContainerLoad
     return score;
 }
 
-ContainerPacker::LocalPackScore ContainerPacker::score_result(const PackResult& result) const
-{
-    LocalPackScore score;
-    score.platform_count = static_cast<int>(result.platforms.size());
-    score.group_count = static_cast<int>(result.groups.size());
-    score.used_volume = result.used_volume;
-    score.placed_count = static_cast<int>(result.placements.size());
-    return score;
-}
-
 int ContainerPacker::compare_local_scores(const LocalPackScore& a,
                                           const LocalPackScore& b) const
 {
