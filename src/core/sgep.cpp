@@ -808,7 +808,6 @@ Solution SgepSolver::build_solution(const SearchState& state,
             continue;
         }
         ContainerSummary cs;
-        cs.id = load.instance_id;
         cs.type_id = load.type_id;
         if (load.type)
         {

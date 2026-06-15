@@ -271,7 +271,6 @@ Solution GlobalScheduler::to_solution(
         const auto& pr = slot.pack_result.value();
 
         ContainerSummary cs;
-        cs.id = slot.instance_id;
         cs.type_id = slot.type->id;
         cs.inner_size = slot.type->inner_size;
         cs.packed_count = static_cast<int>(pr.placements.size());

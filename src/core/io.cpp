@@ -363,23 +363,19 @@ json solution_to_json(const Solution& sol) noexcept
         const auto& cs = sol.container_summaries[i];
         json cj;
 
-        cj["id"] = cs.id;
         cj["type_id"] = cs.type_id;
         cj["inner_size"] = json::object();
         cj["inner_size"]["x"] = cs.inner_size.x;
         cj["inner_size"]["y"] = cs.inner_size.y;
         cj["inner_size"]["z"] = cs.inner_size.z;
         cj["max_weight"] = opt_json(cs.max_weight);
-
-        json ls;
-        ls["used_volume"] = cs.used_volume;
-        ls["used_weight"] = opt_json(cs.used_weight);
-        ls["volume_rate"] = cs.volume_rate;
-        ls["weight_rate"] = opt_json(cs.weight_rate);
-        ls["packed_count"] = cs.packed_count;
-        ls["platforms"] = cs.platforms;
-        ls["groups"] = cs.groups;
-        cj["load_summary"] = std::move(ls);
+        cj["used_volume"] = cs.used_volume;
+        cj["used_weight"] = opt_json(cs.used_weight);
+        cj["volume_rate"] = cs.volume_rate;
+        cj["weight_rate"] = opt_json(cs.weight_rate);
+        cj["packed_count"] = cs.packed_count;
+        cj["platforms"] = cs.platforms;
+        cj["groups"] = cs.groups;
 
         json placements_json = json::array();
         if (i < sol.container_placements.size())

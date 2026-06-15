@@ -103,9 +103,9 @@ TEST_CASE("min_platform_count", "[solver]")
             REQUIRE(res["summary"]["volume_rate"] < 1.0);
             REQUIRE(res["result"]["containers"].size() == 2);
             REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
-            REQUIRE(res["result"]["containers"][0]["load_summary"]["platforms"] == json::array({"A"}));
+            REQUIRE(res["result"]["containers"][0]["platforms"] == json::array({"A"}));
             REQUIRE(res["result"]["containers"][1]["type_id"] == "big");
-            REQUIRE(res["result"]["containers"][1]["load_summary"]["platforms"] == json::array({"B"}));
+            REQUIRE(res["result"]["containers"][1]["platforms"] == json::array({"B"}));
         }
     }
 
@@ -121,9 +121,9 @@ TEST_CASE("min_platform_count", "[solver]")
             REQUIRE(res["summary"]["volume_rate"] == 1.0);
             REQUIRE(res["result"]["containers"].size() == 2);
             REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
-            REQUIRE(res["result"]["containers"][0]["load_summary"]["platforms"] == json::array({"A", "B"}));
+            REQUIRE(res["result"]["containers"][0]["platforms"] == json::array({"A", "B"}));
             REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
-            REQUIRE(res["result"]["containers"][1]["load_summary"]["platforms"] == json::array({"B"}));
+            REQUIRE(res["result"]["containers"][1]["platforms"] == json::array({"B"}));
         }
     }
 }

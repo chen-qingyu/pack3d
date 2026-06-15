@@ -236,7 +236,6 @@ struct ObjectiveVector
 
 struct ContainerSummary
 {
-    std::string id;
     std::string type_id;
     Size inner_size; // 容器内部尺寸，绘图所需
     std::optional<double> max_weight = std::nullopt;
