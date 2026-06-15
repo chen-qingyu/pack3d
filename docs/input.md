@@ -1,0 +1,114 @@
+# 输入格式
+
+JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_types`、`box_types`、`boxes`。
+
+## 容器类型 `container_types`
+
+```json
+{
+  "id": "big",
+  "inner_size": { "x": 110, "y": 50, "z": 50 },
+  "max_weight": 50000.0,
+  "quantity_limit": null
+}
+```
+
+| 字段             | 类型            | 必填 | 说明                    |
+| ---------------- | --------------- | ---- | ----------------------- |
+| `id`             | string          | 是   | 唯一标识                |
+| `inner_size`     | {x,y,z: int>=1} | 是   | 内部尺寸                |
+| `max_weight`     | number          |      | 重量上限，null=不限     |
+| `quantity_limit` | int>=1          |      | 可用数量上限，null=不限 |
+
+## 箱子类型 `box_types`
+
+```json
+{
+  "id": "box_l",
+  "size": { "x": 100, "y": 50, "z": 30 },
+  "allowed_orientations": ["xyz", "xzy"]
+}
+```
+
+| 字段                   | 类型            | 必填 | 说明                                      |
+| ---------------------- | --------------- | ---- | ----------------------------------------- |
+| `id`                   | string          | 是   | 唯一标识                                  |
+| `size`                 | {x,y,z: int>=1} | 是   | 原始尺寸                                  |
+| `allowed_orientations` | string[]        | 是   | 允许朝向，枚举值: xyz/xzy/yxz/yzx/zxy/zyx |
+
+## 箱子实例 `boxes`
+
+```json
+{
+  "id": "b1",
+  "box_type_id": "box_l",
+  "weight": 10.0,
+  "group": "A",
+  "platform": "P1"
+}
+```
+
+| 字段          | 类型   | 必填 | 说明                       |
+| ------------- | ------ | ---- | -------------------------- |
+| `id`          | string | 是   | 唯一标识                   |
+| `box_type_id` | string | 是   | 引用 box_types 中的 id     |
+| `weight`      | number |      | 单箱重量，null=无重量      |
+| `group`       | string |      | 分组 ID，用于 tender_limit |
+| `platform`    | string |      | 平台 ID，用于路线约束      |
+
+## 算法 `algorithm`（可选）
+
+```json
+{ "use": "mlhs", "config": { "mlhs": { "width": 27 } } }
+```
+
+- `use`: `"sgep"`（默认）或 `"mlhs"`
+- `config.mlhs.width`: MLHS 前瞻宽度，默认 27，越大搜索越充分、越慢
+
+## 目标 `objectives`（可选）
+
+```json
+[
+  "min_container_count",
+  "min_platform_count",
+  "max_volume_rate",
+  "min_group_split"
+]
+```
+
+字典序排列，默认顺序如上。四个键均为可选，可任意排列或省略部分。
+
+## 约束 `constraints`（可选）
+
+```json
+{
+  "time_limit": 120.0,
+  "support_rate": 0.6,
+  "platform_limit": null,
+  "tender_limit": null
+}
+```
+
+| 字段             | 类型       | 默认 | 说明                   |
+| ---------------- | ---------- | ---- | ---------------------- |
+| `time_limit`     | number>0   | 120  | 时限（秒）             |
+| `support_rate`   | number 0-1 | 0    | 底面支撑率阈值，0=跳过 |
+| `platform_limit` | int>=1     | null | 单容器最大平台数       |
+| `tender_limit`   | int>=1     | null | 单组最多分散容器数     |
+
+## 路线 `route`（可选）
+
+```json
+["P0", "P1", "P2"]
+```
+
+按装货先后排列的平台 ID 列表。先装平台在深处（X 小），后装平台在近门处（X 大）。
+
+## 预校验
+
+Schema 校验后，代码还会检查：
+
+- ID 唯一性：`container_types`、`box_types`、`boxes` 中各自的 `id` 必须唯一
+- 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
+- 路线合法性：路线中无重复平台，箱子平台必须在路线中
+- 重量一致性：只要任一个箱子存在重量信息，则所有箱子和容器必须有重量信息
