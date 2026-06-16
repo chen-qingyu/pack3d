@@ -179,6 +179,8 @@ bool ContainerPacker::check_block_feasible(
                 pl.box_type_id = block.box_type_id;
                 pl.position = pos;
                 pl.orientation = block.orientation;
+                pl.platform = block.platform;
+                pl.group = block.group;
                 sim.placements.push_back(std::move(pl));
             }
         }
@@ -220,6 +222,8 @@ void ContainerPacker::place_block(
                 pl.box_type_id = block.box_type_id;
                 pl.position = pos;
                 pl.orientation = block.orientation;
+                pl.platform = block.platform;
+                pl.group = block.group;
 
                 state.placements.push_back(std::move(pl));
                 state.used_volume += single.volume();
@@ -602,6 +606,13 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
             {
                 pl.box_id = ids[idx++];
             }
+        }
+        // 从真实箱子数据中填充 platform 和 group
+        auto box_it = box_map_.find(pl.box_id);
+        if (box_it != box_map_.end())
+        {
+            pl.platform = box_it->second.platform;
+            pl.group = box_it->second.group;
         }
     }
 

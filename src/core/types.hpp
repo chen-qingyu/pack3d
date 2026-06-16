@@ -164,6 +164,8 @@ struct Placement
     std::string container_id;
     Position position;
     Orientation orientation = Orientation::XYZ;
+    std::string platform; // 空字符串表示未设置，输出时转为 null
+    std::string group;    // 空字符串表示未设置，输出时转为 null
 };
 
 // 容器装载（可变求解状态）

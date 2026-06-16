@@ -73,7 +73,9 @@ JSON，顶层四个字段：
           "box_id": "a1",
           "box_type_id": "big_box",
           "position": { "x": 0, "y": 0, "z": 0 },
-          "orientation": "xyz"
+          "orientation": "xyz",
+          "platform": "P1",
+          "group": "A"
         }
       ]
     }
@@ -89,7 +91,7 @@ JSON，顶层四个字段：
 }
 ```
 
-容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null）。
+容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置平台/分组时 `platform`/`group` 为 null）。
 
 ## `violations` 校验违规（仅 `status: "invalid"` 时出现）
 

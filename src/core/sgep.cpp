@@ -654,6 +654,8 @@ void SgepSolver::apply_placement(SearchState& state, Candidate& cand)
     pl.container_id = cand.container_instance_id;
     pl.position = cand.position;
     pl.orientation = cand.orientation;
+    pl.platform = box.platform;
+    pl.group = box.group;
 
     container.placements.push_back(pl);
     container.used_volume += cand.osize.volume();
