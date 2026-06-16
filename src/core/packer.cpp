@@ -81,19 +81,58 @@ bool ContainerPacker::check_block_feasible(
 {
     auto single = orient_size(box_type_map_.at(block.box_type_id).size, block.orientation);
 
-    // 预取该类型单箱重量（使用缓存避免 O(N) 扫描）
-    double box_weight = 0.0;
-    if (has_weight_info_)
+    // ---- per-block 检查 ----
+
+    // 重量：检查块总重量
+    if (has_weight_info_ && container_.max_weight.has_value())
     {
+        double box_weight = 0.0;
         auto cache_it = type_sample_cache_.find(block.box_type_id);
         if (cache_it != type_sample_cache_.end() && cache_it->second->weight.has_value())
         {
             box_weight = cache_it->second->weight.value();
         }
+        if (state.total_weight + box_weight * block.box_count > container_.max_weight.value() + 1e-9)
+        {
+            return false;
+        }
     }
 
-    // 模拟放置块内所有箱子，逐箱检查约束
+    // 平台限制：块内箱子同平台，只查一次
+    bool need_route = false;
+    if (!block.platform.empty())
+    {
+        if (problem_.platform_limit.has_value() && problem_.platform_limit.value() > 0)
+        {
+            if (!state.platforms.count(block.platform) &&
+                static_cast<int>(state.platforms.size()) >= problem_.platform_limit.value())
+            {
+                return false;
+            }
+        }
+        need_route = problem_.route.has_value();
+    }
+
+    // 预计算块的 x 范围（供路线/平台跟踪用，避免逐箱重复计算）
+    int32_t block_min_x = space.pos.x;
+    int32_t block_max_x = space.pos.x + block.nx * single.dx;
+
+    // ---- 逐箱检查：边界、重叠、支撑、路线 ----
     ContainerLoad sim = state;
+    if (!block.platform.empty())
+    {
+        sim.platforms.insert(block.platform);
+        auto xmax_it = sim.platform_x_max.find(block.platform);
+        if (xmax_it == sim.platform_x_max.end() || block_max_x > xmax_it->second)
+        {
+            sim.platform_x_max[block.platform] = block_max_x;
+        }
+        auto xmin_it = sim.platform_x_min.find(block.platform);
+        if (xmin_it == sim.platform_x_min.end() || block_min_x < xmin_it->second)
+        {
+            sim.platform_x_min[block.platform] = block_min_x;
+        }
+    }
 
     for (int iz = 0; iz < block.nz; ++iz)
     {
@@ -106,29 +145,17 @@ bool ContainerPacker::check_block_feasible(
                 pos.y = space.pos.y + iy * single.dy;
                 pos.z = space.pos.z + iz * single.dz;
 
-                // 边界检查
                 if (!check_boundary(container_, pos, single))
                 {
                     return false;
                 }
 
-                // 重叠检查
-                if (check_overlap_any(pos, single, sim.placements, box_type_map_))
+                // 重叠检查仅需查 state.placements（块内箱子网格排列，互不重叠）
+                if (check_overlap_any(pos, single, state.placements, box_type_map_))
                 {
                     return false;
                 }
 
-                // 重量检查
-                if (has_weight_info_ && container_.max_weight.has_value())
-                {
-                    if (sim.total_weight + box_weight > container_.max_weight.value() + 1e-9)
-                    {
-                        return false;
-                    }
-                    sim.total_weight += box_weight;
-                }
-
-                // 支撑率检查
                 if (problem_.support_rate > 0.0 && pos.z > 0)
                 {
                     double ratio = calc_support_ratio(pos, single, sim, box_type_map_);
@@ -138,20 +165,7 @@ bool ContainerPacker::check_block_feasible(
                     }
                 }
 
-                // 平台数量限制检查
-                // 在 filter_viable_blocks 层面已检查库存，这里只需知道这个块的 platform
-                // 但如果块内的平台在容器中还不存在，检查是否会超限
-                if (!block.platform.empty() && problem_.platform_limit.has_value() && problem_.platform_limit.value() > 0)
-                {
-                    if (!sim.platforms.count(block.platform) &&
-                        static_cast<int>(sim.platforms.size()) >= problem_.platform_limit.value())
-                    {
-                        return false;
-                    }
-                }
-
-                // 路线顺序检查
-                if (!block.platform.empty() && problem_.route.has_value())
+                if (need_route)
                 {
                     if (!check_route_order_constraint(
                             sim, block.platform, pos, single, problem_.route.value()))
@@ -160,31 +174,12 @@ bool ContainerPacker::check_block_feasible(
                     }
                 }
 
-                // 记录这个箱子的放置（供后续箱子的重叠/支撑检查）
                 Placement pl;
                 pl.box_id = "simulated";
                 pl.box_type_id = block.box_type_id;
                 pl.position = pos;
                 pl.orientation = block.orientation;
                 sim.placements.push_back(std::move(pl));
-
-                // 更新平台跟踪
-                if (!block.platform.empty())
-                {
-                    sim.platforms.insert(block.platform);
-                    int32_t box_max_x = pos.x + single.dx;
-                    auto xmax_it = sim.platform_x_max.find(block.platform);
-                    if (xmax_it == sim.platform_x_max.end() || box_max_x > xmax_it->second)
-                    {
-                        sim.platform_x_max[block.platform] = box_max_x;
-                    }
-                    int32_t box_min_x = pos.x;
-                    auto xmin_it = sim.platform_x_min.find(block.platform);
-                    if (xmin_it == sim.platform_x_min.end() || box_min_x < xmin_it->second)
-                    {
-                        sim.platform_x_min[block.platform] = box_min_x;
-                    }
-                }
             }
         }
     }
@@ -599,7 +594,7 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
     std::map<std::string, size_t> consume_idx;
     for (auto& pl : state.placements)
     {
-        if (pl.box_id.find("__block_") == 0)
+        if (pl.box_id.compare(0, 8, "__block_") == 0)
         {
             auto& ids = real_ids_by_type[pl.box_type_id];
             size_t& idx = consume_idx[pl.box_type_id];
