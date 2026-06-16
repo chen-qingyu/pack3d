@@ -16,14 +16,6 @@ int64_t next_space_id() noexcept
     return next_id++;
 }
 
-bool same_layer_siblings(const Space& a, const Space& b) noexcept
-{
-    return a.parent_id >= 0 &&
-           a.parent_id == b.parent_id &&
-           a.pos.z == b.pos.z &&
-           a.lz == b.lz;
-}
-
 } // namespace
 
 void split_space(const Space& space, const OrientedSize& block_osize,
@@ -107,83 +99,68 @@ void split_space(const Space& space, const OrientedSize& block_osize,
 
 bool transfer_space(std::vector<Space>& stack) noexcept
 {
-    // 简化版 TransferSpace：
-    // 当前栈顶空间没有可行块时，尝试将其与栈中可能合并的兄弟空间合并
-    // 这是一个启发式回收，不保证完全覆盖原始 MLHS 的所有回收场景
-    //
-    // 当前实现：如果栈顶空间在某个维度上长度为 0（退化），直接丢弃
-    // 更完善的实现需要跟踪空间的划分来源（parent），
-    // 将可转移区域合并回兄弟空间
-
+    // 仅检查栈顶：Z 空间直接丢弃，X/Y 尝试与紧邻次栈顶合并
     if (stack.empty())
     {
         return false;
     }
 
-    const auto& top = stack.back();
+    Space& top = stack.back();
 
-    // 检查是否退化（零体积或负维度）
-    if (top.lx <= 0 || top.ly <= 0 || top.lz <= 0)
+    // Z 空间从不参与同级合并，直接丢弃
+    if (top.kind == SpaceKind::Z)
     {
         stack.pop_back();
         return true;
     }
 
-    for (size_t i = 0; i + 1 < stack.size(); ++i)
+    // 根空间永不丢弃
+    if (top.kind == SpaceKind::Root)
     {
-        auto& other = stack[i];
-
-        if (same_layer_siblings(other, top))
-        {
-            if (top.kind == SpaceKind::X && other.kind == SpaceKind::Y)
-            {
-                int32_t right = std::max(other.pos.x + other.lx, top.pos.x + top.lx);
-                other.lx = right - other.pos.x;
-                stack.pop_back();
-                return true;
-            }
-            if (top.kind == SpaceKind::Y && other.kind == SpaceKind::X)
-            {
-                int32_t back = std::max(other.pos.y + other.ly, top.pos.y + top.ly);
-                other.ly = back - other.pos.y;
-                stack.pop_back();
-                return true;
-            }
-        }
-
-        // 退化到一般相邻合并，保留原有启发式。
-        if (other.pos.x == top.pos.x &&
-            other.pos.z == top.pos.z &&
-            other.lx == top.lx &&
-            other.lz == top.lz &&
-            (other.pos.y + other.ly == top.pos.y ||
-             top.pos.y + top.ly == other.pos.y))
-        {
-            int32_t new_y = std::min(other.pos.y, top.pos.y);
-            int32_t new_ly = std::max(other.pos.y + other.ly, top.pos.y + top.ly) - new_y;
-            other.pos.y = new_y;
-            other.ly = new_ly;
-            stack.pop_back();
-            return true;
-        }
-
-        if (other.pos.y == top.pos.y &&
-            other.pos.z == top.pos.z &&
-            other.ly == top.ly &&
-            other.lz == top.lz &&
-            (other.pos.x + other.lx == top.pos.x ||
-             top.pos.x + top.lx == other.pos.x))
-        {
-            int32_t new_x = std::min(other.pos.x, top.pos.x);
-            int32_t new_lx = std::max(other.pos.x + other.lx, top.pos.x + top.lx) - new_x;
-            other.pos.x = new_x;
-            other.lx = new_lx;
-            stack.pop_back();
-            return true;
-        }
+        return false;
     }
 
-    return false;
+    // X/Y 碎片：没有兄弟则丢弃
+    if (stack.size() < 2)
+    {
+        stack.pop_back();
+        return true;
+    }
+
+    Space& next = stack[stack.size() - 2];
+
+    // 兄弟必须来自同一次划分、同一高度层
+    if (top.parent_id < 0 || top.parent_id != next.parent_id ||
+        top.pos.z != next.pos.z || top.lz != next.lz)
+    {
+        stack.pop_back();
+        return true;
+    }
+
+    // 合并：栈顶碎片并入次栈顶主条
+    // 入栈顺序保证了碎片总是在栈顶（split_space 将较窄的碎条最后压入）
+    if (top.kind == SpaceKind::X && next.kind == SpaceKind::Y)
+    {
+        // X 碎片并入 Y 主条：扩展 Y 的 x 范围
+        int32_t new_lx = std::max(next.pos.x + next.lx, top.pos.x + top.lx) - next.pos.x;
+        next.lx = new_lx;
+        next.parent_id = -1; // 标记已合并，防止后续误匹配
+        stack.pop_back();
+        return true;
+    }
+    if (top.kind == SpaceKind::Y && next.kind == SpaceKind::X)
+    {
+        // Y 碎片并入 X 主条：扩展 X 的 y 范围
+        int32_t new_ly = std::max(next.pos.y + next.ly, top.pos.y + top.ly) - next.pos.y;
+        next.ly = new_ly;
+        next.parent_id = -1;
+        stack.pop_back();
+        return true;
+    }
+
+    // 同次划分但类型异常，丢弃
+    stack.pop_back();
+    return true;
 }
 
 } // namespace hypercube
