@@ -342,48 +342,7 @@ bool SgepSolver::place_next_box(SearchState& state)
             const auto& target = *best.container;
             int64_t cap_left = target.total_volume() - target.used_volume - best.osize.volume();
             bool fills_container = (cap_left <= 0);
-            if (!fills_container)
-            {
-                auto sim_eps = generate_extreme_points(best.position, best.osize, target);
-                filter_extreme_points(sim_eps, target, box_type_map_);
-                if (sim_eps.empty())
-                {
-                    fills_container = true;
-                }
-                else
-                {
-                    fills_container = true;
-                    for (const auto& rb : state.remaining_boxes)
-                    {
-                        if (rb.id == box.id)
-                        {
-                            continue;
-                        }
-                        auto& rbt = box_type_map_.at(rb.box_type_id);
-                        for (const auto& sep : sim_eps)
-                        {
-                            for (auto ro : rbt.allowed_orientations)
-                            {
-                                auto ros = orient_size(rbt.size, ro);
-                                if (check_boundary(*target.type, sep, ros) &&
-                                    !check_overlap_any(sep, ros, target.placements, box_type_map_))
-                                {
-                                    fills_container = false;
-                                    break;
-                                }
-                            }
-                            if (!fills_container)
-                            {
-                                break;
-                            }
-                        }
-                        if (!fills_container)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
+
             bool has_remaining = (state.remaining_boxes.size() > 1);
             if (fills_container && has_remaining)
             {
