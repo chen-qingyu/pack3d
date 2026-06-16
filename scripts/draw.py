@@ -42,7 +42,7 @@ def draw_file(file_path: str):
     COLOR_MAP.clear()  # 清空全局颜色映射表，确保不同文件间颜色独立
 
     # 计算绘图相关参数
-    max_dims = calc_max_dims(containers)
+    max_dim = max(c["inner_size"][k] for c in containers for k in ("x", "y", "z"))
     n = len(containers)
     cols = min(4, n)  # 最多4列
     rows = (n + cols - 1) // cols
@@ -80,7 +80,7 @@ def draw_file(file_path: str):
         trace_start = len(fig.data)  # type: ignore
         row = i // cols + 1
         col = i % cols + 1
-        draw(container, fig, row, col, max_dims, shown_legends, mesh_trace_info, box_types, seen_values)
+        draw(container, fig, row, col, max_dim, shown_legends, mesh_trace_info, box_types, seen_values)
         trace_end = len(fig.data)  # type: ignore
         container_trace_ranges.append((trace_start, trace_end))
 
@@ -114,7 +114,7 @@ def draw_file(file_path: str):
     print(f"Saved: {file_path.replace('.json', '.html')}")
 
 
-def draw(container: dict, fig: go.Figure, row: int, col: int, max_dims: tuple[int, int, int],
+def draw(container: dict, fig: go.Figure, row: int, col: int, max_dim: int,
          shown_legends: set, mesh_trace_info: list[dict], box_types: dict[str, dict],
          seen_values: dict[str, set]):
     """绘制容器和箱子"""
@@ -128,7 +128,6 @@ def draw(container: dict, fig: go.Figure, row: int, col: int, max_dims: tuple[in
 
     # 设置场景
     inner = container["inner_size"]
-    max_dim = max(max_dims)
     scene_config = dict(
         xaxis=dict(range=[0, inner["x"]], title="X"),
         yaxis=dict(range=[0, inner["y"]], title="Y"),
@@ -262,12 +261,6 @@ def get_text(placement: dict, size: dict, l: int, w: int, h: int) -> str:
     return text
 
 
-def calc_max_dims(containers: list[dict]) -> tuple[int, int, int]:
-    """计算所有容器在长宽高三个维度的最大尺寸"""
-    inners = [c["inner_size"] for c in containers]
-    return (max(i["x"] for i in inners), max(i["y"] for i in inners), max(i["z"] for i in inners))
-
-
 def get_color(category: str):
     """一个类别一种颜色"""
     if category not in COLOR_MAP:
@@ -340,16 +333,14 @@ def add_color_selector(fig: go.Figure, mesh_trace_info: list[dict]):
     mesh_indices = [info["idx"] for info in mesh_trace_info]
 
     # 构建三种模式下的颜色与图例参数
-    type_args = _build_coloring_args(mesh_trace_info, key="type")
-    platform_args = _build_coloring_args(mesh_trace_info, key="platform")
-    group_args = _build_coloring_args(mesh_trace_info, key="group")
+    modes = [("type", "箱型上色"), ("platform", "平台上色"), ("group", "分组上色")]
+    buttons = [
+        dict(label=label, method="restyle", args=[_build_coloring_args(mesh_trace_info, key=k), mesh_indices])
+        for k, label in modes
+    ]
 
     color_menu = dict(
-        buttons=[
-            dict(label="箱型上色", method="restyle", args=[type_args, mesh_indices]),
-            dict(label="平台上色", method="restyle", args=[platform_args, mesh_indices]),
-            dict(label="分组上色", method="restyle", args=[group_args, mesh_indices]),
-        ],
+        buttons=buttons,
         direction="down",
         showactive=True,
         active=0,
@@ -475,7 +466,6 @@ def _build_coloring_args(mesh_trace_info: list[dict], key: str) -> dict:
     {"color": [...], "name": [...], "legendgroup": [...], "showlegend": [...]}。
     """
     values = [info[key] for info in mesh_trace_info]
-    palette = {v: get_color(v) for v in dict.fromkeys(values)}
 
     colors = []
     names = []
@@ -484,7 +474,7 @@ def _build_coloring_args(mesh_trace_info: list[dict], key: str) -> dict:
     seen = set()
 
     for val in values:
-        colors.append(palette[val])
+        colors.append(get_color(val))
         names.append(str(val))
         groups.append(str(val))
         showlegends.append(val not in seen)
