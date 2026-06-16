@@ -13,30 +13,6 @@ BlockGenerator::BlockGenerator(const std::map<std::string, BoxType>& box_type_ma
 {
 }
 
-std::vector<SimpleBlock> BlockGenerator::generate_all(
-    const Size& container_size,
-    const std::map<std::string, int>& available) const
-{
-    std::vector<SimpleBlock> blocks;
-
-    for (const auto& [type_id, count] : available)
-    {
-        auto it = box_type_map_.find(type_id);
-        if (it == box_type_map_.end())
-        {
-            continue;
-        }
-
-        // 简单块不约束 platform/group——由调用者根据具体场景过滤
-        // 此处传空字符串，块生成后由外部根据箱子属性裁剪
-        auto type_blocks = generate_for_type(type_id, container_size, "", "", count);
-        blocks.insert(blocks.end(), type_blocks.begin(), type_blocks.end());
-    }
-
-    sort_blocks_by_volume_desc(blocks);
-    return blocks;
-}
-
 std::vector<SimpleBlock> BlockGenerator::generate_for_type(
     const std::string& box_type_id,
     const Size& container_size,

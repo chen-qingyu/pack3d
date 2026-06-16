@@ -30,9 +30,10 @@ ContainerPacker::ContainerPacker(
 {
     for (const auto& [id, bx] : box_map_)
     {
-        if (!type_sample_cache_.count(bx.box_type_id))
+        auto pk = bx.box_type_id + "\t" + bx.platform + "\t" + bx.group;
+        if (!type_sample_cache_.count(pk))
         {
-            type_sample_cache_[bx.box_type_id] = &bx;
+            type_sample_cache_[pk] = &bx;
         }
     }
 }
@@ -87,10 +88,15 @@ bool ContainerPacker::check_block_feasible(
     if (has_weight_info_ && container_.max_weight.has_value())
     {
         double box_weight = 0.0;
-        auto cache_it = type_sample_cache_.find(block.box_type_id);
-        if (cache_it != type_sample_cache_.end() && cache_it->second->weight.has_value())
+        const Box* wb = nullptr;
+        auto it = type_sample_cache_.find(block.box_type_id + "\t" + block.platform + "\t" + block.group);
+        if (it != type_sample_cache_.end())
         {
-            box_weight = cache_it->second->weight.value();
+            wb = it->second;
+        }
+        if (wb && wb->weight.has_value())
+        {
+            box_weight = wb->weight.value();
         }
         if (state.total_weight + box_weight * block.box_count > container_.max_weight.value() + 1e-9)
         {
@@ -197,12 +203,12 @@ void ContainerPacker::place_block(
 {
     auto single = orient_size(box_type_map_.at(block.box_type_id).size, block.orientation);
 
-    // 查找 sample_box（使用缓存避免 O(N) 扫描）
+    // 查找 sample_box（按 type+platform+group 匹配）
     const Box* sample_box = nullptr;
-    auto cache_it = type_sample_cache_.find(block.box_type_id);
-    if (cache_it != type_sample_cache_.end())
+    auto it = type_sample_cache_.find(block.box_type_id + "\t" + block.platform + "\t" + block.group);
+    if (it != type_sample_cache_.end())
     {
-        sample_box = cache_it->second;
+        sample_box = it->second;
     }
 
     int placed = 0;
@@ -232,26 +238,26 @@ void ContainerPacker::place_block(
                     state.total_weight += sample_box->weight.value();
                 }
 
-                if (sample_box && !sample_box->platform.empty())
+                if (!block.platform.empty())
                 {
-                    state.platforms.insert(sample_box->platform);
+                    state.platforms.insert(block.platform);
                     int32_t box_max_x = pos.x + single.dx;
-                    auto xmax_it = state.platform_x_max.find(sample_box->platform);
+                    auto xmax_it = state.platform_x_max.find(block.platform);
                     if (xmax_it == state.platform_x_max.end() || box_max_x > xmax_it->second)
                     {
-                        state.platform_x_max[sample_box->platform] = box_max_x;
+                        state.platform_x_max[block.platform] = box_max_x;
                     }
                     int32_t box_min_x = pos.x;
-                    auto xmin_it = state.platform_x_min.find(sample_box->platform);
+                    auto xmin_it = state.platform_x_min.find(block.platform);
                     if (xmin_it == state.platform_x_min.end() || box_min_x < xmin_it->second)
                     {
-                        state.platform_x_min[sample_box->platform] = box_min_x;
+                        state.platform_x_min[block.platform] = box_min_x;
                     }
                 }
 
-                if (sample_box && !sample_box->group.empty())
+                if (!block.group.empty())
                 {
-                    state.groups.insert(sample_box->group);
+                    state.groups.insert(block.group);
                 }
             }
         }
@@ -436,13 +442,33 @@ const SimpleBlock* ContainerPacker::pick_best_block(
 
 PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
 {
+    // 库存按 box_type_id 聚合（热路径用）
     std::map<std::string, int> all_available;
     for (const auto& bx : boxes)
     {
         all_available[bx.box_type_id]++;
     }
 
-    auto all_blocks = block_gen_.generate_all(container_.inner_size, all_available);
+    // 块按 (type, platform, group) 分组生成（确保同平台同分组）
+    std::map<std::string, int> group_counts;
+    for (const auto& bx : boxes)
+    {
+        group_counts[bx.box_type_id + "\t" + bx.platform + "\t" + bx.group]++;
+    }
+
+    std::vector<SimpleBlock> all_blocks;
+    for (const auto& [key, count] : group_counts)
+    {
+        auto tab1 = key.find('\t');
+        auto tab2 = key.find('\t', tab1 + 1);
+        auto tid = key.substr(0, tab1);
+        auto plat = key.substr(tab1 + 1, tab2 - tab1 - 1);
+        auto grp = key.substr(tab2 + 1);
+        auto type_blocks = block_gen_.generate_for_type(tid, container_.inner_size, plat, grp, count);
+        all_blocks.insert(all_blocks.end(), type_blocks.begin(), type_blocks.end());
+    }
+
+    sort_blocks_by_volume_desc(all_blocks);
 
     // 自适应：当块平均大小很小时（多箱型少数量场景），降低 beam 搜索精度
     int64_t total_box_count = 0;
@@ -589,10 +615,11 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
         place_block(*best, space, state, available, stack);
     }
 
-    std::map<std::string, std::vector<std::string>> real_ids_by_type;
+    // 回填真实 box_id：按 (type, platform, group) 分组分配
+    std::map<std::string, std::vector<std::string>> real_ids_by_group;
     for (const auto& bx : boxes)
     {
-        real_ids_by_type[bx.box_type_id].push_back(bx.id);
+        real_ids_by_group[bx.box_type_id + "\t" + bx.platform + "\t" + bx.group].push_back(bx.id);
     }
 
     std::map<std::string, size_t> consume_idx;
@@ -600,19 +627,13 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
     {
         if (pl.box_id.compare(0, 8, "__block_") == 0)
         {
-            auto& ids = real_ids_by_type[pl.box_type_id];
-            size_t& idx = consume_idx[pl.box_type_id];
+            auto key = pl.box_type_id + "\t" + pl.platform + "\t" + pl.group;
+            auto& ids = real_ids_by_group[key];
+            size_t& idx = consume_idx[key];
             if (idx < ids.size())
             {
                 pl.box_id = ids[idx++];
             }
-        }
-        // 从真实箱子数据中填充 platform 和 group
-        auto box_it = box_map_.find(pl.box_id);
-        if (box_it != box_map_.end())
-        {
-            pl.platform = box_it->second.platform;
-            pl.group = box_it->second.group;
         }
     }
 

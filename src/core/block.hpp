@@ -15,13 +15,7 @@ class BlockGenerator
 public:
     explicit BlockGenerator(const std::map<std::string, BoxType>& box_type_map);
 
-    /// 为某容器尺寸生成所有可能的简单块
-    /// available: (box_type_id -> 可用数量) 映射
-    [[nodiscard]] std::vector<SimpleBlock> generate_all(
-        const Size& container_size,
-        const std::map<std::string, int>& available) const;
-
-    /// 为单个 box_type 生成简单块
+    /// 为单个 box_type 生成简单块（约束同平台同分组）
     [[nodiscard]] std::vector<SimpleBlock> generate_for_type(
         const std::string& box_type_id,
         const Size& container_size,
