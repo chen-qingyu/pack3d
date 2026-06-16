@@ -8,6 +8,7 @@
 • 鼠标悬浮显示箱子的基本信息
 • 支持标准视图切换（前、后、左、右、俯、仰）
 • 支持三种上色模式：按箱型 / 按平台 / 按分组
+• 支持按容器筛选显示，避免多容器时视图拥挤
 • 自动选择差异度最高的维度作为默认上色模式
 
 使用说明:
@@ -68,15 +69,20 @@ def draw_file(file_path: str):
 
     # 绘制每个装箱方案
     mesh_trace_info = []  # 收集 Mesh3d 轨迹信息用于颜色切换
+    container_trace_ranges = []  # 每个容器的 trace 索引范围 [start, end)
     shown_legends = set()
     legend_keys = {"type", "platform", "group"}  # 收集各维度实际出现的值用于自动切换
     seen_values = {k: set() for k in legend_keys}
     for i, container in enumerate(containers):
+        trace_start = len(fig.data)  # type: ignore
         row = i // cols + 1
         col = i % cols + 1
         draw(container, fig, row, col, max_dims, shown_legends, mesh_trace_info, box_types, seen_values)
+        trace_end = len(fig.data)  # type: ignore
+        container_trace_ranges.append((trace_start, trace_end))
 
-    # 添加视图切换功能与颜色模式切换
+    # 添加容器选择、视图切换、颜色模式切换（按上下顺序排列）
+    add_container_selector(fig, containers, container_trace_ranges)
     add_view_selector(fig, rows, cols)
     add_color_selector(fig, mesh_trace_info)
 
@@ -204,7 +210,7 @@ def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
     platform_val = placement.get("platform")
     group_val = placement.get("group")
     mesh_trace_info.append({
-        "idx": len(fig.data) - 1,
+        "idx": len(fig.data) - 1,  # type: ignore
         "type": box_type_id,
         "platform": platform_val if platform_val else "(none)",
         "group": group_val if group_val else "(none)",
@@ -313,20 +319,18 @@ def add_view_selector(fig: go.Figure, rows: int, cols: int):
             )
         )
 
-    fig.update_layout(
-        updatemenus=[
-            dict(
-                buttons=buttons,
-                direction="down",
-                showactive=True,
-                active=0,
-                xanchor="left",
-                yanchor="top",
-                x=0,
-                y=1.0,
-            )
-        ]
-    )
+    menus = list(fig.layout.updatemenus) if fig.layout.updatemenus else []  # type: ignore
+    menus.append(dict(
+        buttons=buttons,
+        direction="down",
+        showactive=True,
+        active=0,
+        xanchor="left",
+        yanchor="top",
+        x=0,
+        y=0.95,
+    ))
+    fig.update_layout(updatemenus=menus)
 
 
 def add_color_selector(fig: go.Figure, mesh_trace_info: list[dict]):
@@ -357,12 +361,116 @@ def add_color_selector(fig: go.Figure, mesh_trace_info: list[dict]):
         xanchor="left",
         yanchor="top",
         x=0,
-        y=0.95,
+        y=0.90,
     )
 
     menus = list(fig.layout.updatemenus) if fig.layout.updatemenus else []  # type: ignore
     menus.append(color_menu)
     fig.update_layout(updatemenus=menus)
+
+
+def _build_showlegend_for_traces(fig: go.Figure, trace_indices: list[int]) -> list[bool]:
+    """为指定 trace 列表生成 showlegend 数组：只对 Mesh3d 显示图例，重复 group 只显示一次。"""
+    showlegend = [False] * len(fig.data)  # type: ignore
+    seen_groups = set()
+    for i in trace_indices:
+        t = fig.data[i]
+        if isinstance(t, go.Mesh3d):
+            group = t.legendgroup or ""
+            if group not in seen_groups:
+                showlegend[i] = True
+                seen_groups.add(group)
+    return showlegend
+
+
+def add_container_selector(fig: go.Figure, containers: list[dict], trace_ranges: list[tuple[int, int]]):
+    """添加容器选择下拉菜单（全部 / 指定容器）
+
+    选择单容器时将该场景 domain 扩至全屏，实现放大效果。
+    返回"全部容器"时恢复原始场景布局。
+    """
+
+    total_traces = len(fig.data)  # type: ignore
+    n = len(containers)
+    if total_traces == 0 or n == 0:
+        return
+
+    # 收集原始 scene domain，用于恢复
+    scene_keys = ["scene"] + [f"scene{i+1}" for i in range(1, n)]
+    original_domains = {}
+    for sk in scene_keys:
+        if sk in fig.layout:
+            d = fig.layout[sk].domain
+            original_domains[f"{sk}.domain.x"] = [d.x[0], d.x[1]]
+            original_domains[f"{sk}.domain.y"] = [d.y[0], d.y[1]]
+
+    # 收集原始 annotation 配置，用于恢复
+    annotations = list(fig.layout.annotations) if fig.layout.annotations else []
+    orig_ann = {}
+    for i, a in enumerate(annotations):
+        orig_ann[f"annotations[{i}].text"] = a.text
+        orig_ann[f"annotations[{i}].x"] = a.x
+        orig_ann[f"annotations[{i}].y"] = a.y
+
+    buttons = []
+    all_indices = list(range(total_traces))
+    all_showlegend = _build_showlegend_for_traces(fig, all_indices)
+
+    # "全部容器"：恢复原始场景布局、标题
+    restore_layout = dict(original_domains)
+    restore_layout.update(orig_ann)
+    buttons.append(dict(
+        label="全部容器",
+        method="update",
+        args=[
+            {"visible": True, "showlegend": all_showlegend},
+            restore_layout,
+            all_indices,
+        ],
+    ))
+
+    for ci, (start, end) in enumerate(trace_ranges):
+        scene_key = scene_keys[ci]
+        container_indices = list(range(start, end))
+        vis = [False] * total_traces
+        for i in container_indices:
+            vis[i] = True
+        showlegend = _build_showlegend_for_traces(fig, container_indices)
+
+        # 将该场景 domain 扩至全屏，标题居中，其余标题隐藏
+        single_layout = {
+            f"{scene_key}.domain.x": [0, 1],
+            f"{scene_key}.domain.y": [0, 1],
+        }
+        for i, a in enumerate(annotations):
+            if i == ci:
+                single_layout[f"annotations[{i}].x"] = 0.5  # type: ignore
+                single_layout[f"annotations[{i}].text"] = a.text
+            else:
+                single_layout[f"annotations[{i}].text"] = ""  # type: ignore
+
+        buttons.append(dict(
+            label=f"#{ci+1}",
+            method="update",
+            args=[
+                {"visible": vis, "showlegend": showlegend},
+                single_layout,
+                list(range(total_traces)),
+            ],
+        ))
+
+    container_menu = dict(
+        buttons=buttons,
+        direction="down",
+        showactive=True,
+        active=0,
+        xanchor="left",
+        yanchor="top",
+        x=0,
+        y=1.0,
+    )
+
+    fig.update_layout(updatemenus=[container_menu])
 
 
 def _build_coloring_args(mesh_trace_info: list[dict], key: str) -> dict:
