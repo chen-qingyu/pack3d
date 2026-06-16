@@ -28,6 +28,13 @@ ContainerPacker::ContainerPacker(
     , has_weight_info_(has_weight_info)
     , block_gen_(box_type_map)
 {
+    for (const auto& [id, bx] : box_map_)
+    {
+        if (!type_sample_cache_.count(bx.box_type_id))
+        {
+            type_sample_cache_[bx.box_type_id] = &bx;
+        }
+    }
 }
 
 std::vector<const SimpleBlock*> ContainerPacker::filter_viable_blocks(
@@ -74,17 +81,14 @@ bool ContainerPacker::check_block_feasible(
 {
     auto single = orient_size(box_type_map_.at(block.box_type_id).size, block.orientation);
 
-    // 预取该类型单箱重量（用于重量检查）
+    // 预取该类型单箱重量（使用缓存避免 O(N) 扫描）
     double box_weight = 0.0;
     if (has_weight_info_)
     {
-        for (const auto& [id, bx] : box_map_)
+        auto cache_it = type_sample_cache_.find(block.box_type_id);
+        if (cache_it != type_sample_cache_.end() && cache_it->second->weight.has_value())
         {
-            if (bx.box_type_id == block.box_type_id && bx.weight.has_value())
-            {
-                box_weight = bx.weight.value();
-                break;
-            }
+            box_weight = cache_it->second->weight.value();
         }
     }
 
@@ -196,15 +200,12 @@ void ContainerPacker::place_block(
 {
     auto single = orient_size(box_type_map_.at(block.box_type_id).size, block.orientation);
 
-    // 找到 box_type_id 对应的箱子（用于获取 platform/group/weight）
+    // 查找 sample_box（使用缓存避免 O(N) 扫描）
     const Box* sample_box = nullptr;
-    for (const auto& [id, bx] : box_map_)
+    auto cache_it = type_sample_cache_.find(block.box_type_id);
+    if (cache_it != type_sample_cache_.end())
     {
-        if (bx.box_type_id == block.box_type_id)
-        {
-            sample_box = &bx;
-            break;
-        }
+        sample_box = cache_it->second;
     }
 
     int placed = 0;
@@ -436,9 +437,6 @@ const SimpleBlock* ContainerPacker::pick_best_block(
 
 PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
 {
-    const int kKeepTopN = std::max(1, std::min(width, 16));
-    const int kMaxRefineRounds = 6;
-
     std::map<std::string, int> all_available;
     for (const auto& bx : boxes)
     {
@@ -446,6 +444,22 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
     }
 
     auto all_blocks = block_gen_.generate_all(container_.inner_size, all_available);
+
+    // 自适应：当块平均大小很小时（多箱型少数量场景），降低 beam 搜索精度
+    int64_t total_box_count = 0;
+    for (const auto& b : all_blocks)
+    {
+        total_box_count += b.box_count;
+    }
+    double avg_block_size = all_blocks.empty()
+                                ? 1.0
+                                : static_cast<double>(total_box_count) / all_blocks.size();
+    bool tiny_blocks = (avg_block_size <= 2.0);
+
+    const int kKeepTopN = tiny_blocks ? std::max(1, std::min(width, 4))
+                                      : std::max(1, std::min(width, 16));
+    const int kMaxRefineRounds = tiny_blocks ? 2 : 6;
+    const int kMaxEvalWidth = tiny_blocks ? 6 : 4;
 
     ContainerLoad state;
     state.type = &container_;
@@ -489,7 +503,11 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
             continue;
         }
 
-        int eval_limit = std::min(static_cast<int>(viable.size()), std::max(width, kKeepTopN * 4));
+        int eval_limit = tiny_blocks
+                             ? std::min(static_cast<int>(viable.size()),
+                                        std::max(width, kKeepTopN * 2))
+                             : std::min(static_cast<int>(viable.size()),
+                                        std::max(width, kKeepTopN * 4));
         std::vector<const SimpleBlock*> candidates(viable.begin(), viable.begin() + eval_limit);
 
         for (int round = 0; round < kMaxRefineRounds && candidates.size() > 1; ++round)
@@ -514,9 +532,11 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
                 auto sim_stack = stack;
                 place_block(*block, space, sim, sim_avail, sim_stack);
 
-                LocalPackScore fitness = greedy_complete(
-                    std::move(sim), std::move(sim_avail),
-                    std::move(sim_stack), all_blocks);
+                LocalPackScore fitness = tiny_blocks
+                                             ? complete_largest(std::move(sim), std::move(sim_avail),
+                                                                std::move(sim_stack), all_blocks)
+                                             : greedy_complete(std::move(sim), std::move(sim_avail),
+                                                               std::move(sim_stack), all_blocks, true);
                 scored.push_back({block, fitness});
             }
 
@@ -597,30 +617,15 @@ ContainerPacker::LocalPackScore ContainerPacker::greedy_complete(
     ContainerLoad state,
     std::map<std::string, int> available,
     std::vector<Space> stack,
-    const std::vector<SimpleBlock>& all_blocks) const
+    const std::vector<SimpleBlock>& all_blocks,
+    bool use_pick_best) const
 {
-    const int kEvalWidth = 4;
-
     while (!stack.empty())
     {
-        auto blocks = all_blocks;
-        blocks.erase(
-            std::remove_if(blocks.begin(), blocks.end(),
-                           [&](const SimpleBlock& b)
-                           {
-                               auto it = available.find(b.box_type_id);
-                               return it == available.end() || it->second < b.box_count;
-                           }),
-            blocks.end());
-        if (blocks.empty())
-        {
-            break;
-        }
-
         Space space = stack.back();
         stack.pop_back();
 
-        auto viable = filter_viable_blocks(blocks, space, available, state);
+        auto viable = filter_viable_blocks(all_blocks, space, available, state);
         if (viable.empty())
         {
             stack.push_back(space);
@@ -631,9 +636,19 @@ ContainerPacker::LocalPackScore ContainerPacker::greedy_complete(
             continue;
         }
 
-        int eval_count = std::min(kEvalWidth, static_cast<int>(viable.size()));
-        const SimpleBlock* best = pick_best_block(
-            viable, space, state, available, stack, blocks, eval_count);
+        const SimpleBlock* best = nullptr;
+        if (use_pick_best)
+        {
+            const int kEvalWidth = 4;
+            int eval_count = std::min(kEvalWidth, static_cast<int>(viable.size()));
+            best = pick_best_block(
+                viable, space, state, available, stack, all_blocks, eval_count);
+        }
+        else
+        {
+            best = viable[0];
+        }
+
         if (best == nullptr)
         {
             break;
@@ -651,14 +666,12 @@ ContainerPacker::LocalPackScore ContainerPacker::complete_largest(
     std::vector<Space> stack,
     const std::vector<SimpleBlock>& all_blocks) const
 {
-    auto blocks = all_blocks;
-
-    while (!stack.empty() && !blocks.empty())
+    while (!stack.empty())
     {
         Space space = stack.back();
         stack.pop_back();
 
-        auto viable = filter_viable_blocks(blocks, space, available, state);
+        auto viable = filter_viable_blocks(all_blocks, space, available, state);
 
         if (!viable.empty())
         {
@@ -670,15 +683,6 @@ ContainerPacker::LocalPackScore ContainerPacker::complete_largest(
             if (!transfer_space(stack))
                 stack.pop_back();
         }
-
-        blocks.erase(
-            std::remove_if(blocks.begin(), blocks.end(),
-                           [&](const SimpleBlock& b)
-                           {
-                               auto it = available.find(b.box_type_id);
-                               return it == available.end() || it->second < b.box_count;
-                           }),
-            blocks.end());
     }
 
     return score_state(state);

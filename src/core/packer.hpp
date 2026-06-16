@@ -63,6 +63,7 @@ private:
     bool has_weight_info_;
 
     BlockGenerator block_gen_;
+    std::map<std::string, const Box*> type_sample_cache_;
     std::chrono::steady_clock::time_point deadline_{
         std::chrono::steady_clock::time_point::max()};
 
@@ -110,11 +111,13 @@ private:
         int eval_count) const;
 
     /// 贪心完成：从给定状态开始，不断放置最大可行块直到装不下，返回最终填充率
+    /// use_pick_best: 为 true 时对每步候选做前瞻评估（适合大块）；false 时直接取最大块（适合小块）
     [[nodiscard]] LocalPackScore greedy_complete(
         ContainerLoad state,
         std::map<std::string, int> available,
         std::vector<Space> stack,
-        const std::vector<SimpleBlock>& all_blocks) const;
+        const std::vector<SimpleBlock>& all_blocks,
+        bool use_pick_best = true) const;
 
     [[nodiscard]] LocalPackScore complete_largest(
         ContainerLoad state,
