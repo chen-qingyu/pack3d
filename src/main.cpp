@@ -87,15 +87,13 @@ int main(int argc, char** argv)
     }
 
     // 运行求解器
-    auto result = hypercube::run(j);
+    json result = hypercube::run(j);
 
-    // 构建输出路径
+    // 输出
     fs::path in_path(input_file);
     fs::path out_dir_path(output_dir);
     fs::path out_file = out_dir_path / (in_path.stem().string() + ".json");
-
-    std::error_code ec;
-    fs::create_directories(out_dir_path, ec);
+    fs::create_directories(out_dir_path);
 
     std::ofstream ofs(out_file);
     if (!ofs.is_open())
@@ -103,9 +101,7 @@ int main(int argc, char** argv)
         spdlog::error("Cannot write output file: {}", out_file.string());
         return 1;
     }
-    ofs << result.dump(2);
-    ofs << std::endl;
-
+    ofs << result.dump(2) << std::endl;
     spdlog::info("Results written to: \"{}\"", out_file.string());
 
     return 0;
