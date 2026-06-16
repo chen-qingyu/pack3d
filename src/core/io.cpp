@@ -178,10 +178,9 @@ void from_json(const json& j, Problem& p)
         if (use == "mlhs")
         {
             p.algorithm.algorithm = Algorithm::MLHS;
-            const auto& cfg = a["config"];
-            if (cfg.contains("mlhs") && cfg["mlhs"].contains("width"))
+            if (a.contains("config") && a["config"].contains("mlhs"))
             {
-                p.algorithm.width = cfg["mlhs"]["width"].get<int>();
+                p.algorithm.width = a["config"]["mlhs"].value("width", p.algorithm.width);
             }
         }
         else
