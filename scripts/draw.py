@@ -27,6 +27,8 @@ import plotly.graph_objects as go
 import plotly.subplots
 import plotly.express.colors
 
+COLOR_MAP = {}  # 全局颜色映射表，确保同一类别在不同图中颜色一致
+
 
 def draw_file(file_path: str):
     """绘制3D装箱图"""
@@ -37,6 +39,7 @@ def draw_file(file_path: str):
     containers = data["result"]["containers"]
     # 构建箱型尺寸查找表
     box_types = {bt["id"]: bt["size"] for bt in data["result"].get("box_types", [])}
+    COLOR_MAP.clear()  # 清空全局颜色映射表，确保不同文件间颜色独立
 
     # 计算绘图相关参数
     max_dims = calc_max_dims(containers)
@@ -265,12 +268,12 @@ def calc_max_dims(containers: list[dict]) -> tuple[int, int, int]:
     return (max(i["x"] for i in inners), max(i["y"] for i in inners), max(i["z"] for i in inners))
 
 
-def get_color(category: str, colors={}):
+def get_color(category: str):
     """一个类别一种颜色"""
-    if category not in colors:
+    if category not in COLOR_MAP:
         base = plotly.express.colors.qualitative.Plotly
-        colors[category] = base[len(colors) % len(base)]
-    return colors[category]
+        COLOR_MAP[category] = base[len(COLOR_MAP) % len(base)]
+    return COLOR_MAP[category]
 
 
 def get_oriented_dim(x: int, y: int, z: int, orient: str) -> tuple[int, int, int]:
@@ -472,7 +475,7 @@ def _build_coloring_args(mesh_trace_info: list[dict], key: str) -> dict:
     {"color": [...], "name": [...], "legendgroup": [...], "showlegend": [...]}。
     """
     values = [info[key] for info in mesh_trace_info]
-    palette = _build_palette(values)
+    palette = {v: get_color(v) for v in dict.fromkeys(values)}
 
     colors = []
     names = []
@@ -493,16 +496,6 @@ def _build_coloring_args(mesh_trace_info: list[dict], key: str) -> dict:
         "legendgroup": groups,
         "showlegend": showlegends,
     }
-
-
-def _build_palette(values: list[str]) -> dict:
-    """依据出现顺序为唯一值分配颜色。"""
-    base = plotly.express.colors.qualitative.Plotly
-    order = []
-    for v in values:
-        if v not in order:
-            order.append(v)
-    return {v: base[i % len(base)] for i, v in enumerate(order)}
 
 
 if __name__ == "__main__":
