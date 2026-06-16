@@ -206,14 +206,11 @@ def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
         ),
         row=row, col=col
     )
-    # 记录 Mesh3d 轨迹信息，用于后续颜色模式切换
-    platform_val = placement.get("platform")
-    group_val = placement.get("group")
     mesh_trace_info.append({
         "idx": len(fig.data) - 1,  # type: ignore
         "type": box_type_id,
-        "platform": platform_val if platform_val else "(none)",
-        "group": group_val if group_val else "(none)",
+        "platform": platform_val,
+        "group": group_val,
     })
     shown_legends.add(box_type_id)
 
@@ -264,13 +261,8 @@ def get_text(placement: dict, size: dict, l: int, w: int, h: int) -> str:
 
 def calc_max_dims(containers: list[dict]) -> tuple[int, int, int]:
     """计算所有容器在长宽高三个维度的最大尺寸"""
-    max_l, max_w, max_h = 0, 0, 0
-    for container in containers:
-        inner = container["inner_size"]
-        max_l = max(max_l, inner["x"])
-        max_w = max(max_w, inner["y"])
-        max_h = max(max_h, inner["z"])
-    return (max_l, max_w, max_h)
+    inners = [c["inner_size"] for c in containers]
+    return (max(i["x"] for i in inners), max(i["y"] for i in inners), max(i["z"] for i in inners))
 
 
 def get_color(category: str, colors={}):
@@ -319,7 +311,7 @@ def add_view_selector(fig: go.Figure, rows: int, cols: int):
             )
         )
 
-    menus = list(fig.layout.updatemenus) if fig.layout.updatemenus else []  # type: ignore
+    menus = list(fig.layout.updatemenus or [])  # type: ignore
     menus.append(dict(
         buttons=buttons,
         direction="down",
@@ -364,7 +356,7 @@ def add_color_selector(fig: go.Figure, mesh_trace_info: list[dict]):
         y=0.90,
     )
 
-    menus = list(fig.layout.updatemenus) if fig.layout.updatemenus else []  # type: ignore
+    menus = list(fig.layout.updatemenus or [])  # type: ignore
     menus.append(color_menu)
     fig.update_layout(updatemenus=menus)
 
