@@ -1,0 +1,425 @@
+#! python3
+
+"""
+绘制 3D 装箱图。
+
+主要功能:
+• 从 JSON 文件读取以可交互图形绘制并保存为 HTML 文件
+• 鼠标悬浮显示箱子的基本信息
+• 支持标准视图切换（前、后、左、右、俯、仰）
+• 支持三种上色模式：按箱型 / 按平台 / 按分组
+• 自动选择差异度最高的维度作为默认上色模式
+
+使用说明:
+• 文件: py draw.py result.json
+    生成同名 HTML 文件
+• 目录: py draw.py directory/
+    遍历目录中所有 JSON 文件生成对应的 HTML 文件
+"""
+
+import sys
+import json
+import pathlib
+
+import numpy as np
+import plotly.graph_objects as go
+import plotly.subplots
+import plotly.express.colors
+
+
+def draw_file(file_path: str):
+    """绘制3D装箱图"""
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    containers = data["result"]["containers"]
+    # 构建箱型尺寸查找表
+    box_types = {bt["id"]: bt["size"] for bt in data["result"].get("box_types", [])}
+
+    # 计算绘图相关参数
+    max_dims = calc_max_dims(containers)
+    n = len(containers)
+    cols = min(4, n)  # 最多4列
+    rows = (n + cols - 1) // cols
+
+    # 创建子图
+    subplot_titles = []
+    for c in containers:
+        title = f"Container {c['type_id']}<br>"
+        title += f"<sub>Volume Rate: {c['volume_rate']:.2%}"
+        if c.get("weight_rate") is not None:
+            title += f", Weight Rate: {c['weight_rate']:.2%}"
+        title += f"<br>Packed: {c['packed_count']}"
+        platforms = c.get("platforms", [])
+        groups = c.get("groups", [])
+        if platforms:
+            title += f"<br>Route: {', '.join(platforms)}"
+        if groups:
+            title += f"<br>Groups: {', '.join(groups)}"
+        title += "</sub>"
+        subplot_titles.append(title)
+
+    fig = plotly.subplots.make_subplots(
+        rows=rows, cols=cols,
+        specs=[[{"type": "scatter3d"} for _ in range(cols)] for _ in range(rows)],
+        subplot_titles=subplot_titles,
+    )
+
+    # 绘制每个装箱方案
+    mesh_trace_info = []  # 收集 Mesh3d 轨迹信息用于颜色切换
+    shown_legends = set()
+    legend_keys = {"type", "platform", "group"}  # 收集各维度实际出现的值用于自动切换
+    seen_values = {k: set() for k in legend_keys}
+    for i, container in enumerate(containers):
+        row = i // cols + 1
+        col = i % cols + 1
+        draw(container, fig, row, col, max_dims, shown_legends, mesh_trace_info, box_types, seen_values)
+
+    # 添加视图切换功能与颜色模式切换
+    add_view_selector(fig, rows, cols)
+    add_color_selector(fig, mesh_trace_info)
+
+    # 自动切换：如果某维度只有一种值，默认用下一个多样化的维度
+    auto_key = None
+    for k in ["platform", "group", "type"]:
+        if len(seen_values.get(k, set())) > 1:
+            auto_key = k
+            break
+    if auto_key is not None and auto_key != "type":
+        auto_args = _build_coloring_args(mesh_trace_info, key=auto_key)
+        mesh_indices = [info["idx"] for info in mesh_trace_info]
+        for idx, trace_idx in enumerate(mesh_indices):
+            fig.data[trace_idx].update(
+                color=auto_args["color"][idx],
+                name=auto_args["name"][idx],
+                legendgroup=auto_args["legendgroup"][idx],
+                showlegend=auto_args["showlegend"][idx],
+            )
+        # 激活对应的菜单项: 0=type, 1=platform, 2=group
+        menu_index = ["type", "platform", "group"].index(auto_key)
+        fig.layout.updatemenus[-1].active = menu_index  # type: ignore
+
+    # 保存文件
+    fig.write_html(file_path.replace(".json", ".html"))
+    print(f"Saved: {file_path.replace('.json', '.html')}")
+
+
+def draw(container: dict, fig: go.Figure, row: int, col: int, max_dims: tuple[int, int, int],
+         shown_legends: set, mesh_trace_info: list[dict], box_types: dict[str, dict],
+         seen_values: dict[str, set]):
+    """绘制容器和箱子"""
+
+    # 绘制容器
+    draw_container(fig, container, row, col)
+
+    # 绘制箱子
+    for placement in container["placements"]:
+        draw_box(fig, placement, row, col, shown_legends, mesh_trace_info, box_types, seen_values)
+
+    # 设置场景
+    inner = container["inner_size"]
+    max_dim = max(max_dims)
+    scene_config = dict(
+        xaxis=dict(range=[0, inner["x"]], title="X"),
+        yaxis=dict(range=[0, inner["y"]], title="Y"),
+        zaxis=dict(range=[0, inner["z"]], title="Z"),
+        aspectratio=dict(
+            x=inner["x"] / max_dim,
+            y=inner["y"] / max_dim,
+            z=inner["z"] / max_dim
+        )
+    )
+    scene = f"scene{(row-1)*4 + col}" if (row-1)*4 + col > 1 else "scene"
+    fig.layout[scene].update(scene_config)
+
+
+def draw_container(fig: go.Figure, container: dict, row: int, col: int):
+    """绘制容器"""
+    inner = container["inner_size"]
+    l, w, h = inner["x"], inner["y"], inner["z"]
+
+    vertices = np.array([
+        [0, 0, 0], [l, 0, 0], [l, w, 0], [0, w, 0],  # 底面4个顶点
+        [0, 0, h], [l, 0, h], [l, w, h], [0, w, h]   # 顶面4个顶点
+    ])
+    line = dict(color='gray', width=2)
+    draw_edges(fig, vertices, line, row, col)
+
+
+def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
+             shown_legends: set, mesh_trace_info: list[dict], box_types: dict[str, dict],
+             seen_values: dict[str, set]):
+    """绘制箱子"""
+
+    pos = placement["position"]
+    x, y, z = pos["x"], pos["y"], pos["z"]
+    orient = placement["orientation"]
+    size = box_types.get(placement["box_type_id"], {"x": 0, "y": 0, "z": 0})
+    l, w, h = get_oriented_dim(size["x"], size["y"], size["z"], orient)
+    box_type_id = placement["box_type_id"]
+    color = get_color(box_type_id)
+
+    # 定义长方体的8个顶点
+    vertices = np.array([
+        [x, y, z], [x + l, y, z], [x + l, y + w, z], [x, y + w, z],
+        [x, y, z + h], [x + l, y, z + h], [x + l, y + w, z + h], [x, y + w, z + h],
+    ])
+
+    # 定义6个面的顶点索引（每个面由2个三角形组成）
+    faces = [
+        [0, 1, 2], [0, 2, 3],  # 底面
+        [4, 5, 6], [4, 6, 7],  # 顶面
+        [0, 1, 5], [0, 5, 4],  # 前面
+        [3, 2, 6], [3, 6, 7],  # 后面
+        [0, 3, 7], [0, 7, 4],  # 左面
+        [1, 2, 6], [1, 6, 5],  # 右面
+    ]
+
+    # 收集各维度值用于自动切换判断
+    platform_val = placement.get("platform") or "(none)"
+    group_val = placement.get("group") or "(none)"
+    seen_values["type"].add(box_type_id)
+    seen_values["platform"].add(platform_val)
+    seen_values["group"].add(group_val)
+
+    fig.add_trace(
+        go.Mesh3d(
+            x=vertices[:, 0],
+            y=vertices[:, 1],
+            z=vertices[:, 2],
+            i=[face[0] for face in faces],
+            j=[face[1] for face in faces],
+            k=[face[2] for face in faces],
+            color=color,
+            name=box_type_id,
+            legendgroup=box_type_id,
+            showlegend=box_type_id not in shown_legends,
+            text=get_text(placement, size, l, w, h),
+            hoverinfo='text',
+        ),
+        row=row, col=col
+    )
+    # 记录 Mesh3d 轨迹信息，用于后续颜色模式切换
+    platform_val = placement.get("platform")
+    group_val = placement.get("group")
+    mesh_trace_info.append({
+        "idx": len(fig.data) - 1,
+        "type": box_type_id,
+        "platform": platform_val if platform_val else "(none)",
+        "group": group_val if group_val else "(none)",
+    })
+    shown_legends.add(box_type_id)
+
+    # 绘制边框
+    line = dict(color='black', width=1)
+    draw_edges(fig, vertices, line, row, col)
+
+
+def draw_edges(fig: go.Figure, vertices: np.ndarray, line: dict, row: int, col: int):
+    """绘制长方体边框"""
+    edges = [
+        (0, 1), (1, 2), (2, 3), (3, 0),  # 底面
+        (4, 5), (5, 6), (6, 7), (7, 4),  # 顶面
+        (0, 4), (1, 5), (2, 6), (3, 7),  # 竖直边
+    ]
+    for a, b in edges:
+        fig.add_trace(
+            go.Scatter3d(
+                x=[vertices[a, 0], vertices[b, 0]],
+                y=[vertices[a, 1], vertices[b, 1]],
+                z=[vertices[a, 2], vertices[b, 2]],
+                mode='lines',
+                line=line,
+                showlegend=False,
+                hoverinfo='skip',
+            ),
+            row=row, col=col
+        )
+
+
+def get_text(placement: dict, size: dict, l: int, w: int, h: int) -> str:
+    """生成用于鼠标悬浮显示的文本信息"""
+    pos = placement["position"]
+    text = f"box: {placement['box_id']}<br>"
+    text += f"type: {placement['box_type_id']}<br>"
+    text += f"pos: ({pos['x']}, {pos['y']}, {pos['z']})<br>"
+    text += f"size: {size['x']}x{size['y']}x{size['z']}<br>"
+    text += f"orient: {placement['orientation']}<br>"
+    text += f"placed: {l}x{w}x{h}<br>"
+    platform_val = placement.get("platform")
+    group_val = placement.get("group")
+    if platform_val:
+        text += f"platform: {platform_val}<br>"
+    if group_val:
+        text += f"group: {group_val}"
+    return text
+
+
+def calc_max_dims(containers: list[dict]) -> tuple[int, int, int]:
+    """计算所有容器在长宽高三个维度的最大尺寸"""
+    max_l, max_w, max_h = 0, 0, 0
+    for container in containers:
+        inner = container["inner_size"]
+        max_l = max(max_l, inner["x"])
+        max_w = max(max_w, inner["y"])
+        max_h = max(max_h, inner["z"])
+    return (max_l, max_w, max_h)
+
+
+def get_color(category: str, colors={}):
+    """一个类别一种颜色"""
+    if category not in colors:
+        base = plotly.express.colors.qualitative.Plotly
+        colors[category] = base[len(colors) % len(base)]
+    return colors[category]
+
+
+def get_oriented_dim(x: int, y: int, z: int, orient: str) -> tuple[int, int, int]:
+    """根据 orientation 字符串获取实际摆放的长宽高"""
+    orient_map = {
+        "xyz": (x, y, z),
+        "yxz": (y, x, z),
+        "xzy": (x, z, y),
+        "zxy": (z, x, y),
+        "yzx": (y, z, x),
+        "zyx": (z, y, x),
+    }
+    return orient_map[orient]
+
+
+def add_view_selector(fig: go.Figure, rows: int, cols: int):
+    """添加视图选择器"""
+
+    # 定义标准视图的相机参数
+    views = {
+        "默认视图": None,
+        "前视图": {"eye": {"x": 0, "y": -2, "z": 0}, "up": {"x": 0, "y": 0, "z": 1}},
+        "后视图": {"eye": {"x": 0, "y": 2, "z": 0}, "up": {"x": 0, "y": 0, "z": 1}},
+        "左视图": {"eye": {"x": -2, "y": 0, "z": 0}, "up": {"x": 0, "y": 0, "z": 1}},
+        "右视图": {"eye": {"x": 2, "y": 0, "z": 0}, "up": {"x": 0, "y": 0, "z": 1}},
+        "俯视图": {"eye": {"x": 0, "y": 0, "z": 2}, "up": {"x": 0, "y": 1, "z": 0}},
+        "仰视图": {"eye": {"x": 0, "y": 0, "z": -2}, "up": {"x": 0, "y": -1, "z": 0}},
+    }
+
+    scenes = ["scene"] + [f"scene{i}" for i in range(2, rows * cols + 1)]
+    buttons = []
+    for view_name, camera in views.items():
+        buttons.append(
+            dict(
+                label=view_name,
+                method="relayout",
+                args=[{f"{scene}.camera": camera for scene in scenes}],
+            )
+        )
+
+    fig.update_layout(
+        updatemenus=[
+            dict(
+                buttons=buttons,
+                direction="down",
+                showactive=True,
+                active=0,
+                xanchor="left",
+                yanchor="top",
+                x=0,
+                y=1.0,
+            )
+        ]
+    )
+
+
+def add_color_selector(fig: go.Figure, mesh_trace_info: list[dict]):
+    """添加颜色模式选择器（箱型 / 平台 / 分组）
+
+    通过 updatemenus + restyle 在不重新绘制的情况下切换颜色。
+    """
+
+    if not mesh_trace_info:
+        return
+
+    mesh_indices = [info["idx"] for info in mesh_trace_info]
+
+    # 构建三种模式下的颜色与图例参数
+    type_args = _build_coloring_args(mesh_trace_info, key="type")
+    platform_args = _build_coloring_args(mesh_trace_info, key="platform")
+    group_args = _build_coloring_args(mesh_trace_info, key="group")
+
+    color_menu = dict(
+        buttons=[
+            dict(label="箱型上色", method="restyle", args=[type_args, mesh_indices]),
+            dict(label="平台上色", method="restyle", args=[platform_args, mesh_indices]),
+            dict(label="分组上色", method="restyle", args=[group_args, mesh_indices]),
+        ],
+        direction="down",
+        showactive=True,
+        active=0,
+        xanchor="left",
+        yanchor="top",
+        x=0,
+        y=0.95,
+    )
+
+    menus = list(fig.layout.updatemenus) if fig.layout.updatemenus else []  # type: ignore
+    menus.append(color_menu)
+    fig.update_layout(updatemenus=menus)
+
+
+def _build_coloring_args(mesh_trace_info: list[dict], key: str) -> dict:
+    """根据指定键（type / platform / group）为每个 Mesh3d 构建颜色与图例参数数组。
+
+    返回一个用于 plotly updatemenus/restyle 的参数 dict：
+    {"color": [...], "name": [...], "legendgroup": [...], "showlegend": [...]}。
+    """
+    values = [info[key] for info in mesh_trace_info]
+    palette = _build_palette(values)
+
+    colors = []
+    names = []
+    groups = []
+    showlegends = []
+    seen = set()
+
+    for val in values:
+        colors.append(palette[val])
+        names.append(str(val))
+        groups.append(str(val))
+        showlegends.append(val not in seen)
+        seen.add(val)
+
+    return {
+        "color": colors,
+        "name": names,
+        "legendgroup": groups,
+        "showlegend": showlegends,
+    }
+
+
+def _build_palette(values: list[str]) -> dict:
+    """依据出现顺序为唯一值分配颜色。"""
+    base = plotly.express.colors.qualitative.Plotly
+    order = []
+    for v in values:
+        if v not in order:
+            order.append(v)
+    return {v: base[i % len(base)] for i, v in enumerate(order)}
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: py draw.py <file|directory>")
+        sys.exit(0)
+
+    path = pathlib.Path(sys.argv[1])
+    if path.is_file():
+        draw_file(str(path))
+    elif path.is_dir():
+        files = sorted(p for p in path.iterdir() if p.suffix.lower() == ".json")
+        if not files:
+            print(f"No json files found in directory: {path}")
+            sys.exit(0)
+        for file in files:
+            draw_file(str(file))
+    else:
+        print(f"Path not found: {path}")
+        sys.exit(0)
