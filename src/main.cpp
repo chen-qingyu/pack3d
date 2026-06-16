@@ -16,25 +16,18 @@ static bool try_set(json& j, const argparse::ArgumentParser& p, const std::strin
     auto opt = p.present<T>(arg);
     if (!opt)
     {
-        return true; // CLI 参数未提供，跳过覆盖
+        return true; // CLI 参数未提供，跳过
     }
 
-    json cli_val = json(*opt);
     json::json_pointer ptr(path);
-
     if (j.contains(ptr))
     {
-        json& existing = j[ptr];
-        if (existing == cli_val)
-        {
-            return true; // 值相同，无冲突
-        }
-        spdlog::error("Conflict: {} ({}) conflicts with {} ({})", arg, cli_val.dump(), path, existing.dump());
-        return false; // 冲突，无法覆盖
+        spdlog::error("CLI '{}' not allowed when JSON '{}' is specified.", arg, path);
+        return false; // 已存在显式指定的节点
     }
 
-    j[ptr] = cli_val; // 自动创建中间节点
-    return true;      // 成功覆盖
+    j[ptr] = json(*opt); // 自动创建中间节点
+    return true;         // 成功覆盖
 }
 
 int main(int argc, char** argv)
