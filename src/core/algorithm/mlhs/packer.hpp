@@ -6,9 +6,8 @@
 #include <string>
 #include <vector>
 
-#include "heuristic.hpp"
-
 #include "../../types.hpp"
+#include "heuristic.hpp"
 
 namespace hypercube::mlhs
 {

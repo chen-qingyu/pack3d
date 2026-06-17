@@ -11,6 +11,7 @@ target("core")
     set_kind("static")
     add_packages("spdlog", "nlohmann_json", "json-schema-validator", {public = true})
     add_files("src/core/**.cpp")
+    add_headerfiles("src/core/**.hpp")
     if is_plat("linux") then
         add_cxflags("-fPIC")
     end

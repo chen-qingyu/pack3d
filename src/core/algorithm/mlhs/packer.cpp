@@ -6,10 +6,9 @@
 
 #include <spdlog/spdlog.h>
 
-#include "block.hpp"
-
 #include "../../objectives.hpp"
 #include "../../tool.hpp"
+#include "block.hpp"
 
 namespace hypercube::mlhs
 {

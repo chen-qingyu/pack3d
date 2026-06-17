@@ -5,10 +5,9 @@
 #include <string>
 #include <vector>
 
+#include "../../types.hpp"
 #include "block.hpp"
 #include "space.hpp"
-
-#include "../../types.hpp"
 
 namespace hypercube::mlhs
 {

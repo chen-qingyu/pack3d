@@ -2,9 +2,8 @@
 
 #include <spdlog/spdlog.h>
 
-#include "packer.hpp"
-
 #include "../../tool.hpp"
+#include "packer.hpp"
 
 namespace hypercube::sgep
 {

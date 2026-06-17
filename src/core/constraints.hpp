@@ -24,9 +24,9 @@ namespace hypercube
 
 /// 检查底面支撑率是否达标（support_rate=0 则跳过）
 [[nodiscard]] bool check_support(const Position& pos, const OrientedSize& osize,
-                               const ContainerLoad& load,
-                               const std::map<std::string, BoxType>& box_type_map,
-                               double support_rate) noexcept;
+                                 const ContainerLoad& load,
+                                 const std::map<std::string, BoxType>& box_type_map,
+                                 double support_rate) noexcept;
 
 /// 平台数量限制预检
 [[nodiscard]] bool check_platform_limit(const ContainerLoad& load,

@@ -6,12 +6,11 @@
 #include <queue>
 #include <set>
 
-#include "block.hpp"
-#include "space.hpp"
-
 #include "../../constraints.hpp"
 #include "../../objectives.hpp"
 #include "../../tool.hpp"
+#include "block.hpp"
+#include "space.hpp"
 
 namespace hypercube::mlhs
 {

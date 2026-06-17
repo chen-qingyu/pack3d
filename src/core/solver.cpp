@@ -4,10 +4,9 @@
 
 #include <spdlog/spdlog.h>
 
-#include "tool.hpp"
-
 #include "algorithm/mlhs/packer.hpp"
 #include "algorithm/sgep/packer.hpp"
+#include "tool.hpp"
 
 namespace hypercube
 {

@@ -4,11 +4,10 @@
 #include <string>
 #include <vector>
 
-#include "placer.hpp"
-#include "state.hpp"
-
 #include "../../constraints.hpp"
 #include "../../types.hpp"
+#include "placer.hpp"
+#include "state.hpp"
 
 namespace hypercube::sgep
 {
