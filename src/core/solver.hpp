@@ -24,9 +24,6 @@ private:
     std::map<std::string, ContainerType> container_type_map_;
     std::map<std::string, Box> box_map_;
     bool has_weight_info_ = false;
-
-    void log_problem_info() const;
-    void log_container_stats(const std::vector<ContainerSummary>& summaries) const;
 };
 
 } // namespace hypercube
