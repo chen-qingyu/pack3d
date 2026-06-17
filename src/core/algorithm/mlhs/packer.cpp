@@ -9,6 +9,7 @@
 #include "block.hpp"
 
 #include "../../objectives.hpp"
+#include "../../tool.hpp"
 
 namespace hypercube::mlhs
 {
@@ -27,7 +28,6 @@ Packer::Packer(
 
 Solution Packer::pack()
 {
-    start_time_ = std::chrono::steady_clock::now();
     next_instance_ = 0;
     container_type_usage_.clear();
 
@@ -40,7 +40,7 @@ Solution Packer::pack()
         remaining_ids.insert(bx.id);
     }
 
-    while (!remaining_ids.empty() && check_time())
+    while (!remaining_ids.empty() && TimeChecker::check())
     {
         // 收集剩余箱子
         std::vector<const Box*> remaining;
@@ -213,7 +213,7 @@ Solution Packer::pack()
     {
         final_status = "complete";
     }
-    else if (!check_time())
+    else if (!TimeChecker::check())
     {
         final_status = "timeout";
     }
@@ -235,9 +235,6 @@ std::optional<PackResult> Packer::pack_container(
     }
 
     Heuristic heuristic(*ct, box_type_map_, box_map_, problem_, has_weight_info_);
-    auto deadline = start_time_ + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                      std::chrono::duration<double>(problem_.time_limit));
-    heuristic.set_deadline(deadline);
     PackResult pr = heuristic.pack_beam(box_list, problem_.algorithm.width);
     if (pr.success || !pr.placements.empty())
     {
@@ -258,8 +255,8 @@ Solution Packer::to_solution(
                              ? default_objective_keys()
                              : problem_.objective_keys;
 
-    auto elapsed = std::chrono::steady_clock::now() - start_time_;
-    sol.elapsed_second = std::chrono::duration<double>(elapsed).count();
+    auto elapsed = TimeChecker::elapsed();
+    sol.elapsed_second = elapsed;
 
     std::set<std::string> packed_ids;
 
@@ -454,12 +451,6 @@ int Packer::handle_tender_limit_groups(
     }
 
     return 0;
-}
-
-bool Packer::check_time() const
-{
-    auto elapsed = std::chrono::steady_clock::now() - start_time_;
-    return std::chrono::duration<double>(elapsed).count() < problem_.time_limit;
 }
 
 } // namespace hypercube::mlhs

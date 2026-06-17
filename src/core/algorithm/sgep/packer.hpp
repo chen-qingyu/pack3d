@@ -4,10 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "../../constraints.hpp"
-#include "../../types.hpp"
 #include "placer.hpp"
 #include "state.hpp"
+
+#include "../../constraints.hpp"
+#include "../../types.hpp"
 
 namespace hypercube::sgep
 {
@@ -36,7 +37,6 @@ private:
     SearchState make_initial_state() const;
     bool construct_solution(SearchState& state);
     bool open_new_container(SearchState& state);
-    bool check_time(const SearchState& state) const;
     void update_best(SearchState& state);
     Solution build_solution(const SearchState& state, const std::string& status) const;
     bool check_tender_limit(SearchState& state);

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <map>
 #include <optional>
 #include <set>
@@ -47,9 +46,6 @@ struct SearchState
     std::optional<Solution> best_feasible;
 
     bool infeasible = false;
-
-    std::chrono::steady_clock::time_point start_time;
-    double time_limit = 120.0;
 
     /// 用户指定的目标键顺序（或默认），比较时只关注这些维度
     std::vector<std::string> objective_keys;

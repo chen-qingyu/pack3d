@@ -11,6 +11,7 @@
 
 #include "../../constraints.hpp"
 #include "../../objectives.hpp"
+#include "../../tool.hpp"
 
 namespace hypercube::mlhs
 {
@@ -491,7 +492,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
 
     while (!stack.empty() && !available.empty() && !all_blocks.empty())
     {
-        if (!check_time())
+        if (!TimeChecker::check())
         {
             break;
         }
@@ -532,7 +533,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
 
         for (int round = 0; round < kMaxRefineRounds && candidates.size() > 1; ++round)
         {
-            if (!check_time())
+            if (!TimeChecker::check())
             {
                 break;
             }

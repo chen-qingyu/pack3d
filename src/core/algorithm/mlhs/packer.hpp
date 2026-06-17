@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <map>
 #include <optional>
 #include <set>
@@ -8,6 +7,7 @@
 #include <vector>
 
 #include "heuristic.hpp"
+
 #include "../../types.hpp"
 
 namespace hypercube::mlhs
@@ -32,7 +32,6 @@ private:
     const std::map<std::string, Box>& box_map_;
     bool has_weight_info_;
 
-    std::chrono::steady_clock::time_point start_time_;
     int next_instance_ = 0;
     std::map<std::string, int> container_type_usage_;
 
@@ -56,8 +55,6 @@ private:
     [[nodiscard]] int handle_tender_limit_groups(
         std::set<std::string>& remaining_ids,
         std::vector<ContainerSlot>& slots);
-
-    bool check_time() const;
 };
 
 } // namespace hypercube::mlhs

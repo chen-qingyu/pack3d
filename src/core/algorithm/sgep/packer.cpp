@@ -7,6 +7,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "../../tool.hpp"
+
 namespace hypercube::sgep
 {
 
@@ -33,9 +35,7 @@ Solution Packer::pack()
     // --- 运行构造式搜索 ---
     bool all_packed = construct_solution(state);
 
-    // --- 收尾 ---
-    auto now = std::chrono::steady_clock::now();
-    bool timed_out = std::chrono::duration<double>(now - state.start_time).count() >= state.time_limit;
+    bool timed_out = !TimeChecker::check();
 
     if (state.infeasible)
     {
@@ -69,7 +69,7 @@ bool Packer::construct_solution(SearchState& state)
 {
     while (!state.remaining_boxes.empty())
     {
-        if (!check_time(state))
+        if (!TimeChecker::check())
         {
             return false;
         }
@@ -277,13 +277,6 @@ bool Packer::check_tender_limit(SearchState& state)
     }
 
     return false;
-}
-
-bool Packer::check_time(const SearchState& state) const
-{
-    auto elapsed = std::chrono::steady_clock::now() - state.start_time;
-    auto elapsed_sec = std::chrono::duration<double>(elapsed).count();
-    return elapsed_sec < state.time_limit;
 }
 
 } // namespace hypercube::sgep

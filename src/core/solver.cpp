@@ -4,6 +4,8 @@
 
 #include <spdlog/spdlog.h>
 
+#include "tool.hpp"
+
 #include "algorithm/mlhs/packer.hpp"
 #include "algorithm/sgep/packer.hpp"
 
@@ -44,6 +46,8 @@ Solution SolverEngine::solve()
     log_problem_info();
 
     spdlog::info("===Algorithm Start===");
+
+    TimeChecker::init(problem_.time_limit);
 
     Solution solution;
     if (problem_.algorithm.algorithm == Algorithm::MLHS)
