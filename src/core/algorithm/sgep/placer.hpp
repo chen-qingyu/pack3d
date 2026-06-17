@@ -27,6 +27,13 @@ private:
     const std::map<std::string, BoxType>& box_type_map_;
     const Problem& problem_;
     bool has_weight_info_;
+
+    [[nodiscard]] std::vector<Position> generate_extreme_points(
+        const Position& pos, const OrientedSize& osize,
+        const ContainerLoad& load) const noexcept;
+
+    void filter_extreme_points(std::vector<Position>& points,
+                               const ContainerLoad& load) const noexcept;
 };
 
 } // namespace hypercube::sgep

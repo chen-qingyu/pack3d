@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <chrono>
 #include <cstdint>
 #include <map>
@@ -54,6 +55,30 @@ struct OrientedSize
         return static_cast<int64_t>(dx) * dy * dz;
     }
 };
+
+/// 应用朝向到基础尺寸
+inline OrientedSize orient_size(const Size& base, Orientation o) noexcept
+{
+    auto [x, y, z] = base;
+    switch (o)
+    {
+        case Orientation::XYZ:
+            return {x, y, z};
+        case Orientation::XZY:
+            return {x, z, y};
+        case Orientation::YXZ:
+            return {y, x, z};
+        case Orientation::YZX:
+            return {y, z, x};
+        case Orientation::ZXY:
+            return {z, x, y};
+        case Orientation::ZYX:
+            return {z, y, x};
+        default:
+            assert(false && "Invalid orientation");
+            return {x, y, z};
+    }
+}
 
 struct ContainerType
 {

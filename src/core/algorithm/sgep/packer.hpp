@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "../../constraints.hpp"
-#include "../../geometry.hpp"
 #include "../../types.hpp"
 #include "placer.hpp"
 #include "state.hpp"

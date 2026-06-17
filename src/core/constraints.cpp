@@ -6,24 +6,53 @@
 namespace hypercube
 {
 
-bool check_boundary_constraint(const ContainerLoad& load,
-                               const Position& pos,
-                               const OrientedSize& osize) noexcept
+bool check_boundary(const ContainerType& ctype, const Position& pos,
+                    const OrientedSize& osize) noexcept
 {
-    return check_boundary(*load.type, pos, osize);
+    if (pos.x < 0 || pos.y < 0 || pos.z < 0)
+    {
+        return false;
+    }
+    if (pos.x + osize.dx > ctype.inner_size.x)
+    {
+        return false;
+    }
+    if (pos.y + osize.dy > ctype.inner_size.y)
+    {
+        return false;
+    }
+    if (pos.z + osize.dz > ctype.inner_size.z)
+    {
+        return false;
+    }
+    return true;
 }
 
-bool check_overlap_constraint(
-    const ContainerLoad& load,
-    const Position& pos, const OrientedSize& osize,
-    const std::map<std::string, BoxType>& box_type_map) noexcept
+bool check_overlap(const Position& pos, const OrientedSize& osize,
+                   const std::vector<Placement>& existing,
+                   const std::map<std::string, BoxType>& box_type_map) noexcept
 {
-    return !check_overlap_any(pos, osize, load.placements, box_type_map);
+    for (const auto& pl : existing)
+    {
+        auto& bt = box_type_map.at(pl.box_type_id);
+        auto e_size = orient_size(bt.size, pl.orientation);
+
+        if ((pl.position.x + e_size.dx <= pos.x) ||
+            (pos.x + osize.dx <= pl.position.x) ||
+            (pl.position.y + e_size.dy <= pos.y) ||
+            (pos.y + osize.dy <= pl.position.y) ||
+            (pl.position.z + e_size.dz <= pos.z) ||
+            (pos.z + osize.dz <= pl.position.z))
+        {
+            continue;
+        }
+        return true;
+    }
+    return false;
 }
 
-bool check_weight_constraint(const ContainerLoad& load,
-                             const OrientedSize& osize,
-                             double box_weight) noexcept
+bool check_weight(const ContainerLoad& load,
+                  double box_weight) noexcept
 {
     if (!load.type->max_weight.has_value())
     {
@@ -32,25 +61,74 @@ bool check_weight_constraint(const ContainerLoad& load,
     return load.total_weight + box_weight <= load.type->max_weight.value() + 1e-9;
 }
 
-bool check_support_constraint(
-    const ContainerLoad& load,
-    const Position& pos, const OrientedSize& osize,
-    double support_rate,
-    const std::map<std::string, BoxType>& box_type_map) noexcept
+bool check_support(const Position& pos, const OrientedSize& osize,
+                   const ContainerLoad& load,
+                   const std::map<std::string, BoxType>& box_type_map,
+                   double support_rate) noexcept
 {
-    if (support_rate <= 0.0)
+    if (support_rate <= 0.0 || pos.z == 0)
     {
         return true;
     }
-    double ratio = calc_support_ratio(pos, osize, load, box_type_map);
+
+    int64_t total_area = static_cast<int64_t>(osize.dx) * osize.dy;
+    if (total_area <= 0)
+    {
+        return false;
+    }
+
+    int32_t bx1 = pos.x;
+    int32_t bx2 = pos.x + osize.dx;
+    int32_t by1 = pos.y;
+    int32_t by2 = pos.y + osize.dy;
+
+    int64_t supported_area = 0;
+
+    for (const auto& pl : load.placements)
+    {
+        auto& bt = box_type_map.at(pl.box_type_id);
+        auto e_size = orient_size(bt.size, pl.orientation);
+
+        int32_t support_top = pl.position.z + e_size.dz;
+        if (support_top != pos.z)
+        {
+            continue;
+        }
+
+        int32_t sx1 = std::max(bx1, pl.position.x);
+        int32_t sx2 = std::min(bx2, pl.position.x + e_size.dx);
+        int32_t sy1 = std::max(by1, pl.position.y);
+        int32_t sy2 = std::min(by2, pl.position.y + e_size.dy);
+
+        if (sx1 < sx2 && sy1 < sy2)
+        {
+            supported_area += static_cast<int64_t>(sx2 - sx1) * (sy2 - sy1);
+        }
+    }
+
+    double ratio = static_cast<double>(supported_area) / static_cast<double>(total_area);
     return ratio + 1e-9 >= support_rate;
 }
 
-bool check_route_order_constraint(
-    const ContainerLoad& load,
-    const std::string& platform,
-    const Position& pos, const OrientedSize& osize,
-    const RouteOrder& route) noexcept
+bool check_platform_limit(const ContainerLoad& load,
+                          const std::string& platform,
+                          int platform_limit) noexcept
+{
+    if (platform_limit <= 0)
+    {
+        return true;
+    }
+    if (load.platforms.count(platform))
+    {
+        return true;
+    }
+    return static_cast<int>(load.platforms.size()) < platform_limit;
+}
+
+bool check_route_order(const ContainerLoad& load,
+                       const std::string& platform,
+                       const Position& pos, const OrientedSize& osize,
+                       const RouteOrder& route) noexcept
 {
     if (platform.empty())
     {
@@ -100,22 +178,6 @@ bool check_route_order_constraint(
     }
 
     return true;
-}
-
-bool check_platform_limit_constraint(
-    const ContainerLoad& load,
-    const std::string& platform,
-    int platform_limit) noexcept
-{
-    if (platform_limit <= 0)
-    {
-        return true;
-    }
-    if (load.platforms.count(platform))
-    {
-        return true;
-    }
-    return static_cast<int>(load.platforms.size()) < platform_limit;
 }
 
 } // namespace hypercube

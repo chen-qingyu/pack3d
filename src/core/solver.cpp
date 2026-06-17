@@ -20,8 +20,14 @@ inline std::string opt_str(const std::optional<T>& opt) noexcept
 SolverEngine::SolverEngine(const Problem& problem)
     : problem_(problem)
 {
-    box_type_map_ = build_box_type_map(problem.box_types);
-    container_type_map_ = build_container_type_map(problem.container_types);
+    for (const auto& bt : problem.box_types)
+    {
+        box_type_map_[bt.id] = bt;
+    }
+    for (const auto& ct : problem.container_types)
+    {
+        container_type_map_[ct.id] = ct;
+    }
     for (const auto& bx : problem.boxes)
     {
         box_map_[bx.id] = bx;

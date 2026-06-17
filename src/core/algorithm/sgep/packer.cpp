@@ -256,7 +256,7 @@ bool Packer::check_tender_limit(SearchState& state)
                         {
                             continue;
                         }
-                        if (check_overlap_any(ep, osize, container.placements, box_type_map_))
+                        if (check_overlap(ep, osize, container.placements, box_type_map_))
                         {
                             continue;
                         }

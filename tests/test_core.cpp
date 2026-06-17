@@ -1,7 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "core/constraints.hpp"
-#include "core/geometry.hpp"
 #include "core/objectives.hpp"
 #include "core/types.hpp"
 
@@ -42,61 +41,50 @@ TEST_CASE("check_boundary 拒绝越界", "[core]")
 
 TEST_CASE("check_overlap 检测碰撞", "[core]")
 {
-    REQUIRE(check_overlap({0, 0, 0}, {100, 100, 100},
-                          {50, 50, 50}, {100, 100, 100}));
-    REQUIRE_FALSE(check_overlap({0, 0, 0}, {100, 100, 100},
-                                {200, 0, 0}, {100, 100, 100}));
-    REQUIRE_FALSE(check_overlap({0, 0, 0}, {100, 100, 100},
-                                {0, 200, 0}, {100, 100, 100}));
+    BoxType bt{"t", {100, 100, 100}, {Orientation::XYZ}};
+    std::map<std::string, BoxType> btm = {{"t", bt}};
+    std::vector<Placement> exists = {{"", "t", "", {50, 50, 50}, Orientation::XYZ}};
+
+    REQUIRE(check_overlap({0, 0, 0}, {100, 100, 100}, exists, btm));
+
+    exists[0].position = {200, 0, 0};
+    REQUIRE_FALSE(check_overlap({0, 0, 0}, {100, 100, 100}, exists, btm));
+
+    exists[0].position = {0, 200, 0};
+    REQUIRE_FALSE(check_overlap({0, 0, 0}, {100, 100, 100}, exists, btm));
 }
 
-TEST_CASE("calc_support_ratio 在地板上为 1.0", "[core]")
+TEST_CASE("check_support 在地板上总是通过", "[core]")
 {
     ContainerLoad load;
     load.type_id = "test";
-    ContainerType ct{};
-    ct.inner_size = {1000, 1000, 1000};
+    ContainerType ct{{}, {1000, 1000, 1000}};
     load.type = &ct;
 
     std::map<std::string, BoxType> btm;
-    BoxType bt;
-    bt.id = "bt1";
-    bt.size = {100, 100, 100};
-    btm["bt1"] = bt;
 
-    double ratio = calc_support_ratio({0, 0, 0}, {100, 100, 100}, load, btm);
-    REQUIRE(ratio == 1.0);
+    REQUIRE(check_support({0, 0, 0}, {100, 100, 100}, load, btm, 1.0));
+    REQUIRE(check_support({0, 0, 0}, {100, 100, 100}, load, btm, 0.0));
 }
 
-TEST_CASE("calc_support_ratio 部分支撑", "[core]")
+TEST_CASE("check_support 部分支撑", "[core]")
 {
     ContainerLoad load;
     load.type_id = "test";
-    ContainerType ct{};
-    ct.inner_size = {1000, 1000, 1000};
-    ct.max_weight = 10000.0;
+    ContainerType ct{{}, {1000, 1000, 1000}, 10000.0};
     load.type = &ct;
 
-    std::map<std::string, BoxType> btm;
-    BoxType bt;
-    bt.id = "bt1";
-    bt.size = {100, 100, 100};
-    btm["bt1"] = bt;
+    BoxType bt{"bt1", {100, 100, 100}, {Orientation::XYZ}};
+    std::map<std::string, BoxType> btm = {{"bt1", bt}};
 
-    Placement existing;
-    existing.box_id = "existing";
-    existing.box_type_id = "bt1";
-    existing.position = {0, 0, 0};
-    existing.orientation = Orientation::XYZ;
-    load.placements.push_back(existing);
+    load.placements.push_back({"", "bt1", "", {0, 0, 0}, Orientation::XYZ});
     load.used_volume = 100 * 100 * 100;
     load.total_weight = 100.0;
 
-    double full = calc_support_ratio({0, 0, 100}, {100, 100, 100}, load, btm);
-    REQUIRE(full == 1.0);
-
-    double partial = calc_support_ratio({0, 0, 100}, {200, 100, 100}, load, btm);
-    REQUIRE(partial == 0.5);
+    REQUIRE(check_support({0, 0, 100}, {100, 100, 100}, load, btm, 0.0));
+    REQUIRE(check_support({0, 0, 100}, {100, 100, 100}, load, btm, 1.0));
+    REQUIRE(check_support({0, 0, 100}, {200, 100, 100}, load, btm, 0.5));
+    REQUIRE_FALSE(check_support({0, 0, 100}, {200, 100, 100}, load, btm, 0.6));
 }
 
 TEST_CASE("平台数量限制约束", "[core]")
@@ -109,11 +97,9 @@ TEST_CASE("平台数量限制约束", "[core]")
     load.type = &ct;
     load.platforms.insert("A");
 
-    REQUIRE_FALSE(check_platform_limit_constraint(load, "B", 1));
-
-    REQUIRE(check_platform_limit_constraint(load, "A", 1));
-
-    REQUIRE(check_platform_limit_constraint(load, "B", 0));
+    REQUIRE_FALSE(check_platform_limit(load, "B", 1));
+    REQUIRE(check_platform_limit(load, "A", 1));
+    REQUIRE(check_platform_limit(load, "B", 0));
 }
 
 TEST_CASE("ObjectiveVector 字典序比较", "[core]")

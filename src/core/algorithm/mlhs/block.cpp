@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cassert>
 
-#include "../../geometry.hpp"
+#include "../../constraints.hpp"
 
 namespace hypercube::mlhs
 {

@@ -7,9 +7,7 @@
 #include <spdlog/spdlog.h>
 
 #include "../../constraints.hpp"
-#include "../../geometry.hpp"
 #include "../../objectives.hpp"
-
 namespace hypercube::sgep
 {
 
@@ -64,7 +62,7 @@ bool Placer::place_next_box(SearchState& state)
 
             if (problem_.platform_limit.has_value() && !box.platform.empty())
             {
-                if (!check_platform_limit_constraint(
+                if (!check_platform_limit(
                         container, box.platform, problem_.platform_limit.value()))
                 {
                     continue;
@@ -79,26 +77,26 @@ bool Placer::place_next_box(SearchState& state)
                 {
                     OrientedSize osize = orient_size(bt.size, orient);
 
-                    if (!check_boundary_constraint(container, ep, osize))
+                    if (!check_boundary(*container.type, ep, osize))
                     {
                         continue;
                     }
-                    if (!check_overlap_constraint(container, ep, osize, box_type_map_))
+                    if (check_overlap(ep, osize, container.placements, box_type_map_))
                     {
                         continue;
                     }
-                    if (has_weight_info_ && !check_weight_constraint(container, osize, box.weight.value()))
+                    if (has_weight_info_ && !check_weight(container, box.weight.value()))
                     {
                         continue;
                     }
-                    if (!check_support_constraint(container, ep, osize, problem_.support_rate, box_type_map_))
+                    if (!check_support(ep, osize, container, box_type_map_, problem_.support_rate))
                     {
                         continue;
                     }
 
                     if (problem_.route.has_value() && !box.platform.empty())
                     {
-                        if (!check_route_order_constraint(
+                        if (!check_route_order(
                                 container, box.platform, ep, osize, problem_.route.value()))
                         {
                             continue;
@@ -371,9 +369,62 @@ void Placer::apply_placement(SearchState& state, Candidate& cand)
     auto new_eps = generate_extreme_points(cand.position, cand.osize, container);
     eps.insert(eps.end(), new_eps.begin(), new_eps.end());
 
-    filter_extreme_points(eps, container, box_type_map_);
+    filter_extreme_points(eps, container);
 
     state.current_objective = compute_objective(state.open_containers);
+}
+
+std::vector<Position> Placer::generate_extreme_points(
+    const Position& pos, const OrientedSize& osize,
+    const ContainerLoad& load) const noexcept
+{
+    (void)load;
+    std::vector<Position> eps;
+    eps.push_back({pos.x + osize.dx, pos.y, pos.z});
+    eps.push_back({pos.x, pos.y + osize.dy, pos.z});
+    eps.push_back({pos.x, pos.y, pos.z + osize.dz});
+    return eps;
+}
+
+void Placer::filter_extreme_points(std::vector<Position>& points,
+                                   const ContainerLoad& load) const noexcept
+{
+    std::vector<Position> filtered;
+    filtered.reserve(points.size());
+
+    for (const auto& pt : points)
+    {
+        if (pt.x < 0 || pt.y < 0 || pt.z < 0)
+        {
+            continue;
+        }
+        if (pt.x > load.type->inner_size.x ||
+            pt.y > load.type->inner_size.y ||
+            pt.z > load.type->inner_size.z)
+        {
+            continue;
+        }
+
+        bool inside_existing = false;
+        for (const auto& pl : load.placements)
+        {
+            auto& bt = box_type_map_.at(pl.box_type_id);
+            auto e_size = orient_size(bt.size, pl.orientation);
+            if (pt.x >= pl.position.x && pt.x < pl.position.x + e_size.dx &&
+                pt.y >= pl.position.y && pt.y < pl.position.y + e_size.dy &&
+                pt.z >= pl.position.z && pt.z < pl.position.z + e_size.dz)
+            {
+                inside_existing = true;
+                break;
+            }
+        }
+        if (!inside_existing)
+        {
+            filtered.push_back(pt);
+        }
+    }
+
+    points = std::move(filtered);
 }
 
 } // namespace hypercube::sgep

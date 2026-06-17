@@ -10,7 +10,6 @@
 #include "space.hpp"
 
 #include "../../constraints.hpp"
-#include "../../geometry.hpp"
 #include "../../objectives.hpp"
 
 namespace hypercube::mlhs
@@ -99,7 +98,7 @@ bool Heuristic::check_block_feasible(
         {
             box_weight = wb->weight.value();
         }
-        if (state.total_weight + box_weight * block.box_count > container_.max_weight.value() + 1e-9)
+        if (!check_weight(state, box_weight * block.box_count))
         {
             return false;
         }
@@ -111,8 +110,7 @@ bool Heuristic::check_block_feasible(
     {
         if (problem_.platform_limit.has_value() && problem_.platform_limit.value() > 0)
         {
-            if (!state.platforms.count(block.platform) &&
-                static_cast<int>(state.platforms.size()) >= problem_.platform_limit.value())
+            if (!check_platform_limit(state, block.platform, problem_.platform_limit.value()))
             {
                 return false;
             }
@@ -158,23 +156,19 @@ bool Heuristic::check_block_feasible(
                 }
 
                 // 重叠检查仅需查 state.placements（块内箱子网格排列，互不重叠）
-                if (check_overlap_any(pos, single, state.placements, box_type_map_))
+                if (check_overlap(pos, single, state.placements, box_type_map_))
                 {
                     return false;
                 }
 
-                if (problem_.support_rate > 0.0 && pos.z > 0)
+                if (!check_support(pos, single, sim, box_type_map_, problem_.support_rate))
                 {
-                    double ratio = calc_support_ratio(pos, single, sim, box_type_map_);
-                    if (ratio + 1e-9 < problem_.support_rate)
-                    {
-                        return false;
-                    }
+                    return false;
                 }
 
                 if (need_route)
                 {
-                    if (!check_route_order_constraint(
+                    if (!check_route_order(
                             sim, block.platform, pos, single, problem_.route.value()))
                     {
                         return false;
