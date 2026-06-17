@@ -3,9 +3,9 @@
 #include <algorithm>
 #include <cassert>
 
-#include "geometry.hpp"
+#include "../../geometry.hpp"
 
-namespace hypercube
+namespace hypercube::mlhs
 {
 
 BlockGenerator::BlockGenerator(const std::map<std::string, BoxType>& box_type_map)
@@ -85,4 +85,4 @@ void sort_blocks_by_volume_desc(std::vector<SimpleBlock>& blocks) noexcept
               });
 }
 
-} // namespace hypercube
+} // namespace hypercube::mlhs

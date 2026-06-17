@@ -4,8 +4,8 @@
 
 #include <spdlog/spdlog.h>
 
-#include "scheduler.hpp"
-#include "sgep.hpp"
+#include "algorithm/mlhs/packer.hpp"
+#include "algorithm/sgep/packer.hpp"
 
 namespace hypercube
 {
@@ -42,13 +42,13 @@ Solution SolverEngine::solve()
     Solution solution;
     if (problem_.algorithm.algorithm == Algorithm::MLHS)
     {
-        GlobalScheduler scheduler(problem_, box_type_map_, box_map_, has_weight_info_);
-        solution = scheduler.schedule();
+        mlhs::Packer mlhs(problem_, box_type_map_, box_map_, has_weight_info_);
+        solution = mlhs.pack();
     }
     else
     {
-        SgepSolver sgep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
-        solution = sgep.solve();
+        sgep::Packer sgep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
+        solution = sgep.pack();
     }
 
     log_container_stats(solution.container_summaries);

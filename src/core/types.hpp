@@ -55,41 +55,6 @@ struct OrientedSize
     }
 };
 
-// 简单块：同种箱子、同朝向、整数倍堆叠
-struct SimpleBlock
-{
-    std::string box_type_id;
-    Orientation orientation = Orientation::XYZ;
-    int nx = 0, ny = 0, nz = 0;
-    int box_count = 0;    // nx * ny * nz
-    OrientedSize osize;   // 块的外包尺寸
-    std::string platform; // 块内箱子共享的平台（空表示无）
-    std::string group;    // 块内箱子共享的分组（空表示无）
-
-    int64_t volume() const noexcept
-    {
-        return osize.volume();
-    }
-};
-
-enum class SpaceKind : uint8_t
-{
-    Root,
-    Z,
-    X,
-    Y,
-};
-
-// 剩余空间（轴对齐长方体）
-struct Space
-{
-    Position pos;
-    int32_t lx = 0, ly = 0, lz = 0;
-    int64_t id = 0;
-    int64_t parent_id = -1;
-    SpaceKind kind = SpaceKind::Root;
-};
-
 struct ContainerType
 {
     std::string id;
@@ -186,9 +151,6 @@ struct ContainerLoad
     // 更深 = 更小的 X（靠里）。先装的平台在最深处（X 最小）。
     std::map<std::string, int32_t> platform_x_max;
     std::map<std::string, int32_t> platform_x_min;
-
-    // 该容器的候选极点列表
-    std::vector<Position> extreme_points;
 
     int32_t inner_x() const noexcept
     {

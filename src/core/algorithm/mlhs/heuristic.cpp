@@ -1,4 +1,4 @@
-#include "packer.hpp"
+#include "heuristic.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -7,15 +7,16 @@
 #include <set>
 
 #include "block.hpp"
-#include "constraints.hpp"
-#include "geometry.hpp"
-#include "objectives.hpp"
 #include "space.hpp"
 
-namespace hypercube
+#include "../../constraints.hpp"
+#include "../../geometry.hpp"
+#include "../../objectives.hpp"
+
+namespace hypercube::mlhs
 {
 
-ContainerPacker::ContainerPacker(
+Heuristic::Heuristic(
     const ContainerType& container,
     const std::map<std::string, BoxType>& box_type_map,
     const std::map<std::string, Box>& box_map,
@@ -38,7 +39,7 @@ ContainerPacker::ContainerPacker(
     }
 }
 
-std::vector<const SimpleBlock*> ContainerPacker::filter_viable_blocks(
+std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
     const std::vector<SimpleBlock>& all_blocks,
     const Space& space,
     const std::map<std::string, int>& available,
@@ -75,7 +76,7 @@ std::vector<const SimpleBlock*> ContainerPacker::filter_viable_blocks(
     return viable;
 }
 
-bool ContainerPacker::check_block_feasible(
+bool Heuristic::check_block_feasible(
     const SimpleBlock& block,
     const Space& space,
     const ContainerLoad& state) const
@@ -195,7 +196,7 @@ bool ContainerPacker::check_block_feasible(
     return true;
 }
 
-void ContainerPacker::place_block(
+void Heuristic::place_block(
     const SimpleBlock& block, const Space& space,
     ContainerLoad& state,
     std::map<std::string, int>& available,
@@ -274,7 +275,7 @@ void ContainerPacker::place_block(
 
 // ===== Beam 搜索 =====
 
-PackResult ContainerPacker::make_result(
+PackResult Heuristic::make_result(
     const ContainerLoad& state,
     const std::map<std::string, int>& /*available*/,
     const std::vector<Box>& all_boxes) const
@@ -304,7 +305,7 @@ PackResult ContainerPacker::make_result(
     return r;
 }
 
-ContainerPacker::LocalPackScore ContainerPacker::score_state(const ContainerLoad& state) const
+Heuristic::LocalPackScore Heuristic::score_state(const ContainerLoad& state) const
 {
     LocalPackScore score;
     score.platform_count = static_cast<int>(state.platforms.size());
@@ -314,8 +315,8 @@ ContainerPacker::LocalPackScore ContainerPacker::score_state(const ContainerLoad
     return score;
 }
 
-int ContainerPacker::compare_local_scores(const LocalPackScore& a,
-                                          const LocalPackScore& b) const
+int Heuristic::compare_local_scores(const LocalPackScore& a,
+                                    const LocalPackScore& b) const
 {
     const auto& keys = problem_.objective_keys.empty()
                            ? default_objective_keys()
@@ -393,7 +394,7 @@ int ContainerPacker::compare_local_scores(const LocalPackScore& a,
     return 0;
 }
 
-const SimpleBlock* ContainerPacker::pick_best_block(
+const SimpleBlock* Heuristic::pick_best_block(
     const std::vector<const SimpleBlock*>& viable,
     const Space& space,
     const ContainerLoad& state,
@@ -440,7 +441,7 @@ const SimpleBlock* ContainerPacker::pick_best_block(
     return best;
 }
 
-PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
+PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
 {
     // 库存按 box_type_id 聚合（热路径用）
     std::map<std::string, int> all_available;
@@ -640,7 +641,7 @@ PackResult ContainerPacker::pack_beam(const std::vector<Box>& boxes, int width)
     return make_result(state, available, boxes);
 }
 
-ContainerPacker::LocalPackScore ContainerPacker::greedy_complete(
+Heuristic::LocalPackScore Heuristic::greedy_complete(
     ContainerLoad state,
     std::map<std::string, int> available,
     std::vector<Space> stack,
@@ -687,7 +688,7 @@ ContainerPacker::LocalPackScore ContainerPacker::greedy_complete(
     return score_state(state);
 }
 
-ContainerPacker::LocalPackScore ContainerPacker::complete_largest(
+Heuristic::LocalPackScore Heuristic::complete_largest(
     ContainerLoad state,
     std::map<std::string, int> available,
     std::vector<Space> stack,
@@ -715,4 +716,4 @@ ContainerPacker::LocalPackScore ContainerPacker::complete_largest(
     return score_state(state);
 }
 
-} // namespace hypercube
+} // namespace hypercube::mlhs

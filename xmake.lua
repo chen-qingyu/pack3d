@@ -10,7 +10,7 @@ add_requires("spdlog 1.17", "nlohmann_json 3.12", "json-schema-validator 2.4", "
 target("core")
     set_kind("static")
     add_packages("spdlog", "nlohmann_json", "json-schema-validator", {public = true})
-    add_files("src/core/*.cpp")
+    add_files("src/core/*.cpp", "src/core/algorithm/sgep/*.cpp", "src/core/algorithm/mlhs/*.cpp")
     add_includedirs("src", {public = true})
     if is_plat("linux") then
         add_cxflags("-fPIC")

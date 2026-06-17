@@ -7,9 +7,11 @@
 #include <vector>
 
 #include "block.hpp"
-#include "types.hpp"
+#include "space.hpp"
 
-namespace hypercube
+#include "../../types.hpp"
+
+namespace hypercube::mlhs
 {
 
 /// 单个容器的装载结果
@@ -28,10 +30,10 @@ struct PackResult
 
 /// 容器内装载引擎（MLHS 块装载法）
 /// 对一个容器 + 箱子子集，使用简单块 + 空间栈 + beam 搜索进行装载
-class ContainerPacker
+class Heuristic
 {
 public:
-    ContainerPacker(
+    Heuristic(
         const ContainerType& container,
         const std::map<std::string, BoxType>& box_type_map,
         const std::map<std::string, Box>& box_map,
@@ -126,4 +128,4 @@ private:
         const std::vector<SimpleBlock>& all_blocks) const;
 };
 
-} // namespace hypercube
+} // namespace hypercube::mlhs

@@ -7,24 +7,24 @@
 #include <string>
 #include <vector>
 
-#include "packer.hpp"
-#include "types.hpp"
+#include "heuristic.hpp"
+#include "../../types.hpp"
 
-namespace hypercube
+namespace hypercube::mlhs
 {
 
-/// 全局调度器：将箱子分配到各个容器，调用 ContainerPacker 进行装载
-class GlobalScheduler
+/// MLHS 入口：将箱子分配到各个容器，调用 Heuristic 进行装载
+class Packer
 {
 public:
-    GlobalScheduler(
+    Packer(
         const Problem& problem,
         const std::map<std::string, BoxType>& box_type_map,
         const std::map<std::string, Box>& box_map,
         bool has_weight_info);
 
     /// 运行调度，返回最终解
-    [[nodiscard]] Solution schedule();
+    [[nodiscard]] Solution pack();
 
 private:
     const Problem& problem_;
@@ -60,4 +60,4 @@ private:
     bool check_time() const;
 };
 
-} // namespace hypercube
+} // namespace hypercube::mlhs

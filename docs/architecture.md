@@ -18,7 +18,7 @@
 ### 2.1 整体流程
 
 ```
-solve_sgep()
+Packer::pack()
   │
   ├─ make_initial_state()         ── 初始状态（排序待装箱子）
   │
@@ -26,7 +26,7 @@ solve_sgep()
   │     │
   │     ├─ while 有剩余箱子
   │     │   ├─ check_time()       ── 超时检测
-  │     │   ├─ place_next_box()   ── 选最优位置放一个箱子
+  │     │   ├─ Placer::place_next_box()   ── 选最优位置放一个箱子
   │     │   │   ├─ 遍历已有容器的极点，找最佳放置
   │     │   │   ├─ 惰性 fills_container 检测
   │     │   │   └─ 评估开新容器选项
@@ -51,14 +51,13 @@ solve_sgep()
 ```
 SearchState
   ├─ remaining_boxes       待装箱列表（搜索过程中逐个移除）
-  ├─ open_containers       已打开的容器列表
-  │   └─ ContainerLoad
+  ├─ open_containers       已打开的容器列表 (ContainerLoad)
   │       ├─ placements    箱子的放置列表
-  │       ├─ extreme_points 候选位置极点（SGEP 算法核心）
   │       ├─ used_volume   已用体积
   │       ├─ platforms     本容器涉及的平台集合
   │       ├─ groups        本容器涉及的分组集合
   │       └─ platform_x_max / min  路线 X 跟踪
+  ├─ extreme_points        各容器的候选极点（instance_id -> 极点列表）
   ├─ best_feasible         当前最优可行解（快照）
   ├─ group_spread          分组->容器实例映射（tender_limit 用）
   ├─ current_objective     当前目标缓存
@@ -149,7 +148,7 @@ SearchState
    - 放入已有容器 + 引入新组：group_split +1
    - 装填此容器后再也放不进其他箱子：container +1, platform +1, group_split +1
    - 开新容器：container +1, platform +1, group_split +1
-   - 新容器装不下后续箱子 → 需要额外容器：container +N, platform +N, group_split +N
+   - 新容器装不下后续箱子 -> 需要额外容器：container +N, platform +N, group_split +N
 
 3. avg_volume_rate 的估算：
    - 放入已有容器：移除旧 rate，加入新 rate，重新平均
@@ -203,8 +202,9 @@ MLHS 在**调度层**和**装载层**均有多目标感知：
 
 ### 4.2 整体架构：三层分解
 
-- **调度层（Layer 1）** — `GlobalScheduler`：多容器分配，决定谁进哪个柜，对每种容器类型尝试装载所有剩余箱子，选最优者，反复迭代。
-- **装载层（Layer 2）** — `ContainerPacker`：对单个容器内的箱子子集运行 MLHS 块装载算法（简单块 + 空间栈 + beam 搜索 + 前瞻评估）。
+- **调度层（Layer 1）** — `Packer`：多容器分配，对每种容器类型尝试装载所有剩余箱子，选最优者，反复迭代。
+- **装载层（Layer 2）** — `Heuristic`：对单个容器内的箱子子集运行 MLHS 块装载算法（简单块 + 空间栈 + beam 搜索 + 前瞻评估）。
+- **数据层** — `SimpleBlock` (block.hpp), `Space`/`SpaceKind` (space.hpp) 为 MLHS 专属类型，不在共用 types.hpp 中。
 - **约束层（Layer 3）** — `constraints.hpp`：所有硬约束的纯函数实现，为装载层提供实时可行性判断。
 
 ### 4.3 论文原始 MLHS 核心思想
@@ -231,7 +231,7 @@ MLHS 在**调度层**和**装载层**均有多目标感知：
 | MaxTimes    |     5 | 复合块迭代轮次上限 |
 | MaxBlocks   | 10000 | 块表上限           |
 
-使用渐进参数档：MaxDepth 2→7，Effort 1→243，受 120s 总时间限制。
+使用渐进参数档：MaxDepth 2->7，Effort 1->243，受 120s 总时间限制。
 
 ### 4.4 简单块与剩余空间栈
 

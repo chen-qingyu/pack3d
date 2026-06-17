@@ -4,7 +4,7 @@
 #include <cassert>
 #include <cmath>
 
-namespace hypercube
+namespace hypercube::mlhs
 {
 
 namespace
@@ -163,4 +163,4 @@ bool transfer_space(std::vector<Space>& stack) noexcept
     return true;
 }
 
-} // namespace hypercube
+} // namespace hypercube::mlhs

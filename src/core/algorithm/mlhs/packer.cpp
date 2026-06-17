@@ -1,4 +1,4 @@
-#include "scheduler.hpp"
+#include "packer.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -7,12 +7,13 @@
 #include <spdlog/spdlog.h>
 
 #include "block.hpp"
-#include "objectives.hpp"
 
-namespace hypercube
+#include "../../objectives.hpp"
+
+namespace hypercube::mlhs
 {
 
-GlobalScheduler::GlobalScheduler(
+Packer::Packer(
     const Problem& problem,
     const std::map<std::string, BoxType>& box_type_map,
     const std::map<std::string, Box>& box_map,
@@ -24,7 +25,7 @@ GlobalScheduler::GlobalScheduler(
 {
 }
 
-Solution GlobalScheduler::schedule()
+Solution Packer::pack()
 {
     start_time_ = std::chrono::steady_clock::now();
     next_instance_ = 0;
@@ -225,7 +226,7 @@ Solution GlobalScheduler::schedule()
     return to_solution(slots, problem_.boxes, final_status);
 }
 
-std::optional<PackResult> GlobalScheduler::pack_container(
+std::optional<PackResult> Packer::pack_container(
     const ContainerType* ct,
     const std::vector<const Box*>& boxes) const
 {
@@ -235,11 +236,11 @@ std::optional<PackResult> GlobalScheduler::pack_container(
         box_list.push_back(*bp);
     }
 
-    ContainerPacker packer(*ct, box_type_map_, box_map_, problem_, has_weight_info_);
+    Heuristic heuristic(*ct, box_type_map_, box_map_, problem_, has_weight_info_);
     auto deadline = start_time_ + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                                       std::chrono::duration<double>(problem_.time_limit));
-    packer.set_deadline(deadline);
-    PackResult pr = packer.pack_beam(box_list, problem_.algorithm.width);
+    heuristic.set_deadline(deadline);
+    PackResult pr = heuristic.pack_beam(box_list, problem_.algorithm.width);
     if (pr.success || !pr.placements.empty())
     {
         return pr;
@@ -247,7 +248,7 @@ std::optional<PackResult> GlobalScheduler::pack_container(
     return std::nullopt;
 }
 
-Solution GlobalScheduler::to_solution(
+Solution Packer::to_solution(
     const std::vector<ContainerSlot>& slots,
     const std::vector<Box>& all_boxes,
     const std::string& status) const
@@ -348,7 +349,7 @@ Solution GlobalScheduler::to_solution(
     return sol;
 }
 
-int GlobalScheduler::handle_tender_limit_groups(
+int Packer::handle_tender_limit_groups(
     std::set<std::string>& remaining_ids,
     std::vector<ContainerSlot>& slots)
 {
@@ -428,7 +429,7 @@ int GlobalScheduler::handle_tender_limit_groups(
 
             // 检查 packer 实际占用的空间是否 ≤ 容器的剩余容量（不超出现有占用）
             // 注意：packer 从空容器开始放，但我们只需要验证"能放下"，
-            // 实际能否放进剩余空间由下一轮 schedule 迭代的 pack_container 决定
+            // 实际能否放进剩余空间由下一轮 pack 迭代的 pack_container 决定
             any_fit = true;
             break;
         }
@@ -457,10 +458,10 @@ int GlobalScheduler::handle_tender_limit_groups(
     return 0;
 }
 
-bool GlobalScheduler::check_time() const
+bool Packer::check_time() const
 {
     auto elapsed = std::chrono::steady_clock::now() - start_time_;
     return std::chrono::duration<double>(elapsed).count() < problem_.time_limit;
 }
 
-} // namespace hypercube
+} // namespace hypercube::mlhs
