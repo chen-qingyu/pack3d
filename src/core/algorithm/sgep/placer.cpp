@@ -75,7 +75,7 @@ bool Placer::place_next_box(SearchState& state)
                 const auto& ep = eps[ei];
                 for (auto orient : bt.allowed_orientations)
                 {
-                    OrientedSize osize = orient_size(bt.size, orient);
+                    OrientedSize osize = bt.size.orient(orient);
 
                     if (!check_boundary(*container.type, ep, osize))
                     {
@@ -167,9 +167,7 @@ bool Placer::place_next_box(SearchState& state)
             std::vector<const ContainerType*> available;
             for (const auto& ct : problem_.container_types)
             {
-                auto it = state.container_type_usage.find(ct.id);
-                int used = (it != state.container_type_usage.end()) ? it->second : 0;
-                if (!ct.quantity_limit.has_value() || used < ct.quantity_limit.value())
+                if (ct.has_remaining(state.container_type_usage))
                 {
                     available.push_back(&ct);
                 }
@@ -178,11 +176,11 @@ bool Placer::place_next_box(SearchState& state)
             for (auto* ct : available)
             {
                 Orientation cand_orient = bt.allowed_orientations[0];
-                OrientedSize cand_osize = orient_size(bt.size, cand_orient);
+                OrientedSize cand_osize = bt.size.orient(cand_orient);
                 bool fits = false;
                 for (auto orient : bt.allowed_orientations)
                 {
-                    auto os = orient_size(bt.size, orient);
+                    auto os = bt.size.orient(orient);
                     if (os.dx <= ct->inner_size.x &&
                         os.dy <= ct->inner_size.y &&
                         os.dz <= ct->inner_size.z)
@@ -409,7 +407,7 @@ void Placer::filter_extreme_points(std::vector<Position>& points,
         for (const auto& pl : load.placements)
         {
             auto& bt = box_type_map_.at(pl.box_type_id);
-            auto e_size = orient_size(bt.size, pl.orientation);
+            auto e_size = bt.size.orient(pl.orientation);
             if (pt.x >= pl.position.x && pt.x < pl.position.x + e_size.dx &&
                 pt.y >= pl.position.y && pt.y < pl.position.y + e_size.dy &&
                 pt.z >= pl.position.z && pt.z < pl.position.z + e_size.dz)

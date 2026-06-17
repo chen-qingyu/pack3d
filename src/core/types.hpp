@@ -23,27 +23,6 @@ enum class Orientation : uint8_t
     ZYX,
 };
 
-// 几何基础类型
-struct Size
-{
-    int32_t x = 0;
-    int32_t y = 0;
-    int32_t z = 0;
-
-    int64_t volume() const noexcept
-    {
-        return static_cast<int64_t>(x) * y * z;
-    }
-};
-
-struct Position
-{
-    int32_t x = 0;
-    int32_t y = 0;
-    int32_t z = 0;
-};
-
-/// 应用朝向后的实际尺寸
 struct OrientedSize
 {
     int32_t dx = 0;
@@ -56,29 +35,46 @@ struct OrientedSize
     }
 };
 
-/// 应用朝向到基础尺寸
-inline OrientedSize orient_size(const Size& base, Orientation o) noexcept
+struct Size
 {
-    auto [x, y, z] = base;
-    switch (o)
+    int32_t x = 0;
+    int32_t y = 0;
+    int32_t z = 0;
+
+    int64_t volume() const noexcept
     {
-        case Orientation::XYZ:
-            return {x, y, z};
-        case Orientation::XZY:
-            return {x, z, y};
-        case Orientation::YXZ:
-            return {y, x, z};
-        case Orientation::YZX:
-            return {y, z, x};
-        case Orientation::ZXY:
-            return {z, x, y};
-        case Orientation::ZYX:
-            return {z, y, x};
-        default:
-            assert(false && "Invalid orientation");
-            return {x, y, z};
+        return static_cast<int64_t>(x) * y * z;
     }
-}
+
+    OrientedSize orient(Orientation o) const noexcept
+    {
+        switch (o)
+        {
+            case Orientation::XYZ:
+                return {x, y, z};
+            case Orientation::XZY:
+                return {x, z, y};
+            case Orientation::YXZ:
+                return {y, x, z};
+            case Orientation::YZX:
+                return {y, z, x};
+            case Orientation::ZXY:
+                return {z, x, y};
+            case Orientation::ZYX:
+                return {z, y, x};
+            default:
+                assert(false && "Invalid orientation");
+                return {x, y, z};
+        }
+    }
+};
+
+struct Position
+{
+    int32_t x = 0;
+    int32_t y = 0;
+    int32_t z = 0;
+};
 
 struct ContainerType
 {
@@ -86,6 +82,13 @@ struct ContainerType
     Size inner_size;
     std::optional<double> max_weight = std::nullopt;
     std::optional<int> quantity_limit; // null 表示无限制
+
+    bool has_remaining(const std::map<std::string, int>& usage) const noexcept
+    {
+        auto it = usage.find(id);
+        int used = (it != usage.end()) ? it->second : 0;
+        return !quantity_limit.has_value() || used < quantity_limit.value();
+    }
 };
 
 struct BoxType

@@ -35,7 +35,7 @@ bool check_overlap(const Position& pos, const OrientedSize& osize,
     for (const auto& pl : existing)
     {
         auto& bt = box_type_map.at(pl.box_type_id);
-        auto e_size = orient_size(bt.size, pl.orientation);
+        auto e_size = bt.size.orient(pl.orientation);
 
         if ((pl.position.x + e_size.dx <= pos.x) ||
             (pos.x + osize.dx <= pl.position.x) ||
@@ -87,7 +87,7 @@ bool check_support(const Position& pos, const OrientedSize& osize,
     for (const auto& pl : load.placements)
     {
         auto& bt = box_type_map.at(pl.box_type_id);
-        auto e_size = orient_size(bt.size, pl.orientation);
+        auto e_size = bt.size.orient(pl.orientation);
 
         int32_t support_top = pl.position.z + e_size.dz;
         if (support_top != pos.z)

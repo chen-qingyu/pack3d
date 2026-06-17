@@ -32,7 +32,7 @@ std::vector<SimpleBlock> BlockGenerator::generate_for_type(
 
     for (auto orient : bt.allowed_orientations)
     {
-        auto os = orient_size(bt.size, orient);
+        auto os = bt.size.orient(orient);
 
         // 至少在一个方向上能放入
         if (os.dx > container_size.x || os.dy > container_size.y || os.dz > container_size.z)

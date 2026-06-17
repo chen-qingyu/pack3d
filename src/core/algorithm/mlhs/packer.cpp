@@ -98,9 +98,7 @@ Solution Packer::pack()
 
         for (const auto& ct : problem_.container_types)
         {
-            auto it = container_type_usage_.find(ct.id);
-            int used = (it != container_type_usage_.end()) ? it->second : 0;
-            if (ct.quantity_limit.has_value() && used >= ct.quantity_limit.value())
+            if (!ct.has_remaining(container_type_usage_))
             {
                 continue;
             }

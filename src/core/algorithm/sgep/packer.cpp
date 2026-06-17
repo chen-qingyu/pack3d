@@ -101,9 +101,7 @@ bool Packer::open_new_container(SearchState& state)
     std::vector<const ContainerType*> available;
     for (const auto& ct : problem_.container_types)
     {
-        auto usage_it = state.container_type_usage.find(ct.id);
-        int used = (usage_it != state.container_type_usage.end()) ? usage_it->second : 0;
-        if (!ct.quantity_limit.has_value() || used < ct.quantity_limit.value())
+        if (ct.has_remaining(state.container_type_usage))
         {
             available.push_back(&ct);
         }
@@ -146,7 +144,7 @@ bool Packer::open_new_container(SearchState& state)
             bool box_fits = false;
             for (auto o : bt.allowed_orientations)
             {
-                auto os = orient_size(bt.size, o);
+                auto os = bt.size.orient(o);
                 if (os.dx <= ct->inner_size.x &&
                     os.dy <= ct->inner_size.y &&
                     os.dz <= ct->inner_size.z)
@@ -251,7 +249,7 @@ bool Packer::check_tender_limit(SearchState& state)
                 {
                     for (auto orient : bt.allowed_orientations)
                     {
-                        auto osize = orient_size(bt.size, orient);
+                        auto osize = bt.size.orient(orient);
                         if (!check_boundary(*container.type, ep, osize))
                         {
                             continue;

@@ -6,21 +6,21 @@
 
 using namespace hypercube;
 
-TEST_CASE("orient_size 产生正确的尺寸", "[core]")
+TEST_CASE("Size::orient 产生正确的尺寸", "[core]")
 {
     Size base{500, 400, 300};
 
-    auto r1 = orient_size(base, Orientation::XYZ);
+    auto r1 = base.orient(Orientation::XYZ);
     REQUIRE(r1.dx == 500);
     REQUIRE(r1.dy == 400);
     REQUIRE(r1.dz == 300);
 
-    auto r2 = orient_size(base, Orientation::YXZ);
+    auto r2 = base.orient(Orientation::YXZ);
     REQUIRE(r2.dx == 400);
     REQUIRE(r2.dy == 500);
     REQUIRE(r2.dz == 300);
 
-    auto r3 = orient_size(base, Orientation::ZYX);
+    auto r3 = base.orient(Orientation::ZYX);
     REQUIRE(r3.dx == 300);
     REQUIRE(r3.dy == 400);
     REQUIRE(r3.dz == 500);

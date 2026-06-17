@@ -80,7 +80,7 @@ bool Heuristic::check_block_feasible(
     const Space& space,
     const ContainerLoad& state) const
 {
-    auto single = orient_size(box_type_map_.at(block.box_type_id).size, block.orientation);
+    auto single = box_type_map_.at(block.box_type_id).size.orient(block.orientation);
 
     // ---- per-block 检查 ----
 
@@ -196,7 +196,7 @@ void Heuristic::place_block(
     std::map<std::string, int>& available,
     std::vector<Space>& stack) const
 {
-    auto single = orient_size(box_type_map_.at(block.box_type_id).size, block.orientation);
+    auto single = box_type_map_.at(block.box_type_id).size.orient(block.orientation);
 
     // 查找 sample_box（按 type+platform+group 匹配）
     const Box* sample_box = nullptr;
