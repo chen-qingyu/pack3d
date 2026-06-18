@@ -110,7 +110,17 @@ int compare_objectives(const ObjectiveVector& a,
             }
         }
     }
-    return 0; // 相等
+
+    // 隐式决胜：显式目标全部打平时，容器数少的更优
+    if (a.container_count < b.container_count)
+    {
+        return -1;
+    }
+    if (a.container_count > b.container_count)
+    {
+        return 1;
+    }
+    return 0;
 }
 
 } // namespace hypercube
