@@ -28,20 +28,25 @@ Heuristic::Heuristic(
     , has_weight_info_(has_weight_info)
     , block_gen_(box_type_map)
 {
+    std::map<std::string, std::pair<int, double>> weight_accum;
     for (const auto& [id, bx] : box_map_)
     {
+        if (!bx.weight.has_value())
+            continue;
         auto pk = bx.box_type_id + "\t" + bx.platform + "\t" + bx.group;
-        if (!type_sample_cache_.count(pk))
-        {
-            type_sample_cache_[pk] = &bx;
-        }
+        weight_accum[pk].first++;
+        weight_accum[pk].second += bx.weight.value();
+    }
+    for (const auto& [pk, acc] : weight_accum)
+    {
+        type_avg_weight_[pk] = acc.second / acc.first;
     }
 }
 
 std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
     const std::vector<SimpleBlock>& all_blocks,
     const Space& space,
-    const std::map<std::string, int>& available,
+    const std::map<std::string, std::vector<double>>& available,
     const ContainerLoad& state) const
 {
     std::vector<const SimpleBlock*> viable;
@@ -50,7 +55,7 @@ std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
     {
         // 库存检查
         auto it = available.find(block.box_type_id);
-        if (it == available.end() || it->second < block.box_count)
+        if (it == available.end() || it->second.size() < static_cast<size_t>(block.box_count))
         {
             continue;
         }
@@ -84,21 +89,12 @@ bool Heuristic::check_block_feasible(
 
     // ---- per-block 检查 ----
 
-    // 重量：检查块总重量
+    // 重量：按该组平均重量检查块总重量
     if (has_weight_info_ && container_.max_weight.has_value())
     {
-        double box_weight = 0.0;
-        const Box* wb = nullptr;
-        auto it = type_sample_cache_.find(block.box_type_id + "\t" + block.platform + "\t" + block.group);
-        if (it != type_sample_cache_.end())
-        {
-            wb = it->second;
-        }
-        if (wb && wb->weight.has_value())
-        {
-            box_weight = wb->weight.value();
-        }
-        if (!check_weight(state, box_weight * block.box_count))
+        auto it = type_avg_weight_.find(block.box_type_id + "\t" + block.platform + "\t" + block.group);
+        if (it != type_avg_weight_.end() &&
+            !check_weight(state, it->second * static_cast<double>(block.box_count)))
         {
             return false;
         }
@@ -193,17 +189,21 @@ bool Heuristic::check_block_feasible(
 void Heuristic::place_block(
     const SimpleBlock& block, const Space& space,
     ContainerLoad& state,
-    std::map<std::string, int>& available,
+    std::map<std::string, std::vector<double>>& available,
     std::vector<Space>& stack) const
 {
     auto single = box_type_map_.at(block.box_type_id).size.orient(block.orientation);
 
-    // 查找 sample_box（按 type+platform+group 匹配）
-    const Box* sample_box = nullptr;
-    auto it = type_sample_cache_.find(block.box_type_id + "\t" + block.platform + "\t" + block.group);
-    if (it != type_sample_cache_.end())
+    auto& weights = available[block.box_type_id];
+    double weight_sum = 0.0;
+    for (int i = 0; i < block.box_count; ++i)
     {
-        sample_box = it->second;
+        weight_sum += weights.back();
+        weights.pop_back();
+    }
+    if (weights.empty())
+    {
+        available.erase(block.box_type_id);
     }
 
     int placed = 0;
@@ -228,10 +228,6 @@ void Heuristic::place_block(
 
                 state.placements.push_back(std::move(pl));
                 state.used_volume += single.volume();
-                if (has_weight_info_ && sample_box && sample_box->weight.has_value())
-                {
-                    state.total_weight += sample_box->weight.value();
-                }
 
                 if (!block.platform.empty())
                 {
@@ -258,11 +254,7 @@ void Heuristic::place_block(
         }
     }
 
-    available[block.box_type_id] -= block.box_count;
-    if (available[block.box_type_id] <= 0)
-    {
-        available.erase(block.box_type_id);
-    }
+    state.total_weight += weight_sum;
 
     split_space(space, block.osize, stack);
 }
@@ -271,7 +263,7 @@ void Heuristic::place_block(
 
 PackResult Heuristic::make_result(
     const ContainerLoad& state,
-    const std::map<std::string, int>& /*available*/,
+    const std::map<std::string, std::vector<double>>& /*available*/,
     const std::vector<Box>& all_boxes) const
 {
     PackResult r;
@@ -392,7 +384,7 @@ const SimpleBlock* Heuristic::pick_best_block(
     const std::vector<const SimpleBlock*>& viable,
     const Space& space,
     const ContainerLoad& state,
-    const std::map<std::string, int>& available,
+    const std::map<std::string, std::vector<double>>& available,
     const std::vector<Space>& stack,
     const std::vector<SimpleBlock>& all_blocks,
     int eval_count) const
@@ -438,10 +430,11 @@ const SimpleBlock* Heuristic::pick_best_block(
 PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
 {
     // 库存按 box_type_id 聚合（热路径用）
-    std::map<std::string, int> all_available;
+    std::map<std::string, std::vector<double>> all_available;
     for (const auto& bx : boxes)
     {
-        all_available[bx.box_type_id]++;
+        all_available[bx.box_type_id].push_back(
+            bx.weight.has_value() ? bx.weight.value() : 0.0);
     }
 
     // 块按 (type, platform, group) 分组生成（确保同平台同分组）
@@ -501,7 +494,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
                            [&](const SimpleBlock& b)
                            {
                                auto it = available.find(b.box_type_id);
-                               return it == available.end() || it->second < b.box_count;
+                               return it == available.end() || it->second.size() < static_cast<size_t>(b.box_count);
                            }),
             all_blocks.end());
         if (all_blocks.empty())
@@ -637,7 +630,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
 
 Heuristic::LocalPackScore Heuristic::greedy_complete(
     ContainerLoad state,
-    std::map<std::string, int> available,
+    std::map<std::string, std::vector<double>> available,
     std::vector<Space> stack,
     const std::vector<SimpleBlock>& all_blocks,
     bool use_pick_best) const
@@ -684,7 +677,7 @@ Heuristic::LocalPackScore Heuristic::greedy_complete(
 
 Heuristic::LocalPackScore Heuristic::complete_largest(
     ContainerLoad state,
-    std::map<std::string, int> available,
+    std::map<std::string, std::vector<double>> available,
     std::vector<Space> stack,
     const std::vector<SimpleBlock>& all_blocks) const
 {

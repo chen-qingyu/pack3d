@@ -58,13 +58,13 @@ private:
     bool has_weight_info_;
 
     BlockGenerator block_gen_;
-    std::map<std::string, const Box*> type_sample_cache_;
+    std::map<std::string, double> type_avg_weight_;
 
     /// 从块表中筛选当前空间可行的候选块
     [[nodiscard]] std::vector<const SimpleBlock*> filter_viable_blocks(
         const std::vector<SimpleBlock>& all_blocks,
         const Space& space,
-        const std::map<std::string, int>& available,
+        const std::map<std::string, std::vector<double>>& available,
         const ContainerLoad& state) const;
 
     /// 检查块是否满足所有硬约束
@@ -76,12 +76,12 @@ private:
     /// 放置块并更新状态
     void place_block(const SimpleBlock& block, const Space& space,
                      ContainerLoad& state,
-                     std::map<std::string, int>& available,
+                     std::map<std::string, std::vector<double>>& available,
                      std::vector<Space>& stack) const;
 
     /// 从最终状态构建 PackResult
     [[nodiscard]] PackResult make_result(const ContainerLoad& state,
-                                         const std::map<std::string, int>& available,
+                                         const std::map<std::string, std::vector<double>>& available,
                                          const std::vector<Box>& all_boxes) const;
 
     [[nodiscard]] LocalPackScore score_state(const ContainerLoad& state) const;
@@ -93,7 +93,7 @@ private:
         const std::vector<const SimpleBlock*>& viable,
         const Space& space,
         const ContainerLoad& state,
-        const std::map<std::string, int>& available,
+        const std::map<std::string, std::vector<double>>& available,
         const std::vector<Space>& stack,
         const std::vector<SimpleBlock>& all_blocks,
         int eval_count) const;
@@ -102,14 +102,14 @@ private:
     /// use_pick_best: 为 true 时对每步候选做前瞻评估（适合大块）；false 时直接取最大块（适合小块）
     [[nodiscard]] LocalPackScore greedy_complete(
         ContainerLoad state,
-        std::map<std::string, int> available,
+        std::map<std::string, std::vector<double>> available,
         std::vector<Space> stack,
         const std::vector<SimpleBlock>& all_blocks,
         bool use_pick_best = true) const;
 
     [[nodiscard]] LocalPackScore complete_largest(
         ContainerLoad state,
-        std::map<std::string, int> available,
+        std::map<std::string, std::vector<double>> available,
         std::vector<Space> stack,
         const std::vector<SimpleBlock>& all_blocks) const;
 };
