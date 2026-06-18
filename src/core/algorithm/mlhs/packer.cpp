@@ -40,6 +40,20 @@ Solution Packer::pack()
         remaining_ids.insert(bx.id);
     }
 
+    // 按容器体积升序排列索引：优先尝试小容器，高填充率时早停
+    std::vector<size_t> ct_indices;
+    ct_indices.reserve(problem_.container_types.size());
+    for (size_t i = 0; i < problem_.container_types.size(); ++i)
+    {
+        ct_indices.push_back(i);
+    }
+    std::sort(ct_indices.begin(), ct_indices.end(),
+              [&](size_t a, size_t b)
+              {
+                  return problem_.container_types[a].inner_size.volume() <
+                         problem_.container_types[b].inner_size.volume();
+              });
+
     while (!remaining_ids.empty() && TimeChecker::check())
     {
         // 收集剩余箱子
@@ -96,8 +110,9 @@ Solution Packer::pack()
         ObjectiveVector best_proj;
         bool found = false;
 
-        for (const auto& ct : problem_.container_types)
+        for (size_t idx : ct_indices)
         {
+            const auto& ct = problem_.container_types[idx];
             if (!ct.has_remaining(container_type_usage_))
             {
                 continue;
@@ -187,6 +202,12 @@ Solution Packer::pack()
                 best_ct = &ct;
                 best_pr = std::move(pr.value());
                 best_proj = proj;
+
+                // 当前容器装完所有剩余箱子，已是最优，无需尝试更大容器
+                if (future == 0)
+                {
+                    break;
+                }
             }
         }
 
