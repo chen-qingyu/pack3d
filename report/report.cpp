@@ -115,7 +115,7 @@ int main()
         auto t1 = std::chrono::steady_clock::now();
         size_t mem_peak = get_peak_bytes();
 
-        double volume_rate = j["result"]["containers"][0]["load_summary"]["volume_rate"].get<double>() * 100.0;
+        double volume_rate = j["result"]["containers"][0]["volume_rate"].get<double>() * 100.0;
 
         double duration = std::chrono::duration<double>(t1 - t0).count();
         double memory_kb = static_cast<double>(mem_peak) / 1024.0;
