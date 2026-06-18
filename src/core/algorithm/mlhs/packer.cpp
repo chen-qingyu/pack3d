@@ -131,9 +131,10 @@ Solution Packer::pack()
                     remain_vol += box_type_map_.at(bp->box_type_id).size.volume();
                 }
             }
-            int future = ct_vol > 0
-                             ? static_cast<int>((remain_vol + ct_vol - 1) / ct_vol)
-                             : 0;
+            int64_t usable_per_ct = static_cast<int64_t>(static_cast<double>(ct_vol) * this_rate);
+            int future = usable_per_ct > 0
+                             ? static_cast<int>((remain_vol + usable_per_ct - 1) / usable_per_ct)
+                             : static_cast<int>((remain_vol + ct_vol - 1) / ct_vol);
 
             // 估算剩余箱子会引入的额外平台数
             std::set<std::string> future_platforms;
