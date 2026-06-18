@@ -78,6 +78,7 @@ static size_t get_peak_bytes()
 struct FileResult
 {
     std::string filename;
+    std::string status;
     double volume_rate; // %
     double duration;    // s
     double memory_kb;   // KB
@@ -115,24 +116,25 @@ int main()
         auto t1 = std::chrono::steady_clock::now();
         size_t mem_peak = get_peak_bytes();
 
+        std::string status = j["status"].get<std::string>();
         double volume_rate = j["result"]["containers"][0]["volume_rate"].get<double>() * 100.0;
 
         double duration = std::chrono::duration<double>(t1 - t0).count();
         double memory_kb = static_cast<double>(mem_peak) / 1024.0;
 
         std::string fname = path.filename().string();
-        results.push_back({fname, volume_rate, duration, memory_kb});
+        results.push_back({fname, status, volume_rate, duration, memory_kb});
 
-        spdlog::info("{} - rate: {:.2f}%, duration: {:.3f} s, memory: {:.0f} KB",
-                     fname, volume_rate, duration, memory_kb);
+        spdlog::info("{} - status: {}, rate: {:.2f}%, duration: {:.3f} s, memory: {:.0f} KB",
+                     fname, status, volume_rate, duration, memory_kb);
     }
 
     // 写 CSV
     std::ofstream csv("report/report.csv");
-    csv << "filename,volume_rate(%),duration(s),memory(KB)\n";
+    csv << "filename,status,volume_rate(%),duration(s),memory(KB)\n";
     for (const auto& r : results)
     {
-        csv << fmt::format("{},{:.2f},{:.3f},{:.0f}\n", r.filename, r.volume_rate, r.duration, r.memory_kb);
+        csv << fmt::format("{},{},{:.2f},{:.3f},{:.0f}\n", r.filename, r.status, r.volume_rate, r.duration, r.memory_kb);
     }
 
     // 写 TXT
