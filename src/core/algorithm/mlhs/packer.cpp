@@ -4,6 +4,7 @@
 #include <cassert>
 #include <set>
 
+#include <spdlog/fmt/std.h>
 #include <spdlog/spdlog.h>
 
 #include "../../objectives.hpp"
@@ -202,8 +203,13 @@ Solution Packer::pack()
         {
             remaining_ids.erase(pl.box_id);
         }
-        slots.push_back(std::move(slot));
         container_type_usage_[best_ct->id]++;
+
+        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.4f}, weight rate: {:.4f}",
+                     slots.size() + 1, slot.type->id,
+                     slot.pack_result->placements.size(), remaining_ids.size(),
+                     slot.volume_rate(), slot.weight_rate());
+        slots.push_back(std::move(slot));
     }
 
     bool all_packed = remaining_ids.empty();
@@ -270,17 +276,12 @@ Solution Packer::to_solution(
         cs.inner_size = slot.type->inner_size;
         cs.packed_count = static_cast<int>(pr.placements.size());
         cs.used_volume = pr.used_volume;
-        cs.volume_rate = slot.type->inner_size.volume() > 0
-                             ? static_cast<double>(pr.used_volume) / static_cast<double>(slot.type->inner_size.volume())
-                             : 0.0;
+        cs.volume_rate = slot.volume_rate();
         cs.max_weight = slot.type->max_weight;
         if (has_weight_info_)
         {
             cs.used_weight = pr.total_weight;
-            if (slot.type->max_weight.has_value() && slot.type->max_weight.value() > 0)
-            {
-                cs.weight_rate = pr.total_weight / slot.type->max_weight.value();
-            }
+            cs.weight_rate = slot.weight_rate();
         }
         cs.platforms.assign(pr.platforms.begin(), pr.platforms.end());
         cs.groups.assign(pr.groups.begin(), pr.groups.end());

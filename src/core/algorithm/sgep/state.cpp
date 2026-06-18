@@ -1,5 +1,6 @@
 #include <algorithm>
 
+#include <spdlog/fmt/std.h>
 #include <spdlog/spdlog.h>
 
 #include "../../tool.hpp"
@@ -75,6 +76,7 @@ Solution Packer::build_solution(const SearchState& state,
 
     sol.objective = compute_objective(state.open_containers);
 
+    int left = static_cast<int>(problem_.boxes.size());
     for (const auto& load : state.open_containers)
     {
         if (load.placements.empty())
@@ -102,6 +104,11 @@ Solution Packer::build_solution(const SearchState& state,
 
         sol.container_summaries.push_back(cs);
         sol.container_placements.push_back(load.placements);
+
+        left -= cs.packed_count;
+        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.4f}, weight rate: {:.4f}",
+                     sol.container_summaries.size(), cs.type_id, cs.packed_count, left,
+                     cs.volume_rate, cs.weight_rate);
     }
 
     for (const auto& bx : state.remaining_boxes)

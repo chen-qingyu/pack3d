@@ -39,6 +39,21 @@ private:
         std::string instance_id;
         const ContainerType* type = nullptr;
         std::optional<PackResult> pack_result;
+
+        [[nodiscard]] double volume_rate() const
+        {
+            auto cv = type->inner_size.volume();
+            return static_cast<double>(pack_result->used_volume) / cv;
+        }
+
+        [[nodiscard]] std::optional<double> weight_rate() const
+        {
+            if (!type->max_weight.has_value())
+            {
+                return std::nullopt;
+            }
+            return pack_result->total_weight / *type->max_weight;
+        }
     };
 
     [[nodiscard]] std::optional<PackResult> pack_container(

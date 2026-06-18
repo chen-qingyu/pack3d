@@ -69,19 +69,6 @@ Solution SolverEngine::solve()
         sgep::Packer sgep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
         solution = sgep.pack();
     }
-
-    int total = static_cast<int>(problem_.boxes.size());
-    int packed_sofar = 0;
-    for (size_t i = 0; i < solution.container_summaries.size(); ++i)
-    {
-        const auto& cs = solution.container_summaries[i];
-        packed_sofar += cs.packed_count;
-
-        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.4f}, weight rate: {:.4f}",
-                     i + 1, cs.type_id, cs.packed_count, total - packed_sofar,
-                     cs.volume_rate, cs.weight_rate);
-    }
-
     spdlog::info("===Algorithm End===");
 
     // 输出状态
