@@ -35,10 +35,8 @@ private:
 
     SearchState make_initial_state() const;
     bool construct_solution(SearchState& state);
-    bool open_new_container(SearchState& state);
     void update_best(SearchState& state);
     Solution build_solution(const SearchState& state, const std::string& status) const;
-    bool check_tender_limit(SearchState& state);
 };
 
 } // namespace hypercube::sgep

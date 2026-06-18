@@ -69,6 +69,17 @@ bool Placer::place_next_box(SearchState& state)
                 }
             }
 
+            if (problem_.tender_limit.has_value() && !box.group.empty())
+            {
+                auto it = state.group_spread.find(box.group);
+                if (it != state.group_spread.end() &&
+                    static_cast<int>(it->second.size()) >= problem_.tender_limit.value() &&
+                    !it->second.count(container.instance_id))
+                {
+                    continue;
+                }
+            }
+
             size_t ep_limit = std::min(eps.size(), size_t(200));
             for (size_t ei = 0; ei < ep_limit; ++ei)
             {
@@ -163,6 +174,25 @@ bool Placer::place_next_box(SearchState& state)
         }
 
         // 评估开新容器的选项
+        bool tender_blocked = false;
+        if (problem_.tender_limit.has_value() && !box.group.empty())
+        {
+            auto it = state.group_spread.find(box.group);
+            if (it != state.group_spread.end() &&
+                static_cast<int>(it->second.size()) >= problem_.tender_limit.value())
+            {
+                tender_blocked = true;
+            }
+        }
+        if (tender_blocked)
+        {
+            if (!found)
+            {
+                state.infeasible = true;
+                return false;
+            }
+        }
+        else
         {
             std::vector<const ContainerType*> available;
             for (const auto& ct : problem_.container_types)
@@ -255,7 +285,7 @@ bool Placer::place_next_box(SearchState& state)
                     best_proj = proj;
                 }
             }
-        }
+        } // else (open new container)
 
         if (!found)
         {
