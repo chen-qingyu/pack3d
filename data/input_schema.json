@@ -91,7 +91,7 @@
       "properties": {
         "use": {
           "type": "string",
-          "enum": ["sgep", "mlhs"],
+          "enum": ["sgep", "mlhs", "rgs"],
           "default": "sgep"
         },
         "config": {

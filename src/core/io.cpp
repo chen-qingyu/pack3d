@@ -116,6 +116,7 @@ void from_json(const json& j, BoxType& bt)
     {
         bt.allowed_orientations.push_back(orientation_from_string(o_str.get<std::string>()));
     }
+    bt.stackable = j.value("stackable", true);
 }
 
 void from_json(const json& j, Box& bx)
@@ -182,6 +183,10 @@ void from_json(const json& j, Problem& p)
             {
                 p.algorithm.width = a["config"]["mlhs"].value("width", p.algorithm.width);
             }
+        }
+        else if (use == "rgs")
+        {
+            p.algorithm.algorithm = Algorithm::RGS;
         }
         else
         {

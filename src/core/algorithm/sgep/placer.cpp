@@ -355,6 +355,7 @@ void Placer::apply_placement(SearchState& state, Candidate& cand)
     pl.container_id = cand.container_instance_id;
     pl.position = cand.position;
     pl.orientation = cand.orientation;
+    pl.osize = cand.osize;
     pl.platform = box.platform;
     pl.group = box.group;
 

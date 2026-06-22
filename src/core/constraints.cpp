@@ -83,6 +83,8 @@ bool check_support(const Position& pos, const OrientedSize& osize,
     int32_t by2 = pos.y + osize.dy;
 
     int64_t supported_area = 0;
+    int corner_supported = 0;
+    bool directly_supported = false;
 
     for (const auto& pl : load.placements)
     {
@@ -95,15 +97,58 @@ bool check_support(const Position& pos, const OrientedSize& osize,
             continue;
         }
 
-        int32_t sx1 = std::max(bx1, pl.position.x);
-        int32_t sx2 = std::min(bx2, pl.position.x + e_size.dx);
-        int32_t sy1 = std::max(by1, pl.position.y);
-        int32_t sy2 = std::min(by2, pl.position.y + e_size.dy);
+        int32_t ox1 = std::max(bx1, pl.position.x);
+        int32_t ox2 = std::min(bx2, pl.position.x + e_size.dx);
+        int32_t oy1 = std::max(by1, pl.position.y);
+        int32_t oy2 = std::min(by2, pl.position.y + e_size.dy);
 
-        if (sx1 < sx2 && sy1 < sy2)
+        if (ox1 >= ox2 || oy1 >= oy2)
         {
-            supported_area += static_cast<int64_t>(sx2 - sx1) * (sy2 - sy1);
+            continue;
         }
+
+        // 非可堆叠箱子上方不能放置
+        if (!bt.stackable)
+        {
+            return false;
+        }
+
+        directly_supported = true;
+
+        // 四角快速通道
+        if (bx1 >= pl.position.x && bx1 < pl.position.x + e_size.dx)
+        {
+            if (by1 >= pl.position.y && by1 < pl.position.y + e_size.dy)
+            {
+                corner_supported |= 1;
+            }
+            if (by2 > pl.position.y && by2 <= pl.position.y + e_size.dy)
+            {
+                corner_supported |= 2;
+            }
+        }
+        if (bx2 > pl.position.x && bx2 <= pl.position.x + e_size.dx)
+        {
+            if (by1 >= pl.position.y && by1 < pl.position.y + e_size.dy)
+            {
+                corner_supported |= 4;
+            }
+            if (by2 > pl.position.y && by2 <= pl.position.y + e_size.dy)
+            {
+                corner_supported |= 8;
+            }
+        }
+
+        supported_area += static_cast<int64_t>(ox2 - ox1) * (oy2 - oy1);
+    }
+
+    if (!directly_supported)
+    {
+        return false;
+    }
+    if (corner_supported == 15)
+    {
+        return true;
     }
 
     double ratio = static_cast<double>(supported_area) / static_cast<double>(total_area);

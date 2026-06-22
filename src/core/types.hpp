@@ -74,6 +74,8 @@ struct Position
     int32_t x = 0;
     int32_t y = 0;
     int32_t z = 0;
+
+    auto operator<=>(const Position&) const = default;
 };
 
 struct ContainerType
@@ -96,6 +98,7 @@ struct BoxType
     std::string id;
     Size size;
     std::vector<Orientation> allowed_orientations;
+    bool stackable = true;
 };
 
 struct Box
@@ -120,6 +123,7 @@ enum class Algorithm : uint8_t
 {
     SGEP, // 简单贪心极点算法（默认）
     MLHS, // 多层启发式搜索
+    RGS,  // 随机贪心搜索
 };
 
 struct AlgorithmConfig
@@ -157,6 +161,7 @@ struct Placement
     std::string container_id;
     Position position;
     Orientation orientation = Orientation::XYZ;
+    OrientedSize osize;   // 朝向后的实际尺寸
     std::string platform; // 空字符串表示未设置，输出时转为 null
     std::string group;    // 空字符串表示未设置，输出时转为 null
 };

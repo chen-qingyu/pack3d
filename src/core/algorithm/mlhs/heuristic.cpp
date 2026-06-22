@@ -176,6 +176,7 @@ bool Heuristic::check_block_feasible(
                 pl.box_type_id = block.box_type_id;
                 pl.position = pos;
                 pl.orientation = block.orientation;
+                pl.osize = single;
                 pl.platform = block.platform;
                 pl.group = block.group;
                 sim.placements.push_back(std::move(pl));
@@ -223,6 +224,7 @@ void Heuristic::place_block(
                 pl.box_type_id = block.box_type_id;
                 pl.position = pos;
                 pl.orientation = block.orientation;
+                pl.osize = single;
                 pl.platform = block.platform;
                 pl.group = block.group;
 

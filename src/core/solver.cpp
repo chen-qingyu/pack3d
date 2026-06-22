@@ -7,6 +7,7 @@
 #include <spdlog/spdlog.h>
 
 #include "algorithm/mlhs/packer.hpp"
+#include "algorithm/rgs/packer.hpp"
 #include "algorithm/sgep/packer.hpp"
 #include "tool.hpp"
 
@@ -47,6 +48,10 @@ Solution SolverEngine::solve()
     {
         spdlog::info("Algorithm: MLHS, width: {}", problem_.algorithm.width);
     }
+    else if (problem_.algorithm.algorithm == Algorithm::RGS)
+    {
+        spdlog::info("Algorithm: RGS");
+    }
     else if (problem_.algorithm.algorithm == Algorithm::SGEP)
     {
         spdlog::info("Algorithm: SGEP");
@@ -63,6 +68,11 @@ Solution SolverEngine::solve()
     {
         mlhs::Packer mlhs(problem_, box_type_map_, box_map_, has_weight_info_);
         solution = mlhs.pack();
+    }
+    else if (problem_.algorithm.algorithm == Algorithm::RGS)
+    {
+        rgs::Packer rgs(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
+        solution = rgs.pack();
     }
     else if (problem_.algorithm.algorithm == Algorithm::SGEP)
     {
