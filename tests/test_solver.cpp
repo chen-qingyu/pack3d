@@ -37,7 +37,7 @@ TEST_CASE("independent_objectives", "[solver]")
     {
         base["objectives"] = {key};
 
-        for (auto algo : {"sgep", "mlhs"})
+        for (auto algo : {"sgep", "mlhs", "rgs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
@@ -58,7 +58,7 @@ TEST_CASE("min_container_count", "[solver]")
     {
         base["objectives"] = json::array();
 
-        for (auto algo : {"sgep", "mlhs"})
+        for (auto algo : {"sgep", "mlhs", "rgs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
@@ -73,7 +73,7 @@ TEST_CASE("min_container_count", "[solver]")
     {
         base["objectives"] = {"max_volume_rate", "min_container_count"};
 
-        for (auto algo : {"sgep", "mlhs"})
+        for (auto algo : {"sgep", "mlhs", "rgs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
@@ -95,7 +95,7 @@ TEST_CASE("min_platform_split", "[solver]")
     {
         base["objectives"] = json::array();
 
-        for (auto algo : {"sgep", "mlhs"})
+        for (auto algo : {"sgep", "mlhs", "rgs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
@@ -113,7 +113,7 @@ TEST_CASE("min_platform_split", "[solver]")
     {
         base["objectives"] = {"max_volume_rate", "min_platform_split"};
 
-        for (auto algo : {"sgep", "mlhs"})
+        for (auto algo : {"sgep", "mlhs", "rgs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
@@ -137,7 +137,7 @@ TEST_CASE("max_volume_rate", "[solver]")
     {
         base["objectives"] = json::array();
 
-        for (auto algo : {"sgep", "mlhs"})
+        for (auto algo : {"sgep", "mlhs", "rgs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
@@ -152,7 +152,7 @@ TEST_CASE("max_volume_rate", "[solver]")
     {
         base["objectives"] = {"max_volume_rate", "min_container_count"};
 
-        for (auto algo : {"sgep", "mlhs"})
+        for (auto algo : {"sgep", "mlhs", "rgs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
@@ -175,7 +175,7 @@ TEST_CASE("min_group_split", "[solver]")
     {
         base["objectives"] = json::array();
 
-        for (auto algo : {"sgep", "mlhs"})
+        for (auto algo : {"sgep", "mlhs", "rgs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
@@ -191,7 +191,7 @@ TEST_CASE("min_group_split", "[solver]")
     {
         base["objectives"] = {"min_group_split", "max_volume_rate"};
 
-        for (auto algo : {"sgep", "mlhs"})
+        for (auto algo : {"sgep", "mlhs", "rgs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
