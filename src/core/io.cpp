@@ -328,7 +328,7 @@ void to_json(json& j, const Solution& sol)
     summary["packed_box_count"] = sol.packed_box_count;
     summary["unpacked_box_count"] = sol.unpacked_box_count;
     summary["container_count"] = sol.objective.container_count;
-    summary["platform_count"] = sol.objective.platform_count;
+    summary["platform_split"] = sol.objective.platform_split;
     summary["volume_rate"] = sol.objective.avg_volume_rate;
     summary["group_split"] = sol.objective.group_split_sum;
 

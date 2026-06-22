@@ -82,16 +82,20 @@ Solution Packer::pack()
 
         // 累积当前已用容器的目标状态
         int cur_count = static_cast<int>(slots.size());
-        int cur_platform_sum = 0;
+        int cur_platform_split = 0;
         double cur_rate_sum = 0.0;
         std::map<std::string, int> group_seen_count;
+        std::map<std::string, int> platform_seen_count;
 
         for (const auto& slot : slots)
         {
             if (!slot.pack_result.has_value())
                 continue;
             const auto& pr = slot.pack_result.value();
-            cur_platform_sum += static_cast<int>(pr.platforms.size());
+            for (const auto& p : pr.platforms)
+            {
+                platform_seen_count[p]++;
+            }
             int64_t cv = static_cast<int64_t>(slot.type->inner_size.x) *
                          slot.type->inner_size.y *
                          slot.type->inner_size.z;
@@ -174,7 +178,22 @@ Solution Packer::pack()
             // 投影目标向量
             ObjectiveVector proj;
             proj.container_count = cur_count + 1 + future;
-            proj.platform_count = cur_platform_sum + static_cast<int>(pr->platforms.size()) + static_cast<int>(future_platforms.size());
+
+            proj.platform_split = cur_platform_split;
+            for (const auto& p : pr->platforms)
+            {
+                if (platform_seen_count.count(p) && platform_seen_count.at(p) >= 1)
+                {
+                    proj.platform_split += 1;
+                }
+            }
+            for (const auto& p : future_platforms)
+            {
+                if (!platform_seen_count.count(p))
+                {
+                    proj.platform_split += 1;
+                }
+            }
             proj.avg_volume_rate = cur_count > 0
                                        ? (cur_rate_sum + this_rate) / (cur_count + 1)
                                        : this_rate;
@@ -330,16 +349,19 @@ Solution Packer::to_solution(
 
     // 计算目标向量
     sol.objective.container_count = static_cast<int>(slots.size());
-    sol.objective.platform_count = 0;
     double sum_rate = 0.0;
     std::map<std::string, int> group_containers;
+    std::map<std::string, int> platform_containers;
 
     for (const auto& slot : slots)
     {
         if (!slot.pack_result.has_value())
             continue;
         const auto& pr = slot.pack_result.value();
-        sol.objective.platform_count += static_cast<int>(pr.platforms.size());
+        for (const auto& p : pr.platforms)
+        {
+            platform_containers[p]++;
+        }
 
         int64_t cv = static_cast<int64_t>(slot.type->inner_size.x) *
                      slot.type->inner_size.y *
@@ -355,6 +377,13 @@ Solution Packer::to_solution(
     sol.objective.avg_volume_rate = sol.objective.container_count > 0
                                         ? sum_rate / sol.objective.container_count
                                         : 0.0;
+
+    int platform_split = 0;
+    for (const auto& [p, count] : platform_containers)
+    {
+        platform_split += count - 1;
+    }
+    sol.objective.platform_split = platform_split;
 
     int split = 0;
     for (const auto& [g, count] : group_containers)

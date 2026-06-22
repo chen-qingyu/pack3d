@@ -119,7 +119,7 @@ bool Placer::place_next_box(SearchState& state)
 
                     if (!box.platform.empty() && !container.platforms.count(box.platform))
                     {
-                        proj.platform_count += 1;
+                        proj.platform_split += 1;
                     }
 
                     if (!box.group.empty() && !container.groups.count(box.group))
@@ -164,7 +164,7 @@ bool Placer::place_next_box(SearchState& state)
                 best_proj.container_count += 1;
                 if (!box.platform.empty())
                 {
-                    best_proj.platform_count += 1;
+                    best_proj.platform_split += 1;
                 }
                 if (!box.group.empty())
                 {
@@ -230,7 +230,7 @@ bool Placer::place_next_box(SearchState& state)
                 proj.container_count += 1;
                 if (!box.platform.empty())
                 {
-                    proj.platform_count += 1;
+                    proj.platform_split += 1;
                 }
                 if (!box.group.empty())
                 {
@@ -259,7 +259,7 @@ bool Placer::place_next_box(SearchState& state)
                         proj.container_count += extra;
                         if (!box.platform.empty())
                         {
-                            proj.platform_count += extra;
+                            proj.platform_split += extra;
                         }
                         if (!box.group.empty())
                         {

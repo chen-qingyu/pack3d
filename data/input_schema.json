@@ -122,7 +122,7 @@
       "description": "目标函数键列表（按优先级排序）",
       "default": [
         "min_container_count",
-        "min_platform_count",
+        "min_platform_split",
         "max_volume_rate",
         "min_group_split"
       ],
@@ -130,7 +130,7 @@
         "type": "string",
         "enum": [
           "min_container_count",
-          "min_platform_count",
+          "min_platform_split",
           "max_volume_rate",
           "min_group_split"
         ]

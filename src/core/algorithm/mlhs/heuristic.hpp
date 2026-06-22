@@ -45,7 +45,7 @@ public:
 private:
     struct LocalPackScore
     {
-        int platform_count = 0;
+        int platform_split = 0;
         int group_count = 0;
         int64_t used_volume = 0;
         int placed_count = 0;

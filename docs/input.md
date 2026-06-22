@@ -87,7 +87,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 ```json
 [
   "min_container_count",
-  "min_platform_count",
+  "min_platform_split",
   "max_volume_rate",
   "min_group_split"
 ]

@@ -73,7 +73,7 @@ SearchState
 2. 同平台内按体积从大到小排序（大箱优先）
 3. 使用 `stable_sort`，同体积箱子保持原始相对顺序
 
-这种排序鼓励同平台箱子在搜索中被连续放置到同一容器中，有利于降低 `platform_count` 目标。
+这种排序鼓励同平台箱子在搜索中被连续放置到同一容器中，有利于降低 `platform_split` 目标。
 
 ### 2.4 开新容器策略
 
@@ -129,7 +129,7 @@ SearchState
 默认优先级：
 
 1. `min_container_count` — 容器数最少
-2. `min_platform_count` — 平台总数最少
+2. `min_platform_split` — 平台拆分次数最少
 3. `max_volume_rate` — 体积利用率最高
 4. `min_group_split` — 组拆分次数最少
 
@@ -179,7 +179,7 @@ MLHS 在**调度层**和**装载层**均有多目标感知：
 
 调度层投影对每种容器类型计算 `ObjectiveVector`，包含 `future_platforms` 和 `future_groups` 估算（类似已有的 `future` 容器数估算），通过 `compare_objectives` 字典序选最优容器类型。
 
-装载层 `compare_local_scores` 按目标键比较 `platform_count` / `used_volume` / `group_count`，不含 `min_container_count`（单容器内不适用）。最终放置前做多目标提前停止：若放置候选块后完成态得分不优于当前态，停止装箱（避免引入多余平台/分组）。
+装载层 `compare_local_scores` 按目标键比较 `platform_split` / `used_volume` / `group_count`，不含 `min_container_count`（单容器内不适用）。最终放置前做多目标提前停止：若放置候选块后完成态得分不优于当前态，停止装箱（避免引入多余平台/分组）。
 
 目标：`[min_container_count, max_volume_rate]`
 

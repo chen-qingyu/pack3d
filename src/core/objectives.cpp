@@ -20,7 +20,7 @@ bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs, const std::vect
 bool ObjectiveVector::operator==(const ObjectiveVector& rhs) const noexcept
 {
     return container_count == rhs.container_count &&
-           platform_count == rhs.platform_count &&
+           platform_split == rhs.platform_split &&
            std::abs(avg_volume_rate - rhs.avg_volume_rate) < 1e-12 &&
            group_split_sum == rhs.group_split_sum;
 }
@@ -33,15 +33,19 @@ ObjectiveVector compute_objective(const std::vector<ContainerLoad>& containers) 
     double sum_rate = 0.0;
 
     std::map<std::string, std::set<std::string>> group_containers;
+    std::map<std::string, std::set<std::string>> platform_containers;
 
     for (const auto& c : containers)
     {
-        ov.platform_count += static_cast<int>(c.platforms.size());
         sum_rate += c.volume_rate();
 
         for (const auto& g : c.groups)
         {
             group_containers[g].insert(c.instance_id);
+        }
+        for (const auto& p : c.platforms)
+        {
+            platform_containers[p].insert(c.instance_id);
         }
     }
 
@@ -55,6 +59,13 @@ ObjectiveVector compute_objective(const std::vector<ContainerLoad>& containers) 
         split_sum += static_cast<int>(containers_set.size()) - 1;
     }
     ov.group_split_sum = split_sum;
+
+    int platform_split_sum = 0;
+    for (const auto& [p, containers_set] : platform_containers)
+    {
+        platform_split_sum += static_cast<int>(containers_set.size()) - 1;
+    }
+    ov.platform_split = platform_split_sum;
 
     return ov;
 }
@@ -76,13 +87,13 @@ int compare_objectives(const ObjectiveVector& a,
                 return 1;
             }
         }
-        else if (key == "min_platform_count")
+        else if (key == "min_platform_split")
         {
-            if (a.platform_count < b.platform_count)
+            if (a.platform_split < b.platform_split)
             {
                 return -1;
             }
-            if (a.platform_count > b.platform_count)
+            if (a.platform_split > b.platform_split)
             {
                 return 1;
             }

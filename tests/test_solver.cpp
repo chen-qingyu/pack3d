@@ -28,7 +28,7 @@ TEST_CASE("independent_objectives", "[solver]")
 
     const char* all_keys[] = {
         "min_container_count",
-        "min_platform_count",
+        "min_platform_split",
         "max_volume_rate",
         "min_group_split",
     };
@@ -87,7 +87,7 @@ TEST_CASE("min_container_count", "[solver]")
 }
 
 // test_min_platform.json — 大小箱子各 2，A/B 平台
-TEST_CASE("min_platform_count", "[solver]")
+TEST_CASE("min_platform_split", "[solver]")
 {
     auto base = load_data("data/tests/test_min_platform.json");
 
@@ -99,7 +99,7 @@ TEST_CASE("min_platform_count", "[solver]")
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
-            REQUIRE(res["summary"]["platform_count"] == 2);
+            REQUIRE(res["summary"]["platform_split"] == 0);
             REQUIRE(res["summary"]["volume_rate"] < 1.0);
             REQUIRE(res["result"]["containers"].size() == 2);
             REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
@@ -111,13 +111,13 @@ TEST_CASE("min_platform_count", "[solver]")
 
     SECTION("max_volume_rate -> 一大一小，均 100%")
     {
-        base["objectives"] = {"max_volume_rate", "min_platform_count"};
+        base["objectives"] = {"max_volume_rate", "min_platform_split"};
 
         for (auto algo : {"sgep", "mlhs"})
         {
             base["algorithm"] = {{"use", algo}};
             auto res = run(base);
-            REQUIRE(res["summary"]["platform_count"] == 3);
+            REQUIRE(res["summary"]["platform_split"] == 1);
             REQUIRE(res["summary"]["volume_rate"] == 1.0);
             REQUIRE(res["result"]["containers"].size() == 2);
             REQUIRE(res["result"]["containers"][0]["type_id"] == "big");

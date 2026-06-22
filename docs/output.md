@@ -29,28 +29,28 @@ JSON，顶层四个字段：
   "packed_box_count": 105,
   "unpacked_box_count": 7,
   "container_count": 1,
-  "platform_count": 0,
+  "platform_split": 0,
   "volume_rate": 0.9274,
   "group_split": 0,
   "objective_keys": [
     "min_container_count",
-    "min_platform_count",
+    "min_platform_split",
     "max_volume_rate",
     "min_group_split"
   ]
 }
 ```
 
-| 字段                 | 说明                                 |
-| -------------------- | ------------------------------------ |
-| `elapsed_second`     | 耗时（秒）                           |
-| `packed_box_count`   | 已装箱数                             |
-| `unpacked_box_count` | 未装箱数                             |
-| `container_count`    | 使用容器数                           |
-| `platform_count`     | 各容器平台数之和                     |
-| `volume_rate`        | 各容器平均体积利用率（0-1）          |
-| `group_split`        | 组拆分总次数（0=每组只在一个容器中） |
-| `objective_keys`     | 实际使用的目标键顺序                 |
+| 字段                 | 说明                                       |
+| -------------------- | ------------------------------------------ |
+| `elapsed_second`     | 耗时（秒）                                 |
+| `packed_box_count`   | 已装箱数                                   |
+| `unpacked_box_count` | 未装箱数                                   |
+| `container_count`    | 使用容器数                                 |
+| `platform_split`     | 平台拆分总次数（0=每个平台只在一个容器中） |
+| `volume_rate`        | 各容器平均体积利用率（0-1）                |
+| `group_split`        | 组拆分总次数（0=每组只在一个容器中）       |
+| `objective_keys`     | 实际使用的目标键顺序                       |
 
 ## `result` 装箱结果
 

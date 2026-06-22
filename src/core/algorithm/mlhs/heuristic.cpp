@@ -294,7 +294,7 @@ PackResult Heuristic::make_result(
 Heuristic::LocalPackScore Heuristic::score_state(const ContainerLoad& state) const
 {
     LocalPackScore score;
-    score.platform_count = static_cast<int>(state.platforms.size());
+    score.platform_split = static_cast<int>(state.platforms.size());
     score.group_count = static_cast<int>(state.groups.size());
     score.used_volume = state.used_volume;
     score.placed_count = static_cast<int>(state.placements.size());
@@ -310,13 +310,13 @@ int Heuristic::compare_local_scores(const LocalPackScore& a,
 
     for (const auto& key : keys)
     {
-        if (key == "min_platform_count")
+        if (key == "min_platform_split")
         {
-            if (a.platform_count < b.platform_count)
+            if (a.platform_split < b.platform_split)
             {
                 return -1;
             }
-            if (a.platform_count > b.platform_count)
+            if (a.platform_split > b.platform_split)
             {
                 return 1;
             }
@@ -361,11 +361,11 @@ int Heuristic::compare_local_scores(const LocalPackScore& a,
     {
         return 1;
     }
-    if (a.platform_count < b.platform_count)
+    if (a.platform_split < b.platform_split)
     {
         return -1;
     }
-    if (a.platform_count > b.platform_count)
+    if (a.platform_split > b.platform_split)
     {
         return 1;
     }
