@@ -143,7 +143,7 @@ bool check_support(const Position& pos, const OrientedSize& osize,
     }
     if (corner_supported == 15)
     {
-        return true;
+        return true; // all 4 corners supported — skip area ratio
     }
 
     double ratio = static_cast<double>(supported_area) / static_cast<double>(total_area);

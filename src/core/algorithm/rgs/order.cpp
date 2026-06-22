@@ -50,6 +50,32 @@ bool sets_intersect(const std::set<int32_t>& a, const std::set<int32_t>& b) noex
     return false;
 }
 
+// 计算两个已排序集合的交集
+std::set<int32_t> set_intersection(const std::set<int32_t>& a, const std::set<int32_t>& b) noexcept
+{
+    std::set<int32_t> result;
+    auto ia = a.begin();
+    auto ib = b.begin();
+    while (ia != a.end() && ib != b.end())
+    {
+        if (*ia < *ib)
+        {
+            ++ia;
+        }
+        else if (*ib < *ia)
+        {
+            ++ib;
+        }
+        else
+        {
+            result.insert(*ia);
+            ++ia;
+            ++ib;
+        }
+    }
+    return result;
+}
+
 struct IdenticalGroup
 {
     std::string box_type_id;
@@ -63,6 +89,7 @@ struct IdenticalGroup
 struct SimilarGroup
 {
     bool stackable = true;
+    std::set<int32_t> z_heights; // 组内所有箱型可达高度的交集（论文 Sh,ϑ 的 h）
     std::vector<IdenticalGroup> identicals;
     int64_t total_volume = 0;
     int64_t max_volume = 0;
@@ -118,8 +145,10 @@ std::vector<OrderEntry> build_ordered_list(
         bool merged = false;
         for (auto& sg : sgs)
         {
-            if (sg.stackable == ig.stackable && sets_intersect(sg.identicals.front().z_heights, ig.z_heights))
+            if (sg.stackable == ig.stackable && sets_intersect(sg.z_heights, ig.z_heights))
             {
+                // 交集 = 两个组共同可达的高度
+                sg.z_heights = set_intersection(sg.z_heights, ig.z_heights);
                 sg.identicals.push_back(std::move(ig));
                 sg.total_volume += sg.identicals.back().total_volume;
                 sg.max_volume = std::max(sg.max_volume, sg.identicals.back().max_volume);
@@ -131,6 +160,7 @@ std::vector<OrderEntry> build_ordered_list(
         {
             SimilarGroup sg;
             sg.stackable = ig.stackable;
+            sg.z_heights = ig.z_heights; // 初始 = 第一个 identical group 的 z_heights
             sg.total_volume = ig.total_volume;
             sg.max_volume = ig.max_volume;
             sg.identicals.push_back(std::move(ig));
@@ -189,6 +219,7 @@ std::vector<OrderEntry> build_ordered_list(
 
     // ---- step 5: flatten to OrderEntry list ----
     std::vector<OrderEntry> ordered;
+    size_t stackable_end = 0; // stackable 分界点（用于 Shaw 分隔）
 
     for (const auto& sg : sgs)
     {
@@ -199,12 +230,33 @@ std::vector<OrderEntry> build_ordered_list(
             {
                 continue;
             }
-            const auto& orients = bt_it->second.allowed_orientations;
+            const auto& bt = bt_it->second;
+
+            // §4.2.3: 朝向锁定到组高度 —— 只保留 dz ∈ sg.z_heights 的朝向
+            std::vector<Orientation> filtered_orients;
+            for (auto o : bt.allowed_orientations)
+            {
+                auto os = bt.size.orient(o);
+                if (sg.z_heights.count(os.dz))
+                {
+                    filtered_orients.push_back(o);
+                }
+            }
+            if (filtered_orients.empty())
+            {
+                continue; // 该箱型在当前组无可用高度
+            }
 
             for (const auto* bx : ig.boxes)
             {
-                ordered.push_back({bx->id, orients});
+                ordered.push_back({bx->id, filtered_orients});
             }
+        }
+
+        // 标记 stackable 段的结束位置
+        if (sg.stackable)
+        {
+            stackable_end = ordered.size();
         }
     }
 
@@ -213,8 +265,9 @@ std::vector<OrderEntry> build_ordered_list(
     {
         static std::atomic<uint64_t> s_call_id{0};
         uint64_t call_id = s_call_id.fetch_add(1);
-
         std::mt19937_64 rng(42 + call_id);
+
+        // 6a: shuffle orientations per entry
         for (auto& entry : ordered)
         {
             if (entry.orients.size() > 1)
@@ -223,13 +276,17 @@ std::vector<OrderEntry> build_ordered_list(
             }
         }
 
-        if (ordered.size() > 1)
+        // 6b: Shaw item-order randomization
+        auto shaw = [&rng, rho](std::vector<OrderEntry>& work)
         {
+            if (work.size() <= 1)
+            {
+                return work;
+            }
             std::uniform_real_distribution<double> dist(0.0, 1.0);
-            size_t m = ordered.size();
+            size_t m = work.size();
             std::vector<OrderEntry> shuffled;
             shuffled.reserve(m);
-            auto work = ordered;
 
             for (size_t j = 0; j < m && !work.empty(); ++j)
             {
@@ -244,12 +301,35 @@ std::vector<OrderEntry> build_ordered_list(
                 {
                     pick = remaining_count;
                 }
-
                 shuffled.push_back(work[pick - 1]);
                 work.erase(work.begin() + static_cast<ptrdiff_t>(pick - 1));
             }
+            return shuffled;
+        };
 
-            ordered = std::move(shuffled);
+        bool separate_stackable =
+            criterion == SortCriterion::StackabilityCumulatedVolume ||
+            criterion == SortCriterion::StackabilityHighestVolume;
+
+        if (separate_stackable && stackable_end > 0 && stackable_end < ordered.size())
+        {
+            // §4.2.2: stackability 优先策略下，可堆叠/不可堆叠子序列分别随机化
+            std::vector<OrderEntry> stackable(
+                ordered.begin(),
+                ordered.begin() + static_cast<ptrdiff_t>(stackable_end));
+            std::vector<OrderEntry> non_stackable(
+                ordered.begin() + static_cast<ptrdiff_t>(stackable_end),
+                ordered.end());
+
+            ordered = shaw(stackable);
+            auto ns = shaw(non_stackable);
+            ordered.insert(ordered.end(),
+                           std::make_move_iterator(ns.begin()),
+                           std::make_move_iterator(ns.end()));
+        }
+        else
+        {
+            ordered = shaw(ordered);
         }
     }
 

@@ -202,6 +202,10 @@ ContainerLoad Packer::rgs_single_uld(
     }
 
 done:
+    if (best_load.type == nullptr)
+    {
+        best_load.type = &ctype; // 哨兵：无迭代完成时避免空指针
+    }
     return best_load;
 }
 
