@@ -15,8 +15,7 @@ namespace hypercube
 
 /// 检查新放置是否与已有放置重叠
 [[nodiscard]] bool check_overlap(const Position& pos, const OrientedSize& osize,
-                                 const std::vector<Placement>& existing,
-                                 const std::map<std::string, BoxType>& box_type_map) noexcept;
+                                 const std::vector<Placement>& existing) noexcept;
 
 /// 检查放入箱子后是否超重
 [[nodiscard]] bool check_weight(const ContainerLoad& load,

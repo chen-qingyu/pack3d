@@ -41,17 +41,15 @@ TEST_CASE("check_boundary 拒绝越界", "[core]")
 
 TEST_CASE("check_overlap 检测碰撞", "[core]")
 {
-    BoxType bt{"t", {100, 100, 100}, {Orientation::XYZ}};
-    std::map<std::string, BoxType> btm = {{"t", bt}};
-    std::vector<Placement> exists = {{"", "t", "", {50, 50, 50}, Orientation::XYZ}};
+    std::vector<Placement> exists = {{"", "t", "", {50, 50, 50}, Orientation::XYZ, {100, 100, 100}}};
 
-    REQUIRE(check_overlap({0, 0, 0}, {100, 100, 100}, exists, btm));
+    REQUIRE(check_overlap({0, 0, 0}, {100, 100, 100}, exists));
 
     exists[0].position = {200, 0, 0};
-    REQUIRE_FALSE(check_overlap({0, 0, 0}, {100, 100, 100}, exists, btm));
+    REQUIRE_FALSE(check_overlap({0, 0, 0}, {100, 100, 100}, exists));
 
     exists[0].position = {0, 200, 0};
-    REQUIRE_FALSE(check_overlap({0, 0, 0}, {100, 100, 100}, exists, btm));
+    REQUIRE_FALSE(check_overlap({0, 0, 0}, {100, 100, 100}, exists));
 }
 
 TEST_CASE("check_support 在地板上总是通过", "[core]")
@@ -77,7 +75,7 @@ TEST_CASE("check_support 部分支撑", "[core]")
     BoxType bt{"bt1", {100, 100, 100}, {Orientation::XYZ}};
     std::map<std::string, BoxType> btm = {{"bt1", bt}};
 
-    load.placements.push_back({"", "bt1", "", {0, 0, 0}, Orientation::XYZ});
+    load.placements.push_back({"", "bt1", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
     load.used_volume = 100 * 100 * 100;
     load.total_weight = 100.0;
 

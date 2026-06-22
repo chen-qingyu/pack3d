@@ -152,7 +152,7 @@ bool Heuristic::check_block_feasible(
                 }
 
                 // 重叠检查仅需查 state.placements（块内箱子网格排列，互不重叠）
-                if (check_overlap(pos, single, state.placements, box_type_map_))
+                if (check_overlap(pos, single, state.placements))
                 {
                     return false;
                 }

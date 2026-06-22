@@ -92,7 +92,7 @@ bool Placer::place_next_box(SearchState& state)
                     {
                         continue;
                     }
-                    if (check_overlap(ep, osize, container.placements, box_type_map_))
+                    if (check_overlap(ep, osize, container.placements))
                     {
                         continue;
                     }
@@ -437,11 +437,9 @@ void Placer::filter_extreme_points(std::vector<Position>& points,
         bool inside_existing = false;
         for (const auto& pl : load.placements)
         {
-            auto& bt = box_type_map_.at(pl.box_type_id);
-            auto e_size = bt.size.orient(pl.orientation);
-            if (pt.x >= pl.position.x && pt.x < pl.position.x + e_size.dx &&
-                pt.y >= pl.position.y && pt.y < pl.position.y + e_size.dy &&
-                pt.z >= pl.position.z && pt.z < pl.position.z + e_size.dz)
+            if (pt.x >= pl.position.x && pt.x < pl.position.x + pl.osize.dx &&
+                pt.y >= pl.position.y && pt.y < pl.position.y + pl.osize.dy &&
+                pt.z >= pl.position.z && pt.z < pl.position.z + pl.osize.dz)
             {
                 inside_existing = true;
                 break;

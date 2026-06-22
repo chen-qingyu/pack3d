@@ -29,19 +29,15 @@ bool check_boundary(const ContainerType& ctype, const Position& pos,
 }
 
 bool check_overlap(const Position& pos, const OrientedSize& osize,
-                   const std::vector<Placement>& existing,
-                   const std::map<std::string, BoxType>& box_type_map) noexcept
+                   const std::vector<Placement>& existing) noexcept
 {
     for (const auto& pl : existing)
     {
-        auto& bt = box_type_map.at(pl.box_type_id);
-        auto e_size = bt.size.orient(pl.orientation);
-
-        if ((pl.position.x + e_size.dx <= pos.x) ||
+        if ((pl.position.x + pl.osize.dx <= pos.x) ||
             (pos.x + osize.dx <= pl.position.x) ||
-            (pl.position.y + e_size.dy <= pos.y) ||
+            (pl.position.y + pl.osize.dy <= pos.y) ||
             (pos.y + osize.dy <= pl.position.y) ||
-            (pl.position.z + e_size.dz <= pos.z) ||
+            (pl.position.z + pl.osize.dz <= pos.z) ||
             (pos.z + osize.dz <= pl.position.z))
         {
             continue;
@@ -89,18 +85,17 @@ bool check_support(const Position& pos, const OrientedSize& osize,
     for (const auto& pl : load.placements)
     {
         auto& bt = box_type_map.at(pl.box_type_id);
-        auto e_size = bt.size.orient(pl.orientation);
 
-        int32_t support_top = pl.position.z + e_size.dz;
+        int32_t support_top = pl.position.z + pl.osize.dz;
         if (support_top != pos.z)
         {
             continue;
         }
 
         int32_t ox1 = std::max(bx1, pl.position.x);
-        int32_t ox2 = std::min(bx2, pl.position.x + e_size.dx);
+        int32_t ox2 = std::min(bx2, pl.position.x + pl.osize.dx);
         int32_t oy1 = std::max(by1, pl.position.y);
-        int32_t oy2 = std::min(by2, pl.position.y + e_size.dy);
+        int32_t oy2 = std::min(by2, pl.position.y + pl.osize.dy);
 
         if (ox1 >= ox2 || oy1 >= oy2)
         {
@@ -116,24 +111,24 @@ bool check_support(const Position& pos, const OrientedSize& osize,
         directly_supported = true;
 
         // 四角快速通道
-        if (bx1 >= pl.position.x && bx1 < pl.position.x + e_size.dx)
+        if (bx1 >= pl.position.x && bx1 < pl.position.x + pl.osize.dx)
         {
-            if (by1 >= pl.position.y && by1 < pl.position.y + e_size.dy)
+            if (by1 >= pl.position.y && by1 < pl.position.y + pl.osize.dy)
             {
                 corner_supported |= 1;
             }
-            if (by2 > pl.position.y && by2 <= pl.position.y + e_size.dy)
+            if (by2 > pl.position.y && by2 <= pl.position.y + pl.osize.dy)
             {
                 corner_supported |= 2;
             }
         }
-        if (bx2 > pl.position.x && bx2 <= pl.position.x + e_size.dx)
+        if (bx2 > pl.position.x && bx2 <= pl.position.x + pl.osize.dx)
         {
-            if (by1 >= pl.position.y && by1 < pl.position.y + e_size.dy)
+            if (by1 >= pl.position.y && by1 < pl.position.y + pl.osize.dy)
             {
                 corner_supported |= 4;
             }
-            if (by2 > pl.position.y && by2 <= pl.position.y + e_size.dy)
+            if (by2 > pl.position.y && by2 <= pl.position.y + pl.osize.dy)
             {
                 corner_supported |= 8;
             }

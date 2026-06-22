@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <set>
+#include <unordered_map>
 
 #include "../../constraints.hpp"
 #include "../../tool.hpp"
@@ -364,6 +365,14 @@ std::vector<std::string> insertion_heuristic(
 
     auto ordered = build_ordered_list(items, box_type_map, criterion, rho);
 
+    // 预建 box_id -> Box 映射，避免内层 O(N^2) 线性搜索
+    std::unordered_map<std::string, const Box*> box_by_id;
+    box_by_id.reserve(items.size());
+    for (const auto& bx : items)
+    {
+        box_by_id[bx.id] = &bx;
+    }
+
     std::set<std::string> loaded_ids;
     std::vector<std::string> loaded_order;
 
@@ -374,20 +383,12 @@ std::vector<std::string> insertion_heuristic(
             continue;
         }
 
-        const Box* box_ptr = nullptr;
-        for (const auto& bx : items)
-        {
-            if (bx.id == entry.box_id)
-            {
-                box_ptr = &bx;
-                break;
-            }
-        }
-        if (!box_ptr)
+        auto bx_it = box_by_id.find(entry.box_id);
+        if (bx_it == box_by_id.end())
         {
             continue;
         }
-        const Box& box = *box_ptr;
+        const Box& box = *bx_it->second;
         auto bt_it = box_type_map.find(box.box_type_id);
         if (bt_it == box_type_map.end())
         {
