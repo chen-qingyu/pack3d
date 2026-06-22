@@ -6,6 +6,7 @@
 
 - **`SGEP`**（默认）— 简单贪心极点算法：逐个箱子遍历极点找最优位置，逐容器打开。见 §2。
 - **`MLHS`** — 多层启发式搜索：块装载 + beam 搜索 + 前瞻评估，全局调度器迭代分配容器。见 §4。
+- **`RGS`** — 随机贪心搜索：EP-first-fit + 多策略排序 + Shaw 随机化，多起点采样择优。见 §6。
 
 ### 坐标系
 
@@ -274,20 +275,167 @@ MLHS 在**调度层**和**装载层**均有多目标感知：
 
 ---
 
-## 5. 两算法对比
+## 5. 三算法对比
 
-| 维度     | SGEP                              | MLHS                                                              |
-| -------- | --------------------------------- | ----------------------------------------------------------------- |
-| 核心策略 | 逐箱贪心 + 极点搜索               | 块装载 + beam 搜索 + 前瞻评估                                     |
-| 搜索粒度 | 单箱级                            | 块级（多箱一次放置）                                              |
-| 容器分配 | 随装箱动态开新容器                | 全局调度器统一分配                                                |
-| 目标优化 | 每步字典序投影，覆盖全部 4 个维度 | 调度层字典序投影 + 装载层多目标打分 + 提前停止，覆盖全部 4 个维度 |
-| 时限检查 | 每步 check_time                   | 调度层 + 装载层双重 check_time                                    |
-| 复杂度   | O(n·m·p)，n=箱子，m=容器，p=极点  | 较高（beam 展开 + 前瞻评估）                                      |
-| 适用场景 | 通用、轻量、约束简单的快速解      | 填充率要求高、可接受更长计算时间                                  |
+| 维度     | SGEP                              | MLHS                                                              | RGS                                     |
+| -------- | --------------------------------- | ----------------------------------------------------------------- | --------------------------------------- |
+| 核心策略 | 逐箱贪心 + 极点搜索               | 块装载 + beam 搜索 + 前瞻评估                                     | EP-first-fit + 多策略排序 + 随机重启    |
+| 搜索粒度 | 单箱级                            | 块级（多箱一次放置）                                              | 单箱级                                  |
+| 容器分配 | 随装箱动态开新容器                | 全局调度器统一分配                                                | 全局调度（最稀缺优先）+ 后处理重装/合并 |
+| 目标优化 | 每步字典序投影，覆盖全部 4 个维度 | 调度层字典序投影 + 装载层多目标打分 + 提前停止，覆盖全部 4 个维度 | ULD 评分（体积率 − 难装件惩罚），单目标 |
+| 时限检查 | 每步 check_time                   | 调度层 + 装载层双重 check_time                                    | 每迭代 check_time                       |
+| 复杂度   | O(n·m·p)，n=箱子，m=容器，p=极点  | 较高（beam 展开 + 前瞻评估）                                      | O(M·n·e)，M=迭代数，e=EP 数             |
+| 适用场景 | 通用、轻量、约束简单的快速解      | 填充率要求高、可接受更长计算时间                                  | 多箱型场景，需要探索多样化布局          |
 
 ---
 
-## 6. 效果参考
+## 6. RGS 随机贪心搜索
 
-请看 [report/report.txt](../report/report.txt)。
+> 来源：Heßler, Hintsch, Wienkamp. _A Fast Optimization Approach For A Complex Real-Life 3D Multiple Bin Size Bin Packing Problem_. arXiv:2410.01445v1, 2024.
+> 算法对应论文 §4（插入启发式）、§5（RGS 框架）、§6（多 ULD 策略）。
+
+### 6.1 论文概览
+
+| 项目     | 内容                                                             |
+| -------- | ---------------------------------------------------------------- |
+| 英文标题 | A Fast Optimization Approach For A Complex Real-Life 3D MBSBPP   |
+| 中文译名 | 复杂真实场景三维多箱型装箱问题快速优化方法                       |
+| 作者     | Katrin Heßler, Timo Hintsch, Lukas Wienkamp（德铁信可/Schenker） |
+| arXiv    | 2410.01445v1, 2024-10-02                                         |
+| 应用场景 | 航空货运 ULD（航空托盘/集装箱）装载                              |
+| 核心贡献 | 边缘禁放+底托+垫料等真实约束；网格加速+RGS；非长方体ULD支持      |
+
+**本实现的简化**：不做斜面 ULD、边缘禁放、底托、垫料、重心优化、倾斜物品。仅保留长方体 ULD + 支撑/堆叠/重量/平台/路线约束。
+
+### 6.2 核心思想
+
+> **单次插入用 first-fit 贪心，通过多策略排序 + Shaw 随机化产生多样化布局，多起点采样后择优。**
+
+RGS 不是局部搜索——不需要邻域算子。它本质是构造式搜索（constructive search）：每次用不同顺序构造解，保留最佳。
+
+### 6.3 整体架构
+
+```
+Packer::pack()
+  │
+  ├─ compute_penalty_denom()     ── 全局预计算难装件惩罚分母
+  │
+  ├─ 主循环 Alg7:
+  │   ├─ select_next_uld()       ── 最稀缺优先选容器类型
+  │   ├─ rgs_single_uld()        ── 单 ULD 多起点搜索 (Alg5)
+  │   │   ├─ 5 种排序策略 × M 次迭代
+  │   │   ├─ 首次 ρ=0（确定性），后续 ρ=0.5（Shaw 随机化）
+  │   │   └─ score_uld() 评分，择优
+  │   └─ 移除已装箱子
+  │
+  ├─ 后处理 1: 大容器→小容器重装
+  ├─ 后处理 2: 合并分散的同平台/同组物品
+  └─ 后处理 3: 降级最后一个 ULD
+```
+
+### 6.4 排序策略（§4.2）
+
+| 策略                        | 含义                  | 特点              |
+| --------------------------- | --------------------- | ----------------- |
+| StackabilityCumulatedVolume | 可堆叠优先 + 总体积   | 论文最强 baseline |
+| StackabilityHighestVolume   | 可堆叠优先 + 最大单件 | 也稳定            |
+| CumulatedVolume             | 按总体积              | 偏利用率          |
+| HighestVolume               | 按最大单件            | 先放大件          |
+| Random                      | 完全随机              | 救极少数死局      |
+
+相同箱型归入 IdenticalGroup；z 高度相交 + 同堆叠性的归入 SimilarGroup。组间按策略排序，组内按体积降序。
+
+### 6.5 Shaw 随机化（§4.2.2）
+
+```text
+第 j 个位置 = ceil( y_j^(1/ρ) × (n − j + 1) )
+```
+
+- ρ → 0：几乎不动（接近原排序）
+- ρ = 0.5：中等扰动
+- ρ = 1：完全随机
+
+每次调用使用原子计数器生成不同种子，确保不同 RGS 迭代产生不同序列。
+
+### 6.6 插入启发式（Alg1 + Alg3 + Alg4）
+
+```
+insertion_heuristic(items, ctype, criterion, rho):
+  EP = {(0,0,0)}
+  order = BuildOrder(items, criterion, rho)
+  for (box, orients) in order:
+    for ep in EP sorted by (z,y,x):
+      for orient in orients:
+        if can_place(box, orient, ep):   // 四道门检查
+          commit_placement(box, orient, ep)
+          break
+```
+
+**四道门**：边界 → 网格碰撞 → 支撑/堆叠性 → 重量/平台/路线。
+
+### 6.7 EP 生成（Alg3 + Alg4）
+
+每次放置后，对每个投影方向 j ∈ {x, y, z}（非可堆叠时跳过 z）和每个第二方向 d2 ≠ j，生成种子点：
+
+```text
+p_j = pos[j] + size[j]
+p_d2 = pos[d2] + size[d2]
+```
+
+然后沿 d2 方向投影（Alg4）：向 −d2 扫描，找第一个未被阴影遮挡的已放物品，取其后表面为 EP；若无物品阻挡则取箱壁。
+
+额外在顶部中心 `(pos.x, pos.y, pos.z + dz)` 生成一个 EP（仅可堆叠）。
+
+### 6.8 ULD 评分
+
+```text
+score = volume_rate − penalty
+
+penalty = Σ(unloaded 中难装件体积 × (ULD类型数 − 该件可入ULD数)) / denom
+```
+
+单 ULD 类型时 penalty 为 0，退化为纯体积率。难装件惩罚鼓励把"只有大 ULD 装得下"的箱子优先装入大 ULD。
+
+### 6.9 网格加速（§4.4.4）
+
+以所有箱子平均边长为 cell_size，将已放物品注册到 3D 网格。碰撞检测时只查候选位置覆盖的网格单元内的物品，避免 O(N) 全量扫描。
+
+### 6.10 数据结构
+
+```
+EpContext（rgs:: 内部）
+  ├─ grid_cell_size        网格单元大小
+  ├─ grid                  3D 网格 (cell → placement indices)
+  └─ extreme_points        EP 集合（按 z,y,x 升序）
+
+ContainerLoad（共享）
+  ├─ placements            放置列表（含 osize 预计算尺寸）
+  ├─ used_volume / total_weight
+  ├─ platforms / groups / platform_x_min / platform_x_max
+  └─ type                  指向 ContainerType
+```
+
+### 6.11 参数
+
+| 参数       |  值 | 作用              |
+| ---------- | --: | ----------------- |
+| Mmin       |  10 | 总迭代下限        |
+| Mmax       | 500 | 总迭代上限        |
+| 每策略下限 |   2 | 确定性 + 1 次随机 |
+| ρ          | 0.5 | Shaw 扰动强度     |
+| 降级阈值   |  20 | 最后 ULD 箱子数   |
+
+---
+
+## 7. 共享数据结构优化
+
+### Placement.osize
+
+`Placement` 新增 `OrientedSize osize` 字段，放置时预计算朝向后的实际尺寸。消除了 `check_overlap`、`check_support` 及 SGEP EP 过滤中反复的 `box_type_map.at().size.orient()` 调用。
+
+- `check_overlap` 签名简化为 `(pos, osize, existing)`，不再需要 `box_type_map` 参数。
+- `check_support` 中支撑矩形和四角检测均使用 `pl.osize`，仅保留 `box_type_map` 用于读取 `stackable`。
+
+### BoxType.stackable
+
+新增 `bool stackable` 字段，默认 `true`。`check_support` 检测到下方物品 `stackable == false` 时直接拒绝放置。
