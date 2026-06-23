@@ -182,10 +182,10 @@ std::string algorithm_to_string(Algorithm a) noexcept
 {
     switch (a)
     {
-        case Algorithm::SGEP:
-            return "sgep";
-        case Algorithm::MLHS:
-            return "mlhs";
+        case Algorithm::GEP:
+            return "gep";
+        case Algorithm::GLC:
+            return "glc";
         case Algorithm::RGS:
             return "rgs";
         default:
@@ -196,15 +196,15 @@ std::string algorithm_to_string(Algorithm a) noexcept
 
 Algorithm algorithm_from_string(const std::string& s) noexcept
 {
-    if (s == "mlhs")
+    if (s == "glc")
     {
-        return Algorithm::MLHS;
+        return Algorithm::GLC;
     }
     if (s == "rgs")
     {
         return Algorithm::RGS;
     }
-    return Algorithm::SGEP;
+    return Algorithm::GEP;
 }
 
 std::string status_to_string(SolveStatus s) noexcept

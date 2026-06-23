@@ -87,8 +87,8 @@
     "algorithm": {
       "type": "string",
       "description": "求解算法",
-      "enum": ["sgep", "mlhs", "rgs"],
-      "default": "sgep"
+      "enum": ["gep", "glc", "rgs"],
+      "default": "gep"
     },
     "objectives": {
       "type": "array",

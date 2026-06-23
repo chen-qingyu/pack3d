@@ -12,7 +12,7 @@
 #include "../config.hpp"
 #include "block.hpp"
 
-namespace hypercube::mlhs
+namespace hypercube::glc
 {
 
 Packer::Packer(
@@ -282,7 +282,7 @@ std::optional<PackResult> Packer::pack_container(
     }
 
     Heuristic heuristic(*ct, box_type_map_, box_map_, problem_, has_weight_info_);
-    PackResult pr = heuristic.pack_beam(box_list, config::MLHS_WIDTH);
+    PackResult pr = heuristic.pack_beam(box_list, config::GLC_WIDTH);
     if (pr.success || !pr.placements.empty())
     {
         return pr;
@@ -505,4 +505,4 @@ int Packer::handle_tender_limit_groups(
     return 0;
 }
 
-} // namespace hypercube::mlhs
+} // namespace hypercube::glc

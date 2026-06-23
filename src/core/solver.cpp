@@ -6,9 +6,9 @@
 #include <spdlog/fmt/std.h>    // log optional
 #include <spdlog/spdlog.h>
 
-#include "algorithm/mlhs/packer.hpp"
+#include "algorithm/gep/packer.hpp"
+#include "algorithm/glc/packer.hpp"
 #include "algorithm/rgs/packer.hpp"
-#include "algorithm/sgep/packer.hpp"
 #include "io.hpp"
 #include "tool.hpp"
 
@@ -56,10 +56,10 @@ Solution SolverEngine::solve()
     Solution solution;
     switch (problem_.algorithm)
     {
-        case Algorithm::MLHS:
+        case Algorithm::GLC:
         {
-            mlhs::Packer mlhs(problem_, box_type_map_, box_map_, has_weight_info_);
-            solution = mlhs.pack();
+            glc::Packer glc(problem_, box_type_map_, box_map_, has_weight_info_);
+            solution = glc.pack();
             break;
         }
         case Algorithm::RGS:
@@ -68,10 +68,10 @@ Solution SolverEngine::solve()
             solution = rgs.pack();
             break;
         }
-        case Algorithm::SGEP:
+        case Algorithm::GEP:
         {
-            sgep::Packer sgep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
-            solution = sgep.pack();
+            gep::Packer gep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
+            solution = gep.pack();
             break;
         }
     }

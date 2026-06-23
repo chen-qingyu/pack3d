@@ -9,7 +9,7 @@
 #include "../../objectives.hpp"
 #include "../../types.hpp"
 
-namespace hypercube::sgep
+namespace hypercube::gep
 {
 
 // 求解器评估的候选放置
@@ -51,4 +51,4 @@ struct SearchState
     std::vector<std::string> objective_keys;
 };
 
-} // namespace hypercube::sgep
+} // namespace hypercube::gep

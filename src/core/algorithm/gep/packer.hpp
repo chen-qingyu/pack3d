@@ -9,10 +9,10 @@
 #include "placer.hpp"
 #include "state.hpp"
 
-namespace hypercube::sgep
+namespace hypercube::gep
 {
 
-// SGEP 简单贪心极点算法
+// GEP 简单贪心极点算法
 class Packer
 {
 public:
@@ -39,4 +39,4 @@ private:
     Solution build_solution(const SearchState& state, SolveStatus status) const;
 };
 
-} // namespace hypercube::sgep
+} // namespace hypercube::gep

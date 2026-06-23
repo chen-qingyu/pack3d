@@ -5,7 +5,7 @@
 
 #include "../../types.hpp"
 
-namespace hypercube::mlhs
+namespace hypercube::glc
 {
 
 enum class SpaceKind : uint8_t
@@ -36,4 +36,4 @@ void split_space(const Space& space, const OrientedSize& block_osize,
 /// 返回 true 表示空间被回收
 bool transfer_space(std::vector<Space>& stack) noexcept;
 
-} // namespace hypercube::mlhs
+} // namespace hypercube::glc

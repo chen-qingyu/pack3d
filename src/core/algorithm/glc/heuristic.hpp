@@ -9,7 +9,7 @@
 #include "block.hpp"
 #include "space.hpp"
 
-namespace hypercube::mlhs
+namespace hypercube::glc
 {
 
 /// 单个容器的装载结果
@@ -26,7 +26,7 @@ struct PackResult
     std::map<std::string, int32_t> platform_x_min;
 };
 
-/// 容器内装载引擎（MLHS 块装载法）
+/// 容器内装载引擎（GLC 块装载法）
 /// 对一个容器 + 箱子子集，使用简单块 + 空间栈 + beam 搜索进行装载
 class Heuristic
 {
@@ -39,7 +39,7 @@ public:
         bool has_weight_info);
 
     /// Beam 搜索装载
-    /// beam_width: 每层保留的部分方案数（MLHS 论文取 6~16）
+    /// beam_width: 每层保留的部分方案数（GLC 论文取 6~16）
     [[nodiscard]] PackResult pack_beam(const std::vector<Box>& boxes, int beam_width);
 
 private:
@@ -114,4 +114,4 @@ private:
         const std::vector<SimpleBlock>& all_blocks) const;
 };
 
-} // namespace hypercube::mlhs
+} // namespace hypercube::glc

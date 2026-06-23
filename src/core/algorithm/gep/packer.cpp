@@ -4,7 +4,7 @@
 
 #include "../../tool.hpp"
 
-namespace hypercube::sgep
+namespace hypercube::gep
 {
 
 Packer::Packer(
@@ -80,4 +80,4 @@ bool Packer::construct_solution(SearchState& state)
     return true;
 }
 
-} // namespace hypercube::sgep
+} // namespace hypercube::gep

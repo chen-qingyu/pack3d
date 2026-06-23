@@ -9,10 +9,10 @@
 #include "../../types.hpp"
 #include "heuristic.hpp"
 
-namespace hypercube::mlhs
+namespace hypercube::glc
 {
 
-/// MLHS 入口：将箱子分配到各个容器，调用 Heuristic 进行装载
+/// GLC 入口：将箱子分配到各个容器，调用 Heuristic 进行装载
 class Packer
 {
 public:
@@ -71,4 +71,4 @@ private:
         std::vector<ContainerSlot>& slots);
 };
 
-} // namespace hypercube::mlhs
+} // namespace hypercube::glc

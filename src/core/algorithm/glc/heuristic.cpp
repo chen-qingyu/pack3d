@@ -13,7 +13,7 @@
 #include "block.hpp"
 #include "space.hpp"
 
-namespace hypercube::mlhs
+namespace hypercube::glc
 {
 
 Heuristic::Heuristic(
@@ -472,12 +472,12 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
                                 : static_cast<double>(total_box_count) / all_blocks.size();
     bool tiny_blocks = (avg_block_size <= 2.0);
 
-    const int kKeepTopN = tiny_blocks ? std::max(1, std::min(width, config::MLHS_KEEP_TOP_N_CAP_TINY))
-                                      : std::max(1, std::min(width, config::MLHS_KEEP_TOP_N_CAP_NORMAL));
-    const int kMaxRefineRounds = tiny_blocks ? config::MLHS_MAX_REFINE_ROUNDS_TINY
-                                             : config::MLHS_MAX_REFINE_ROUNDS_NORMAL;
-    const int kMaxEvalWidth = tiny_blocks ? config::MLHS_MAX_EVAL_WIDTH_TINY
-                                          : config::MLHS_MAX_EVAL_WIDTH_NORMAL;
+    const int kKeepTopN = tiny_blocks ? std::max(1, std::min(width, config::GLC_KEEP_TOP_N_CAP_TINY))
+                                      : std::max(1, std::min(width, config::GLC_KEEP_TOP_N_CAP_NORMAL));
+    const int kMaxRefineRounds = tiny_blocks ? config::GLC_MAX_REFINE_ROUNDS_TINY
+                                             : config::GLC_MAX_REFINE_ROUNDS_NORMAL;
+    const int kMaxEvalWidth = tiny_blocks ? config::GLC_MAX_EVAL_WIDTH_TINY
+                                          : config::GLC_MAX_EVAL_WIDTH_NORMAL;
 
     ContainerLoad state;
     state.type = &container_;
@@ -659,7 +659,7 @@ Heuristic::LocalPackScore Heuristic::greedy_complete(
         const SimpleBlock* best = nullptr;
         if (use_pick_best)
         {
-            const int eval_count = std::min(config::MLHS_EVAL_WIDTH, static_cast<int>(viable.size()));
+            const int eval_count = std::min(config::GLC_EVAL_WIDTH, static_cast<int>(viable.size()));
             best = pick_best_block(
                 viable, space, state, available, stack, all_blocks, eval_count);
         }
@@ -707,4 +707,4 @@ Heuristic::LocalPackScore Heuristic::complete_largest(
     return score_state(state);
 }
 
-} // namespace hypercube::mlhs
+} // namespace hypercube::glc

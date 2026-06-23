@@ -6,7 +6,7 @@
 #include "../../tool.hpp"
 #include "packer.hpp"
 
-namespace hypercube::sgep
+namespace hypercube::gep
 {
 
 // 默认空平台标识
@@ -122,4 +122,4 @@ Solution Packer::build_solution(const SearchState& state,
     return sol;
 }
 
-} // namespace hypercube::sgep
+} // namespace hypercube::gep

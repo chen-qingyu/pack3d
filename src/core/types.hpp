@@ -119,9 +119,9 @@ struct RouteOrder
 // 求解算法
 enum class Algorithm : uint8_t
 {
-    SGEP, // 简单贪心极点算法（默认）
-    MLHS, // 多层启发式搜索
-    RGS,  // 随机贪心搜索
+    GEP, // 贪心极点算法（默认）
+    GLC, // 贪心前瞻构造
+    RGS, // 随机贪心搜索
 };
 
 // 求解状态
@@ -152,7 +152,7 @@ struct Problem
     std::vector<std::string> objective_keys;
 
     // 算法
-    Algorithm algorithm = Algorithm::SGEP;
+    Algorithm algorithm = Algorithm::GEP;
 };
 
 // 放置结果（内部 + 输出）

@@ -4,7 +4,7 @@
 #include <cassert>
 #include <cmath>
 
-namespace hypercube::mlhs
+namespace hypercube::glc
 {
 
 namespace
@@ -56,7 +56,7 @@ void split_space(const Space& space, const OrientedSize& block_osize,
     spaceY.parent_id = space.id;
     spaceY.kind = SpaceKind::Y;
 
-    // MLHS 切分策略：比较 mx/my，选择一个地面剩余空间扩展为整条带状空间。
+    // GLC 切分策略：比较 mx/my，选择一个地面剩余空间扩展为整条带状空间。
     if (mx >= my)
     {
         spaceX.ly = space.ly;
@@ -163,4 +163,4 @@ bool transfer_space(std::vector<Space>& stack) noexcept
     return true;
 }
 
-} // namespace hypercube::mlhs
+} // namespace hypercube::glc

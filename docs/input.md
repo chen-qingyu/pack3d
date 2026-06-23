@@ -76,10 +76,10 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 ## 算法 `algorithm`（可选）
 
 ```json
-"algorithm": "mlhs"
+"algorithm": "glc"
 ```
 
-枚举值：`"sgep"`（默认）、`"mlhs"`、`"rgs"`。
+枚举值：`"gep"`（默认）、`"glc"`、`"rgs"`。
 
 算法相关常量配置集中在 `src/core/algorithm/config.hpp`（编译期确定）。
 
