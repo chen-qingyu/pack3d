@@ -470,14 +470,9 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
     double avg_block_size = all_blocks.empty()
                                 ? 1.0
                                 : static_cast<double>(total_box_count) / all_blocks.size();
-    bool tiny_blocks = (avg_block_size <= 2.0);
 
-    const int kKeepTopN = tiny_blocks ? std::max(1, std::min(width, config::GLC_KEEP_TOP_N_CAP_TINY))
-                                      : std::max(1, std::min(width, config::GLC_KEEP_TOP_N_CAP_NORMAL));
-    const int kMaxRefineRounds = tiny_blocks ? config::GLC_MAX_REFINE_ROUNDS_TINY
-                                             : config::GLC_MAX_REFINE_ROUNDS_NORMAL;
-    const int kMaxEvalWidth = tiny_blocks ? config::GLC_MAX_EVAL_WIDTH_TINY
-                                          : config::GLC_MAX_EVAL_WIDTH_NORMAL;
+    const int kKeepTopN = std::max(1, std::min(width, config::GLC_KEEP_TOP_N_CAP));
+    const int kMaxRefineRounds = config::GLC_MAX_REFINE_ROUNDS;
 
     ContainerLoad state;
     state.type = &container_;
@@ -521,11 +516,9 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
             continue;
         }
 
-        int eval_limit = tiny_blocks
-                             ? std::min(static_cast<int>(viable.size()),
-                                        std::max(width, kKeepTopN * 2))
-                             : std::min(static_cast<int>(viable.size()),
-                                        std::max(width, kKeepTopN * 4));
+        // 自适应候选数：块平均大小越小，候选数越少（小块多时边际收益低）
+        int eval_limit = std::min(static_cast<int>(viable.size()),
+                                  std::max(width, static_cast<int>(kKeepTopN * avg_block_size)));
         std::vector<const SimpleBlock*> candidates(viable.begin(), viable.begin() + eval_limit);
 
         for (int round = 0; round < kMaxRefineRounds && candidates.size() > 1; ++round)
@@ -550,11 +543,8 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
                 auto sim_stack = stack;
                 place_block(*block, space, sim, sim_avail, sim_stack);
 
-                LocalPackScore fitness = tiny_blocks
-                                             ? complete_largest(std::move(sim), std::move(sim_avail),
-                                                                std::move(sim_stack), all_blocks)
-                                             : greedy_complete(std::move(sim), std::move(sim_avail),
-                                                               std::move(sim_stack), all_blocks, true);
+                LocalPackScore fitness = greedy_complete(
+                    std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks, true);
                 scored.push_back({block, fitness});
             }
 
@@ -597,8 +587,8 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
             auto sim_stack = stack;
             place_block(*best, space, sim, sim_avail, sim_stack);
             LocalPackScore current_score = score_state(state);
-            LocalPackScore new_score = complete_largest(
-                std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks);
+            LocalPackScore new_score = greedy_complete(
+                std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks, true);
             if (compare_local_scores(current_score, new_score) <= 0)
             {
                 break;

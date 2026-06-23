@@ -141,6 +141,14 @@ bool transfer_space(std::vector<Space>& stack) noexcept
     // 入栈顺序保证了碎片总是在栈顶（split_space 将较窄的碎条最后压入）
     if (top.kind == SpaceKind::X && next.kind == SpaceKind::Y)
     {
+        // 仅当两者在 Y 方向有交集时才合并；否则为对角空间，保留各自独立
+        int32_t y_overlap_start = std::max(top.pos.y, next.pos.y);
+        int32_t y_overlap_end = std::min(top.pos.y + top.ly, next.pos.y + next.ly);
+        if (y_overlap_end <= y_overlap_start)
+        {
+            std::swap(top, next); // 对角空间：交换顺序，让大概率可用的空间先处理
+            return true;
+        }
         // X 碎片并入 Y 主条：扩展 Y 的 x 范围
         int32_t new_lx = std::max(next.pos.x + next.lx, top.pos.x + top.lx) - next.pos.x;
         next.lx = new_lx;
@@ -150,6 +158,14 @@ bool transfer_space(std::vector<Space>& stack) noexcept
     }
     if (top.kind == SpaceKind::Y && next.kind == SpaceKind::X)
     {
+        // 仅当两者在 X 方向有交集时才合并
+        int32_t x_overlap_start = std::max(top.pos.x, next.pos.x);
+        int32_t x_overlap_end = std::min(top.pos.x + top.lx, next.pos.x + next.lx);
+        if (x_overlap_end <= x_overlap_start)
+        {
+            std::swap(top, next); // 对角空间：交换顺序
+            return true;
+        }
         // Y 碎片并入 X 主条：扩展 X 的 y 范围
         int32_t new_ly = std::max(next.pos.y + next.ly, top.pos.y + top.ly) - next.pos.y;
         next.ly = new_ly;
