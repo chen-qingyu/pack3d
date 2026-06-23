@@ -49,21 +49,21 @@ void Packer::update_best(SearchState& state)
 
     if (!state.best_feasible.has_value())
     {
-        state.best_feasible = build_solution(state, "complete");
+        state.best_feasible = build_solution(state, SolveStatus::Complete);
         state.best_feasible->objective = ov;
     }
     else
     {
         if (ov.is_better_than(state.best_feasible->objective, state.objective_keys))
         {
-            state.best_feasible = build_solution(state, "complete");
+            state.best_feasible = build_solution(state, SolveStatus::Complete);
             state.best_feasible->objective = ov;
         }
     }
 }
 
 Solution Packer::build_solution(const SearchState& state,
-                                const std::string& status) const
+                                SolveStatus status) const
 {
     Solution sol;
     sol.status = status;

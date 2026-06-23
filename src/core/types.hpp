@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cassert>
-#include <chrono>
 #include <cstdint>
 #include <map>
 #include <optional>
@@ -125,6 +124,16 @@ enum class Algorithm : uint8_t
     RGS,  // 随机贪心搜索
 };
 
+// 求解状态
+enum class SolveStatus : uint8_t
+{
+    Complete,
+    Invalid,
+    Blocked,
+    Timeout,
+    Partial,
+};
+
 // 完整问题描述
 struct Problem
 {
@@ -240,7 +249,7 @@ struct ContainerSummary
 
 struct Solution
 {
-    std::string status = "complete";
+    SolveStatus status = SolveStatus::Complete;
 
     double elapsed_second = 0.0;
     int packed_box_count = 0;

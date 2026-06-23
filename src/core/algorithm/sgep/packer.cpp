@@ -34,7 +34,7 @@ Solution Packer::pack()
 
     if (state.infeasible)
     {
-        return build_solution(state, "blocked");
+        return build_solution(state, SolveStatus::Blocked);
     }
 
     if (all_packed)
@@ -42,22 +42,22 @@ Solution Packer::pack()
         if (state.best_feasible.has_value())
         {
             Solution sol = state.best_feasible.value();
-            sol.status = "complete";
+            sol.status = SolveStatus::Complete;
             return sol;
         }
-        return build_solution(state, "complete");
+        return build_solution(state, SolveStatus::Complete);
     }
 
     // 未全部装箱：检查 best_feasible
     if (state.best_feasible.has_value())
     {
         Solution sol = state.best_feasible.value();
-        sol.status = "complete";
+        sol.status = SolveStatus::Complete;
         return sol;
     }
 
     // 完全无可行解
-    return build_solution(state, timed_out ? "timeout" : "partial");
+    return build_solution(state, timed_out ? SolveStatus::Timeout : SolveStatus::Partial);
 }
 
 bool Packer::construct_solution(SearchState& state)

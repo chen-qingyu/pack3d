@@ -713,7 +713,7 @@ Solution Packer::pack()
     }
     solution.packed_box_count = packed;
     solution.unpacked_box_count = static_cast<int>(problem_.boxes.size()) - packed;
-    solution.status = (solution.unpacked_box_count == 0) ? "complete" : "partial";
+    solution.status = (solution.unpacked_box_count == 0) ? SolveStatus::Complete : SolveStatus::Partial;
     solution.objective = compute_objective(all_loads);
     solution.objective_keys = problem_.objective_keys.empty()
                                   ? default_objective_keys()

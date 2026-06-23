@@ -73,7 +73,7 @@ Solution Packer::pack()
             int tl_ret = handle_tender_limit_groups(remaining_ids, slots);
             if (tl_ret < 0)
             {
-                return to_solution(slots, problem_.boxes, "blocked");
+                return to_solution(slots, problem_.boxes, SolveStatus::Blocked);
             }
             if (tl_ret > 0)
             {
@@ -255,18 +255,18 @@ Solution Packer::pack()
     }
 
     bool all_packed = remaining_ids.empty();
-    std::string final_status;
+    SolveStatus final_status;
     if (all_packed)
     {
-        final_status = "complete";
+        final_status = SolveStatus::Complete;
     }
     else if (!TimeChecker::check())
     {
-        final_status = "timeout";
+        final_status = SolveStatus::Timeout;
     }
     else
     {
-        final_status = "partial";
+        final_status = SolveStatus::Partial;
     }
     return to_solution(slots, problem_.boxes, final_status);
 }
@@ -293,7 +293,7 @@ std::optional<PackResult> Packer::pack_container(
 Solution Packer::to_solution(
     const std::vector<ContainerSlot>& slots,
     const std::vector<Box>& all_boxes,
-    const std::string& status) const
+    SolveStatus status) const
 {
     Solution sol;
     sol.status = status;

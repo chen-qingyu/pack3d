@@ -9,6 +9,7 @@
 #include "algorithm/mlhs/packer.hpp"
 #include "algorithm/rgs/packer.hpp"
 #include "algorithm/sgep/packer.hpp"
+#include "io.hpp"
 #include "tool.hpp"
 
 namespace hypercube
@@ -44,18 +45,7 @@ Solution SolverEngine::solve()
     // 问题概要
     spdlog::info("Input: {} boxes, {} box types, {} container types",
                  problem_.boxes.size(), problem_.box_types.size(), problem_.container_types.size());
-    if (problem_.algorithm == Algorithm::MLHS)
-    {
-        spdlog::info("Algorithm: MLHS");
-    }
-    else if (problem_.algorithm == Algorithm::RGS)
-    {
-        spdlog::info("Algorithm: RGS");
-    }
-    else if (problem_.algorithm == Algorithm::SGEP)
-    {
-        spdlog::info("Algorithm: SGEP");
-    }
+    spdlog::info("Algorithm: {}", algorithm_to_string(problem_.algorithm));
     const auto& keys = problem_.objective_keys.empty() ? default_objective_keys() : problem_.objective_keys;
     spdlog::info("Objectives: {}", keys);
     spdlog::info("Constraints: time limit {} s, support rate {:.2f}, platform limit {}, tender limit {}",
@@ -64,28 +54,34 @@ Solution SolverEngine::solve()
     // 运行算法
     spdlog::info("===Algorithm Start===");
     Solution solution;
-    if (problem_.algorithm == Algorithm::MLHS)
+    switch (problem_.algorithm)
     {
-        mlhs::Packer mlhs(problem_, box_type_map_, box_map_, has_weight_info_);
-        solution = mlhs.pack();
-    }
-    else if (problem_.algorithm == Algorithm::RGS)
-    {
-        rgs::Packer rgs(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
-        solution = rgs.pack();
-    }
-    else if (problem_.algorithm == Algorithm::SGEP)
-    {
-        sgep::Packer sgep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
-        solution = sgep.pack();
+        case Algorithm::MLHS:
+        {
+            mlhs::Packer mlhs(problem_, box_type_map_, box_map_, has_weight_info_);
+            solution = mlhs.pack();
+            break;
+        }
+        case Algorithm::RGS:
+        {
+            rgs::Packer rgs(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
+            solution = rgs.pack();
+            break;
+        }
+        case Algorithm::SGEP:
+        {
+            sgep::Packer sgep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
+            solution = sgep.pack();
+            break;
+        }
     }
     spdlog::info("===Algorithm End===");
 
     // 输出状态
-    if (solution.status != "complete")
+    if (solution.status != SolveStatus::Complete)
     {
         spdlog::warn("Result status: {} ({} packed / {} unpacked)",
-                     solution.status, solution.packed_box_count, solution.unpacked_box_count);
+                     status_to_string(solution.status), solution.packed_box_count, solution.unpacked_box_count);
     }
     spdlog::info("Time used: {:.3f} s", solution.elapsed_second);
 

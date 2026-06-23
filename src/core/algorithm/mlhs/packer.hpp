@@ -62,7 +62,7 @@ private:
 
     [[nodiscard]] Solution to_solution(const std::vector<ContainerSlot>& slots,
                                        const std::vector<Box>& all_boxes,
-                                       const std::string& status) const;
+                                       SolveStatus status) const;
 
     /// 处理已达 tender_limit 的组：将剩余箱子装入已有容器
     /// 返回 1 = 已处理（调用方应跳过开新容器），0 = 无需处理，-1 = 不可行

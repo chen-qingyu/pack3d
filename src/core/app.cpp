@@ -19,7 +19,7 @@ json run(const json& j) noexcept
     {
         spdlog::error("Input schema validation failed");
         Solution s;
-        s.status = "invalid";
+        s.status = SolveStatus::Invalid;
         s.violations = std::move(schema_errors);
         return json(s);
     }
@@ -32,7 +32,7 @@ json run(const json& j) noexcept
     {
         spdlog::error("Input validation failed");
         Solution s;
-        s.status = "invalid";
+        s.status = SolveStatus::Invalid;
         s.violations = std::move(violations);
         return json(s);
     }

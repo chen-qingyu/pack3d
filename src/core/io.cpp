@@ -1,11 +1,9 @@
 #include "io.hpp"
 
-#include <filesystem>
 #include <fstream>
 #include <set>
 #include <sstream>
 #include <string>
-#include <variant>
 
 #include <nlohmann/json-schema.hpp>
 #include <spdlog/spdlog.h>
@@ -176,19 +174,56 @@ void from_json(const json& j, Problem& p)
 
     if (j.contains("algorithm"))
     {
-        std::string use = j["algorithm"].get<std::string>();
-        if (use == "mlhs")
-        {
-            p.algorithm = Algorithm::MLHS;
-        }
-        else if (use == "rgs")
-        {
-            p.algorithm = Algorithm::RGS;
-        }
-        else
-        {
-            p.algorithm = Algorithm::SGEP;
-        }
+        p.algorithm = algorithm_from_string(j["algorithm"].get<std::string>());
+    }
+}
+
+std::string algorithm_to_string(Algorithm a) noexcept
+{
+    switch (a)
+    {
+        case Algorithm::SGEP:
+            return "sgep";
+        case Algorithm::MLHS:
+            return "mlhs";
+        case Algorithm::RGS:
+            return "rgs";
+        default:
+            assert(false && "Unhandled Algorithm enum value");
+            return "unknown";
+    }
+}
+
+Algorithm algorithm_from_string(const std::string& s) noexcept
+{
+    if (s == "mlhs")
+    {
+        return Algorithm::MLHS;
+    }
+    if (s == "rgs")
+    {
+        return Algorithm::RGS;
+    }
+    return Algorithm::SGEP;
+}
+
+std::string status_to_string(SolveStatus s) noexcept
+{
+    switch (s)
+    {
+        case SolveStatus::Complete:
+            return "complete";
+        case SolveStatus::Invalid:
+            return "invalid";
+        case SolveStatus::Blocked:
+            return "blocked";
+        case SolveStatus::Timeout:
+            return "timeout";
+        case SolveStatus::Partial:
+            return "partial";
+        default:
+            assert(false && "Unhandled SolveStatus enum value");
+            return "unknown";
     }
 }
 
@@ -323,7 +358,7 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
 
 void to_json(json& j, const Solution& sol)
 {
-    j["status"] = sol.status;
+    j["status"] = status_to_string(sol.status);
 
     json summary;
     summary["elapsed_second"] = sol.elapsed_second;

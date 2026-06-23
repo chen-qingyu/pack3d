@@ -36,7 +36,7 @@ private:
     SearchState make_initial_state() const;
     bool construct_solution(SearchState& state);
     void update_best(SearchState& state);
-    Solution build_solution(const SearchState& state, const std::string& status) const;
+    Solution build_solution(const SearchState& state, SolveStatus status) const;
 };
 
 } // namespace hypercube::sgep
