@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "algorithm/config.hpp"
+
 namespace hypercube
 {
 
@@ -117,19 +119,12 @@ struct RouteOrder
     std::map<std::string, size_t> index_of; // platform -> 在顺序中的位置
 };
 
-// 求解器配置
 // 求解算法
 enum class Algorithm : uint8_t
 {
     SGEP, // 简单贪心极点算法（默认）
     MLHS, // 多层启发式搜索
     RGS,  // 随机贪心搜索
-};
-
-struct AlgorithmConfig
-{
-    Algorithm algorithm = Algorithm::SGEP;
-    int width = 27; // 前瞻宽度（每步评估的候选块数上限）
 };
 
 // 完整问题描述
@@ -140,7 +135,7 @@ struct Problem
     std::vector<Box> boxes;
 
     // 约束
-    double time_limit = 120.0;
+    double time_limit = config::TIME_LIMIT;
     double support_rate = 0.0;
     std::optional<int> platform_limit;
     std::optional<int> tender_limit;
@@ -149,8 +144,8 @@ struct Problem
     // 目标 — 有序列表；空列表则使用默认值
     std::vector<std::string> objective_keys;
 
-    // 算法配置
-    AlgorithmConfig algorithm;
+    // 算法
+    Algorithm algorithm = Algorithm::SGEP;
 };
 
 // 放置结果（内部 + 输出）

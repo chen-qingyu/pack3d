@@ -41,7 +41,6 @@ int main(int argc, char** argv)
     program.add_argument("--platform-limit").scan<'i', int>().help("Set platform limit");
     program.add_argument("--tender-limit").scan<'i', int>().help("Set tender limit");
     program.add_argument("-a", "--algorithm").help("Set algorithm");
-    program.add_argument("--width").scan<'i', int>().help("Set MLHS beam width");
 
     try
     {
@@ -80,8 +79,7 @@ int main(int argc, char** argv)
         !try_set<double>(j, program, "-s", "/constraints/support_rate") ||
         !try_set<int>(j, program, "--platform-limit", "/constraints/platform_limit") ||
         !try_set<int>(j, program, "--tender-limit", "/constraints/tender_limit") ||
-        !try_set<std::string>(j, program, "-a", "/algorithm/use") ||
-        !try_set<int>(j, program, "--width", "/algorithm/config/mlhs/width"))
+        !try_set<std::string>(j, program, "-a", "/algorithm"))
     {
         return 1;
     }

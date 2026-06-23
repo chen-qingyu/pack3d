@@ -76,11 +76,12 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 ## 算法 `algorithm`（可选）
 
 ```json
-{ "use": "mlhs", "config": { "mlhs": { "width": 27 } } }
+"algorithm": "mlhs"
 ```
 
-- `use`: `"sgep"`（默认）或 `"mlhs"`
-- `config.mlhs.width`: MLHS 前瞻宽度，默认 27，越大搜索越充分、越慢
+枚举值：`"sgep"`（默认）、`"mlhs"`、`"rgs"`。
+
+算法相关常量配置集中在 `src/core/algorithm/config.hpp`（编译期确定）。
 
 ## 目标 `objectives`（可选）
 

@@ -146,7 +146,7 @@ void from_json(const json& j, Problem& p)
     if (j.contains("constraints"))
     {
         const auto& c = j["constraints"];
-        p.time_limit = c.value("time_limit", 120.0);
+        p.time_limit = c.value("time_limit", config::TIME_LIMIT);
         p.support_rate = c.value("support_rate", 0.0);
         p.platform_limit = json_opt_int(c, "platform_limit");
         p.tender_limit = json_opt_int(c, "tender_limit");
@@ -174,23 +174,18 @@ void from_json(const json& j, Problem& p)
 
     if (j.contains("algorithm"))
     {
-        const auto& a = j["algorithm"];
-        std::string use = a.value("use", "sgep");
+        std::string use = j["algorithm"].get<std::string>();
         if (use == "mlhs")
         {
-            p.algorithm.algorithm = Algorithm::MLHS;
-            if (a.contains("config") && a["config"].contains("mlhs"))
-            {
-                p.algorithm.width = a["config"]["mlhs"].value("width", p.algorithm.width);
-            }
+            p.algorithm = Algorithm::MLHS;
         }
         else if (use == "rgs")
         {
-            p.algorithm.algorithm = Algorithm::RGS;
+            p.algorithm = Algorithm::RGS;
         }
         else
         {
-            p.algorithm.algorithm = Algorithm::SGEP;
+            p.algorithm = Algorithm::SGEP;
         }
     }
 }

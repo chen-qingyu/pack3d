@@ -44,15 +44,15 @@ Solution SolverEngine::solve()
     // 问题概要
     spdlog::info("Input: {} boxes, {} box types, {} container types",
                  problem_.boxes.size(), problem_.box_types.size(), problem_.container_types.size());
-    if (problem_.algorithm.algorithm == Algorithm::MLHS)
+    if (problem_.algorithm == Algorithm::MLHS)
     {
-        spdlog::info("Algorithm: MLHS, width: {}", problem_.algorithm.width);
+        spdlog::info("Algorithm: MLHS");
     }
-    else if (problem_.algorithm.algorithm == Algorithm::RGS)
+    else if (problem_.algorithm == Algorithm::RGS)
     {
         spdlog::info("Algorithm: RGS");
     }
-    else if (problem_.algorithm.algorithm == Algorithm::SGEP)
+    else if (problem_.algorithm == Algorithm::SGEP)
     {
         spdlog::info("Algorithm: SGEP");
     }
@@ -64,17 +64,17 @@ Solution SolverEngine::solve()
     // 运行算法
     spdlog::info("===Algorithm Start===");
     Solution solution;
-    if (problem_.algorithm.algorithm == Algorithm::MLHS)
+    if (problem_.algorithm == Algorithm::MLHS)
     {
         mlhs::Packer mlhs(problem_, box_type_map_, box_map_, has_weight_info_);
         solution = mlhs.pack();
     }
-    else if (problem_.algorithm.algorithm == Algorithm::RGS)
+    else if (problem_.algorithm == Algorithm::RGS)
     {
         rgs::Packer rgs(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
         solution = rgs.pack();
     }
-    else if (problem_.algorithm.algorithm == Algorithm::SGEP)
+    else if (problem_.algorithm == Algorithm::SGEP)
     {
         sgep::Packer sgep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
         solution = sgep.pack();

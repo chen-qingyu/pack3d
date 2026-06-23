@@ -7,6 +7,7 @@
 
 #include "../../objectives.hpp"
 #include "../../tool.hpp"
+#include "../config.hpp"
 #include "eval.hpp"
 #include "insert.hpp"
 #include "order.hpp"
@@ -122,11 +123,9 @@ ContainerLoad Packer::rgs_single_uld(
         SortCriterion::HighestVolume,
         SortCriterion::Random,
     };
-    constexpr int num_criteria = 5;
-    constexpr int min_total = 10;
-    constexpr int max_total = 500;
-    constexpr int min_per_crit = min_total / num_criteria;
-    constexpr int max_per_crit = max_total / num_criteria;
+    constexpr int num_criteria = 5; // 排序策略数量，固定
+    constexpr int min_per_crit = config::RGS_MIN_TOTAL / num_criteria;
+    constexpr int max_per_crit = config::RGS_MAX_TOTAL / num_criteria;
 
     ContainerLoad best_load;
     double best_score = -1e9;

@@ -9,6 +9,7 @@
 #include "../../constraints.hpp"
 #include "../../objectives.hpp"
 #include "../../tool.hpp"
+#include "../config.hpp"
 #include "block.hpp"
 #include "space.hpp"
 
@@ -471,10 +472,12 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
                                 : static_cast<double>(total_box_count) / all_blocks.size();
     bool tiny_blocks = (avg_block_size <= 2.0);
 
-    const int kKeepTopN = tiny_blocks ? std::max(1, std::min(width, 4))
-                                      : std::max(1, std::min(width, 16));
-    const int kMaxRefineRounds = tiny_blocks ? 2 : 6;
-    const int kMaxEvalWidth = tiny_blocks ? 6 : 4;
+    const int kKeepTopN = tiny_blocks ? std::max(1, std::min(width, config::MLHS_KEEP_TOP_N_CAP_TINY))
+                                      : std::max(1, std::min(width, config::MLHS_KEEP_TOP_N_CAP_NORMAL));
+    const int kMaxRefineRounds = tiny_blocks ? config::MLHS_MAX_REFINE_ROUNDS_TINY
+                                             : config::MLHS_MAX_REFINE_ROUNDS_NORMAL;
+    const int kMaxEvalWidth = tiny_blocks ? config::MLHS_MAX_EVAL_WIDTH_TINY
+                                          : config::MLHS_MAX_EVAL_WIDTH_NORMAL;
 
     ContainerLoad state;
     state.type = &container_;
@@ -656,8 +659,7 @@ Heuristic::LocalPackScore Heuristic::greedy_complete(
         const SimpleBlock* best = nullptr;
         if (use_pick_best)
         {
-            const int kEvalWidth = 4;
-            int eval_count = std::min(kEvalWidth, static_cast<int>(viable.size()));
+            const int eval_count = std::min(config::MLHS_EVAL_WIDTH, static_cast<int>(viable.size()));
             best = pick_best_block(
                 viable, space, state, available, stack, all_blocks, eval_count);
         }

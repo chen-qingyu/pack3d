@@ -85,37 +85,10 @@
       "items": { "type": "string" }
     },
     "algorithm": {
-      "type": "object",
-      "description": "算法配置",
-      "additionalProperties": false,
-      "properties": {
-        "use": {
-          "type": "string",
-          "enum": ["sgep", "mlhs", "rgs"],
-          "default": "sgep"
-        },
-        "config": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "mlhs": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "width": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "default": 27,
-                  "description": "前瞻宽度：每步评估的候选块数上限（越大搜索越充分，耗时线性增长）"
-                }
-              }
-            },
-            "sgep": {
-              "type": "object"
-            }
-          }
-        }
-      }
+      "type": "string",
+      "description": "求解算法",
+      "enum": ["sgep", "mlhs", "rgs"],
+      "default": "sgep"
     },
     "objectives": {
       "type": "array",

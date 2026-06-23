@@ -7,6 +7,8 @@
 #include <set>
 #include <unordered_set>
 
+#include "../config.hpp"
+
 namespace hypercube::rgs
 {
 
@@ -201,7 +203,7 @@ std::vector<OrderEntry> build_ordered_list(
 
     if (criterion == SortCriterion::Random)
     {
-        std::mt19937 rng(42);
+        std::mt19937 rng(config::RANDOM_SEED);
         std::shuffle(sgs.begin(), sgs.end(), rng);
     }
     else
@@ -265,7 +267,7 @@ std::vector<OrderEntry> build_ordered_list(
     {
         static std::atomic<uint64_t> s_call_id{0};
         uint64_t call_id = s_call_id.fetch_add(1);
-        std::mt19937_64 rng(42 + call_id);
+        std::mt19937_64 rng(config::RANDOM_SEED + call_id);
 
         // 6a: shuffle orientations per entry
         for (auto& entry : ordered)

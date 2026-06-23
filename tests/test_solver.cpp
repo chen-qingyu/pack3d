@@ -39,7 +39,7 @@ TEST_CASE("independent_objectives", "[solver]")
 
         for (auto algo : {"sgep", "mlhs", "rgs"})
         {
-            base["algorithm"] = {{"use", algo}};
+            base["algorithm"] = algo;
             auto res = run(base);
             REQUIRE(res["status"] == "complete");
             REQUIRE(res["summary"]["objective_keys"].size() == 1);
@@ -60,7 +60,7 @@ TEST_CASE("min_container_count", "[solver]")
 
         for (auto algo : {"sgep", "mlhs", "rgs"})
         {
-            base["algorithm"] = {{"use", algo}};
+            base["algorithm"] = algo;
             auto res = run(base);
             REQUIRE(res["summary"]["container_count"] == 1);
             REQUIRE(res["summary"]["volume_rate"] < 1.0);
@@ -75,7 +75,7 @@ TEST_CASE("min_container_count", "[solver]")
 
         for (auto algo : {"sgep", "mlhs", "rgs"})
         {
-            base["algorithm"] = {{"use", algo}};
+            base["algorithm"] = algo;
             auto res = run(base);
             REQUIRE(res["summary"]["container_count"] == 2);
             REQUIRE(res["summary"]["volume_rate"] == 1.0);
@@ -97,7 +97,7 @@ TEST_CASE("min_platform_split", "[solver]")
 
         for (auto algo : {"sgep", "mlhs", "rgs"})
         {
-            base["algorithm"] = {{"use", algo}};
+            base["algorithm"] = algo;
             auto res = run(base);
             REQUIRE(res["summary"]["platform_split"] == 0);
             REQUIRE(res["summary"]["volume_rate"] < 1.0);
@@ -115,7 +115,7 @@ TEST_CASE("min_platform_split", "[solver]")
 
         for (auto algo : {"sgep", "mlhs", "rgs"})
         {
-            base["algorithm"] = {{"use", algo}};
+            base["algorithm"] = algo;
             auto res = run(base);
             REQUIRE(res["summary"]["platform_split"] == 1);
             REQUIRE(res["summary"]["volume_rate"] == 1.0);
@@ -139,7 +139,7 @@ TEST_CASE("max_volume_rate", "[solver]")
 
         for (auto algo : {"sgep", "mlhs", "rgs"})
         {
-            base["algorithm"] = {{"use", algo}};
+            base["algorithm"] = algo;
             auto res = run(base);
             REQUIRE(res["summary"]["volume_rate"] < 1.0);
             REQUIRE(res["summary"]["container_count"] == 1);
@@ -154,7 +154,7 @@ TEST_CASE("max_volume_rate", "[solver]")
 
         for (auto algo : {"sgep", "mlhs", "rgs"})
         {
-            base["algorithm"] = {{"use", algo}};
+            base["algorithm"] = algo;
             auto res = run(base);
             REQUIRE(res["summary"]["volume_rate"] == 1.0);
             REQUIRE(res["summary"]["container_count"] == 3);
@@ -177,7 +177,7 @@ TEST_CASE("min_group_split", "[solver]")
 
         for (auto algo : {"sgep", "mlhs", "rgs"})
         {
-            base["algorithm"] = {{"use", algo}};
+            base["algorithm"] = algo;
             auto res = run(base);
             REQUIRE(res["summary"]["group_split"] == 1);
             REQUIRE(res["summary"]["volume_rate"] == 1.0);
@@ -193,7 +193,7 @@ TEST_CASE("min_group_split", "[solver]")
 
         for (auto algo : {"sgep", "mlhs", "rgs"})
         {
-            base["algorithm"] = {{"use", algo}};
+            base["algorithm"] = algo;
             auto res = run(base);
             REQUIRE(res["summary"]["group_split"] == 0);
             REQUIRE(res["summary"]["volume_rate"] < 1.0);
