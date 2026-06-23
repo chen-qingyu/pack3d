@@ -1,0 +1,57 @@
+{
+  "container_types": [
+    {
+      "id": "c1",
+      "inner_size": {
+        "x": 2000,
+        "y": 2000,
+        "z": 1400
+      }
+    }
+  ],
+  "box_types": [
+    {
+      "id": "t1",
+      "size": {
+        "x": 1200,
+        "y": 800,
+        "z": 700
+      },
+      "allowed_orientations": ["xyz", "yxz"]
+    }
+  ],
+  "boxes": [
+    {
+      "id": "b1",
+      "box_type_id": "t1"
+    },
+    {
+      "id": "b2",
+      "box_type_id": "t1"
+    },
+    {
+      "id": "b3",
+      "box_type_id": "t1"
+    },
+    {
+      "id": "b4",
+      "box_type_id": "t1"
+    },
+    {
+      "id": "b5",
+      "box_type_id": "t1"
+    },
+    {
+      "id": "b6",
+      "box_type_id": "t1"
+    },
+    {
+      "id": "b7",
+      "box_type_id": "t1"
+    },
+    {
+      "id": "b8",
+      "box_type_id": "t1"
+    }
+  ]
+}
