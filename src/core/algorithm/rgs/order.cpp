@@ -201,9 +201,15 @@ std::vector<OrderEntry> build_ordered_list(
         }
     };
 
+    static std::atomic<uint64_t> s_call_id{0};
+    uint64_t call_id = s_call_id.fetch_add(1);
+    // 使用 mt19937_64 而非 mt19937：64-bit 输出单次即可填充 double 的 53-bit 尾数，
+    // uniform_real_distribution 映射更均匀；mt19937 需组合两个 32-bit 值，存在聚簇，
+    // 经过 Shaw 的 pow(y, 1/rho) 非线性放大后会导致搜索轨迹系统性偏差（实测 _64 更优）。
+    std::mt19937_64 rng(config::RANDOM_SEED + call_id);
+
     if (criterion == SortCriterion::Random)
     {
-        std::mt19937 rng(config::RANDOM_SEED);
         std::shuffle(sgs.begin(), sgs.end(), rng);
     }
     else
@@ -265,10 +271,6 @@ std::vector<OrderEntry> build_ordered_list(
     // ---- step 6: Shaw randomization with ρ ----
     if (rho > 0.0)
     {
-        static std::atomic<uint64_t> s_call_id{0};
-        uint64_t call_id = s_call_id.fetch_add(1);
-        std::mt19937_64 rng(config::RANDOM_SEED + call_id);
-
         // 6a: shuffle orientations per entry
         for (auto& entry : ordered)
         {
