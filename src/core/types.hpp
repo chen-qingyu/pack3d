@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-#include "algorithm/config.hpp"
-
 namespace hypercube
 {
 
@@ -135,7 +133,7 @@ struct Problem
     std::vector<Box> boxes;
 
     // 约束
-    double time_limit = config::TIME_LIMIT;
+    double time_limit = 0.0;
     double support_rate = 0.0;
     std::optional<int> platform_limit;
     std::optional<int> tender_limit;

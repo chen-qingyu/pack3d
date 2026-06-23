@@ -10,6 +10,7 @@
 #include <nlohmann/json-schema.hpp>
 #include <spdlog/spdlog.h>
 
+#include "algorithm/config.hpp"
 #include "solver.hpp"
 
 namespace hypercube
@@ -143,6 +144,7 @@ void from_json(const json& j, Problem& p)
         p.boxes.push_back(item.get<Box>());
     }
 
+    p.time_limit = config::TIME_LIMIT;
     if (j.contains("constraints"))
     {
         const auto& c = j["constraints"];
