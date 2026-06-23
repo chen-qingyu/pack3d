@@ -5,6 +5,11 @@
 
 #include <spdlog/spdlog.h>
 
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
+
 #include "io.hpp"
 #include "solver.hpp"
 
@@ -13,6 +18,10 @@ namespace hypercube
 
 json run(const json& j) noexcept
 {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+
     // schema 校验
     auto schema_errors = validate_schema(j);
     if (!schema_errors.empty())
