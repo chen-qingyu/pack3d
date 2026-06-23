@@ -38,7 +38,13 @@ const ContainerType* Packer::select_next_uld(
         return nullptr;
     }
 
-    std::vector<std::pair<const ContainerType*, int>> candidates;
+    struct Candidate
+    {
+        const ContainerType* ct;
+        int min_fit;
+        int fit_count;
+    };
+    std::vector<Candidate> candidates;
 
     for (const auto& ct : problem_.container_types)
     {
@@ -50,7 +56,7 @@ const ContainerType* Packer::select_next_uld(
         }
 
         int min_fit = INT32_MAX;
-        bool any_fits = false;
+        int fit_count = 0;
         for (const auto& bx : remaining)
         {
             auto bt_it = box_type_map_.find(bx.box_type_id);
@@ -82,14 +88,14 @@ const ContainerType* Packer::select_next_uld(
             }
             if (fits)
             {
-                any_fits = true;
                 min_fit = std::min(min_fit, u_i);
+                ++fit_count;
             }
         }
 
-        if (any_fits)
+        if (fit_count > 0)
         {
-            candidates.push_back({&ct, min_fit});
+            candidates.push_back({&ct, min_fit, fit_count});
         }
     }
 
@@ -99,16 +105,20 @@ const ContainerType* Packer::select_next_uld(
     }
 
     std::sort(candidates.begin(), candidates.end(),
-              [](const auto& a, const auto& b)
+              [](const Candidate& a, const Candidate& b)
               {
-                  if (a.second != b.second)
+                  if (a.min_fit != b.min_fit)
                   {
-                      return a.second < b.second;
+                      return a.min_fit < b.min_fit;
                   }
-                  return a.first->inner_size.volume() > b.first->inner_size.volume();
+                  if (a.fit_count != b.fit_count)
+                  {
+                      return a.fit_count > b.fit_count;
+                  }
+                  return a.ct->inner_size.volume() > b.ct->inner_size.volume();
               });
 
-    return candidates.front().first;
+    return candidates.front().ct;
 }
 
 ContainerLoad Packer::rgs_single_uld(
@@ -626,16 +636,21 @@ Solution Packer::pack()
     }
 
     // ===== Alg7 尾步: 降级最后一个 ULD =====
-    if (!all_loads.empty() && all_loads.back().placements.size() <= 20 && TimeChecker::check())
+    if (!all_loads.empty() && TimeChecker::check())
     {
         const auto& last_load = all_loads.back();
         std::vector<Box> last_boxes;
+        double last_total_weight = 0.0;
         for (const auto& pl : last_load.placements)
         {
             auto it = box_map_.find(pl.box_id);
             if (it != box_map_.end())
             {
                 last_boxes.push_back(it->second);
+                if (it->second.weight.has_value())
+                {
+                    last_total_weight += it->second.weight.value();
+                }
             }
         }
 
@@ -650,48 +665,69 @@ Solution Packer::pack()
                 continue;
             }
             int64_t ct_vol = ct.inner_size.volume();
-            if (ct_vol < last_vol && (smaller == nullptr || ct_vol < smaller->inner_size.volume()))
+            if (ct_vol >= last_vol)
             {
-                bool all_fit = true;
-                for (const auto& bx : last_boxes)
+                continue;
+            }
+            // 重量检查
+            if (ct.max_weight.has_value() && last_total_weight > ct.max_weight.value() + 1e-9)
+            {
+                continue;
+            }
+            // 找体积最小的可用小容器
+            if (smaller != nullptr && ct_vol >= smaller->inner_size.volume())
+            {
+                continue;
+            }
+            bool all_fit = true;
+            for (const auto& bx : last_boxes)
+            {
+                auto bt_it = box_type_map_.find(bx.box_type_id);
+                if (bt_it == box_type_map_.end())
                 {
-                    auto bt_it = box_type_map_.find(bx.box_type_id);
-                    if (bt_it == box_type_map_.end())
+                    all_fit = false;
+                    break;
+                }
+                bool box_fits = false;
+                for (auto o : bt_it->second.allowed_orientations)
+                {
+                    auto os = bt_it->second.size.orient(o);
+                    if (os.dx <= ct.inner_size.x && os.dy <= ct.inner_size.y && os.dz <= ct.inner_size.z)
                     {
-                        all_fit = false;
-                        break;
-                    }
-                    bool box_fits = false;
-                    for (auto o : bt_it->second.allowed_orientations)
-                    {
-                        auto os = bt_it->second.size.orient(o);
-                        if (os.dx <= ct.inner_size.x && os.dy <= ct.inner_size.y && os.dz <= ct.inner_size.z)
-                        {
-                            box_fits = true;
-                            break;
-                        }
-                    }
-                    if (!box_fits)
-                    {
-                        all_fit = false;
+                        box_fits = true;
                         break;
                     }
                 }
-                if (all_fit)
+                if (!box_fits)
                 {
-                    smaller = &ct;
+                    all_fit = false;
+                    break;
                 }
+            }
+            if (all_fit)
+            {
+                smaller = &ct;
             }
         }
 
         if (smaller != nullptr)
         {
-            ContainerLoad repack;
-            EpContext rctx;
-            auto loaded_ids = insertion_heuristic(last_boxes, *smaller, box_type_map_,
-                                                  SortCriterion::StackabilityCumulatedVolume,
-                                                  0.0, problem_, repack, rctx);
-            if (loaded_ids.size() == last_boxes.size())
+            ContainerLoad repack = rgs_single_uld(last_boxes, *smaller, penalty_denom);
+            std::set<std::string> repacked_set;
+            for (const auto& pl : repack.placements)
+            {
+                repacked_set.insert(pl.box_id);
+            }
+            bool all_repacked = true;
+            for (const auto& bx : last_boxes)
+            {
+                if (!repacked_set.count(bx.id))
+                {
+                    all_repacked = false;
+                    break;
+                }
+            }
+            if (all_repacked)
             {
                 repack.instance_id = smaller->id + "_" + std::to_string(instance_counter++);
                 container_usage[last_load.type->id]--;
@@ -713,7 +749,18 @@ Solution Packer::pack()
     }
     solution.packed_box_count = packed;
     solution.unpacked_box_count = static_cast<int>(problem_.boxes.size()) - packed;
-    solution.status = (solution.unpacked_box_count == 0) ? SolveStatus::Complete : SolveStatus::Partial;
+    if (!TimeChecker::check())
+    {
+        solution.status = SolveStatus::Timeout;
+    }
+    else if (solution.unpacked_box_count == 0)
+    {
+        solution.status = SolveStatus::Complete;
+    }
+    else
+    {
+        solution.status = SolveStatus::Partial;
+    }
     solution.objective = compute_objective(all_loads);
     solution.objective_keys = problem_.objective_keys.empty()
                                   ? default_objective_keys()
