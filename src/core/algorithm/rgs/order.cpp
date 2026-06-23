@@ -218,11 +218,22 @@ std::vector<OrderEntry> build_ordered_list(
     }
 
     // ---- step 4: within each similar group, sort identical groups by volume desc ----
+    bool use_total = (criterion == SortCriterion::CumulatedVolume ||
+                      criterion == SortCriterion::StackabilityCumulatedVolume);
     for (auto& sg : sgs)
     {
-        std::sort(sg.identicals.begin(), sg.identicals.end(),
-                  [](const IdenticalGroup& a, const IdenticalGroup& b)
-                  { return a.max_volume > b.max_volume; });
+        if (use_total)
+        {
+            std::sort(sg.identicals.begin(), sg.identicals.end(),
+                      [](const IdenticalGroup& a, const IdenticalGroup& b)
+                      { return a.total_volume > b.total_volume; });
+        }
+        else
+        {
+            std::sort(sg.identicals.begin(), sg.identicals.end(),
+                      [](const IdenticalGroup& a, const IdenticalGroup& b)
+                      { return a.max_volume > b.max_volume; });
+        }
     }
 
     // ---- step 5: flatten to OrderEntry list ----
@@ -240,24 +251,9 @@ std::vector<OrderEntry> build_ordered_list(
             }
             const auto& bt = bt_it->second;
 
-            // §4.2.3: 朝向锁定到组高度 —— 只保留 dz ∈ sg.z_heights 的朝向
-            std::vector<Orientation> filtered_orients;
-            for (auto o : bt.allowed_orientations)
-            {
-                auto os = bt.size.orient(o);
-                if (sg.z_heights.count(os.dz))
-                {
-                    filtered_orients.push_back(o);
-                }
-            }
-            if (filtered_orients.empty())
-            {
-                continue; // 该箱型在当前组无可用高度
-            }
-
             for (const auto* bx : ig.boxes)
             {
-                ordered.push_back({bx->id, filtered_orients});
+                ordered.push_back({bx->id, bt.allowed_orientations});
             }
         }
 
