@@ -213,10 +213,7 @@ Solution Packer::pack()
             }
             proj.group_split_sum += static_cast<int>(future_groups.size());
 
-            const auto& keys = problem_.objective_keys.empty()
-                                   ? default_objective_keys()
-                                   : problem_.objective_keys;
-            if (!found || compare_objectives(proj, best_proj, keys) < 0)
+            if (!found || compare_objectives(proj, best_proj) < 0)
             {
                 found = true;
                 best_ct = &ct;
@@ -298,9 +295,6 @@ Solution Packer::to_solution(
     Solution sol;
     sol.status = status;
     sol.box_types = problem_.box_types;
-    sol.objective_keys = problem_.objective_keys.empty()
-                             ? default_objective_keys()
-                             : problem_.objective_keys;
 
     auto elapsed = TimeChecker::elapsed();
     sol.elapsed_second = elapsed;

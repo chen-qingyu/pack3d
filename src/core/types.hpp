@@ -148,9 +148,6 @@ struct Problem
     std::optional<int> tender_limit;
     std::optional<RouteOrder> route;
 
-    // 目标 — 有序列表；空列表则使用默认值
-    std::vector<std::string> objective_keys;
-
     // 算法
     Algorithm algorithm = Algorithm::GEP;
 };
@@ -222,10 +219,6 @@ struct ObjectiveVector
     /// 字典序比较：当 *this 严格优于 rhs 时返回 true
     bool is_better_than(const ObjectiveVector& rhs) const noexcept;
 
-    /// 带目标键的版本：只比较 keys 指定的维度
-    bool is_better_than(const ObjectiveVector& rhs,
-                        const std::vector<std::string>& keys) const noexcept;
-
     bool operator==(const ObjectiveVector& rhs) const noexcept;
     bool operator!=(const ObjectiveVector& rhs) const noexcept
     {
@@ -263,9 +256,6 @@ struct Solution
 
     /// 输出 JSON 自包含所需的箱子类型定义
     std::vector<BoxType> box_types;
-
-    /// 实际使用的目标键顺序（输入决定或默认）
-    std::vector<std::string> objective_keys;
 
     std::vector<std::string> violations;
 };

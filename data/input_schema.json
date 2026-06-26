@@ -90,25 +90,6 @@
       "enum": ["gep", "glc", "rgs"],
       "default": "gep"
     },
-    "objectives": {
-      "type": "array",
-      "description": "目标函数键列表（按优先级排序）",
-      "default": [
-        "min_container_count",
-        "min_platform_split",
-        "max_volume_rate",
-        "min_group_split"
-      ],
-      "items": {
-        "type": "string",
-        "enum": [
-          "min_container_count",
-          "min_platform_split",
-          "max_volume_rate",
-          "min_group_split"
-        ]
-      }
-    },
     "constraints": {
       "type": "object",
       "description": "约束配置",

@@ -141,7 +141,7 @@ bool Placer::place_next_box(SearchState& state)
                         proj.avg_volume_rate = (old_sum - old_rate + new_rate) / type_count;
                     }
 
-                    if (!found || compare_objectives(proj, best_proj, state.objective_keys) < 0)
+                    if (!found || compare_objectives(proj, best_proj) < 0)
                     {
                         found = true;
                         best = {&container, nullptr, ep, orient, osize, false};
@@ -278,7 +278,7 @@ bool Placer::place_next_box(SearchState& state)
                 double old_sum = proj.avg_volume_rate * type_count;
                 proj.avg_volume_rate = (old_sum + new_rate) / (type_count + 1);
 
-                if (!found || compare_objectives(proj, best_proj, state.objective_keys) < 0)
+                if (!found || compare_objectives(proj, best_proj) < 0)
                 {
                     found = true;
                     best = {nullptr, ct, {0, 0, 0}, cand_orient, cand_osize, true};

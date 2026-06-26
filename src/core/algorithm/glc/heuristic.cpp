@@ -307,45 +307,31 @@ Heuristic::LocalPackScore Heuristic::score_state(const ContainerLoad& state) con
 int Heuristic::compare_local_scores(const LocalPackScore& a,
                                     const LocalPackScore& b) const
 {
-    const auto& keys = problem_.objective_keys.empty()
-                           ? default_objective_keys()
-                           : problem_.objective_keys;
-
-    for (const auto& key : keys)
+    if (a.platform_split < b.platform_split)
     {
-        if (key == "min_platform_split")
-        {
-            if (a.platform_split < b.platform_split)
-            {
-                return -1;
-            }
-            if (a.platform_split > b.platform_split)
-            {
-                return 1;
-            }
-        }
-        else if (key == "max_volume_rate")
-        {
-            if (a.used_volume > b.used_volume)
-            {
-                return -1;
-            }
-            if (a.used_volume < b.used_volume)
-            {
-                return 1;
-            }
-        }
-        else if (key == "min_group_split")
-        {
-            if (a.group_count < b.group_count)
-            {
-                return -1;
-            }
-            if (a.group_count > b.group_count)
-            {
-                return 1;
-            }
-        }
+        return -1;
+    }
+    if (a.platform_split > b.platform_split)
+    {
+        return 1;
+    }
+
+    if (a.used_volume > b.used_volume)
+    {
+        return -1;
+    }
+    if (a.used_volume < b.used_volume)
+    {
+        return 1;
+    }
+
+    if (a.group_count < b.group_count)
+    {
+        return -1;
+    }
+    if (a.group_count > b.group_count)
+    {
+        return 1;
     }
 
     if (a.used_volume > b.used_volume)

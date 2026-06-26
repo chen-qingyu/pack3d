@@ -28,10 +28,9 @@ namespace hypercube
 
 // 字典序比较辅助
 
-/// 比较两个目标向量，按 keys 指定维度和顺序进行字典序比较
+/// 比较两个目标向量，按默认目标键顺序进行字典序比较
 /// 返回 -1 若 a < b（a 更优），0 若相等，1 若 a > b（b 更优）
 [[nodiscard]] int compare_objectives(const ObjectiveVector& a,
-                                     const ObjectiveVector& b,
-                                     const std::vector<std::string>& keys) noexcept;
+                                     const ObjectiveVector& b) noexcept;
 
 } // namespace hypercube

@@ -31,13 +31,7 @@ JSON，顶层四个字段：
   "container_count": 1,
   "platform_split": 0,
   "volume_rate": 0.9274,
-  "group_split": 0,
-  "objective_keys": [
-    "min_container_count",
-    "min_platform_split",
-    "max_volume_rate",
-    "min_group_split"
-  ]
+  "group_split": 0
 }
 ```
 
@@ -50,7 +44,6 @@ JSON，顶层四个字段：
 | `platform_split`     | 平台拆分总次数（0=每个平台只在一个容器中） |
 | `volume_rate`        | 各容器平均体积利用率（0-1）                |
 | `group_split`        | 组拆分总次数（0=每组只在一个容器中）       |
-| `objective_keys`     | 实际使用的目标键顺序                       |
 
 ## `result` 装箱结果
 

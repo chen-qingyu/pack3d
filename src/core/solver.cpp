@@ -46,8 +46,7 @@ Solution SolverEngine::solve()
     spdlog::info("Input: {} boxes, {} box types, {} container types",
                  problem_.boxes.size(), problem_.box_types.size(), problem_.container_types.size());
     spdlog::info("Algorithm: {}", algorithm_to_string(problem_.algorithm));
-    const auto& keys = problem_.objective_keys.empty() ? default_objective_keys() : problem_.objective_keys;
-    spdlog::info("Objectives: {}", keys);
+    spdlog::info("Objectives: {}", default_objective_keys());
     spdlog::info("Constraints: time limit {} s, support rate {:.2f}, platform limit {}, tender limit {}",
                  problem_.time_limit, problem_.support_rate, problem_.platform_limit, problem_.tender_limit);
 

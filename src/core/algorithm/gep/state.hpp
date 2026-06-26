@@ -46,9 +46,6 @@ struct SearchState
     std::optional<Solution> best_feasible;
 
     bool infeasible = false;
-
-    /// 用户指定的目标键顺序（或默认），比较时只关注这些维度
-    std::vector<std::string> objective_keys;
 };
 
 } // namespace hypercube::gep

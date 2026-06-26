@@ -324,9 +324,6 @@ Solution Packer::pack()
     // ===== 后处理: 尝试将大容器物品重装到小容器 =====
     if (TimeChecker::check())
     {
-        const auto& obj_keys = problem_.objective_keys.empty()
-                                   ? default_objective_keys()
-                                   : problem_.objective_keys;
         auto best_obj = compute_objective(all_loads);
 
         for (size_t i = 0; i < all_loads.size() && TimeChecker::check(); ++i)
@@ -449,7 +446,7 @@ Solution Packer::pack()
                 }
 
                 auto cand_obj = compute_objective(candidate);
-                if (compare_objectives(cand_obj, best_obj, obj_keys) < 0)
+                if (compare_objectives(cand_obj, best_obj) < 0)
                 {
                     all_loads = std::move(candidate);
                     best_obj = cand_obj;
@@ -465,9 +462,6 @@ Solution Packer::pack()
     // ===== 后处理: 合并分散的同平台/同组物品 =====
     if (TimeChecker::check())
     {
-        const auto& obj_keys = problem_.objective_keys.empty()
-                                   ? default_objective_keys()
-                                   : problem_.objective_keys;
         auto best_obj = compute_objective(all_loads);
 
         std::map<std::string, std::vector<size_t>> plat_containers;
@@ -551,7 +545,7 @@ Solution Packer::pack()
                 candidate.push_back(std::move(sload));
 
                 auto cand_obj = compute_objective(candidate);
-                if (compare_objectives(cand_obj, best_obj, obj_keys) < 0)
+                if (compare_objectives(cand_obj, best_obj) < 0)
                 {
                     all_loads = std::move(candidate);
                     best_obj = cand_obj;
@@ -624,7 +618,7 @@ Solution Packer::pack()
                 candidate.push_back(std::move(sload));
 
                 auto cand_obj = compute_objective(candidate);
-                if (compare_objectives(cand_obj, best_obj, obj_keys) < 0)
+                if (compare_objectives(cand_obj, best_obj) < 0)
                 {
                     all_loads = std::move(candidate);
                     best_obj = cand_obj;
@@ -762,9 +756,6 @@ Solution Packer::pack()
         solution.status = SolveStatus::Partial;
     }
     solution.objective = compute_objective(all_loads);
-    solution.objective_keys = problem_.objective_keys.empty()
-                                  ? default_objective_keys()
-                                  : problem_.objective_keys;
     solution.box_types = problem_.box_types;
 
     for (const auto& cl : all_loads)

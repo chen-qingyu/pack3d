@@ -83,18 +83,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 
 算法相关常量配置集中在 `src/core/algorithm/config.hpp`（编译期确定）。
 
-## 目标 `objectives`（可选）
-
-```json
-[
-  "min_container_count",
-  "min_platform_split",
-  "max_volume_rate",
-  "min_group_split"
-]
-```
-
-字典序排列，默认顺序如上。四个键均为可选，可任意排列或省略部分。
+目标为固定的四个维度，字典序：`min_container_count → min_platform_split → max_volume_rate → min_group_split`，不可配置。
 
 ## 约束 `constraints`（可选）
 

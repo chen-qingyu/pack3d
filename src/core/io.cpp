@@ -164,14 +164,6 @@ void from_json(const json& j, Problem& p)
         p.route = std::move(route);
     }
 
-    if (j.contains("objectives"))
-    {
-        for (const auto& obj : j["objectives"])
-        {
-            p.objective_keys.push_back(obj.get<std::string>());
-        }
-    }
-
     if (j.contains("algorithm"))
     {
         p.algorithm = algorithm_from_string(j["algorithm"].get<std::string>());
@@ -368,13 +360,6 @@ void to_json(json& j, const Solution& sol)
     summary["platform_split"] = sol.objective.platform_split;
     summary["volume_rate"] = sol.objective.avg_volume_rate;
     summary["group_split"] = sol.objective.group_split_sum;
-
-    json keys = json::array();
-    for (const auto& key : sol.objective_keys)
-    {
-        keys.push_back(key);
-    }
-    summary["objective_keys"] = std::move(keys);
 
     j["summary"] = std::move(summary);
 

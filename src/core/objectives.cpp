@@ -9,12 +9,7 @@ namespace hypercube
 
 bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs) const noexcept
 {
-    return compare_objectives(*this, rhs, default_objective_keys()) < 0;
-}
-
-bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs, const std::vector<std::string>& keys) const noexcept
-{
-    return compare_objectives(*this, rhs, keys) < 0;
+    return compare_objectives(*this, rhs) < 0;
 }
 
 bool ObjectiveVector::operator==(const ObjectiveVector& rhs) const noexcept
@@ -71,58 +66,8 @@ ObjectiveVector compute_objective(const std::vector<ContainerLoad>& containers) 
 }
 
 int compare_objectives(const ObjectiveVector& a,
-                       const ObjectiveVector& b,
-                       const std::vector<std::string>& keys) noexcept
+                       const ObjectiveVector& b) noexcept
 {
-    for (const auto& key : keys)
-    {
-        if (key == "min_container_count")
-        {
-            if (a.container_count < b.container_count)
-            {
-                return -1;
-            }
-            if (a.container_count > b.container_count)
-            {
-                return 1;
-            }
-        }
-        else if (key == "min_platform_split")
-        {
-            if (a.platform_split < b.platform_split)
-            {
-                return -1;
-            }
-            if (a.platform_split > b.platform_split)
-            {
-                return 1;
-            }
-        }
-        else if (key == "max_volume_rate")
-        {
-            if (a.avg_volume_rate > b.avg_volume_rate + 1e-12)
-            {
-                return -1;
-            }
-            if (b.avg_volume_rate > a.avg_volume_rate + 1e-12)
-            {
-                return 1;
-            }
-        }
-        else if (key == "min_group_split")
-        {
-            if (a.group_split_sum < b.group_split_sum)
-            {
-                return -1;
-            }
-            if (a.group_split_sum > b.group_split_sum)
-            {
-                return 1;
-            }
-        }
-    }
-
-    // 隐式决胜：显式目标全部打平时，容器数少的更优
     if (a.container_count < b.container_count)
     {
         return -1;
@@ -131,6 +76,34 @@ int compare_objectives(const ObjectiveVector& a,
     {
         return 1;
     }
+
+    if (a.platform_split < b.platform_split)
+    {
+        return -1;
+    }
+    if (a.platform_split > b.platform_split)
+    {
+        return 1;
+    }
+
+    if (a.avg_volume_rate > b.avg_volume_rate + 1e-12)
+    {
+        return -1;
+    }
+    if (b.avg_volume_rate > a.avg_volume_rate + 1e-12)
+    {
+        return 1;
+    }
+
+    if (a.group_split_sum < b.group_split_sum)
+    {
+        return -1;
+    }
+    if (a.group_split_sum > b.group_split_sum)
+    {
+        return 1;
+    }
+
     return 0;
 }
 

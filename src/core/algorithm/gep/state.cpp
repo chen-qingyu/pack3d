@@ -17,7 +17,6 @@ SearchState Packer::make_initial_state() const
     SearchState s;
     s.container_type_map = container_type_map_;
     s.remaining_boxes = problem_.boxes;
-    s.objective_keys = problem_.objective_keys.empty() ? default_objective_keys() : problem_.objective_keys;
 
     // 按平台分组（空平台视为默认平台），同平台内按体积降序
     std::stable_sort(s.remaining_boxes.begin(), s.remaining_boxes.end(),
@@ -54,7 +53,7 @@ void Packer::update_best(SearchState& state)
     }
     else
     {
-        if (ov.is_better_than(state.best_feasible->objective, state.objective_keys))
+        if (ov.is_better_than(state.best_feasible->objective))
         {
             state.best_feasible = build_solution(state, SolveStatus::Complete);
             state.best_feasible->objective = ov;
@@ -117,7 +116,6 @@ Solution Packer::build_solution(const SearchState& state,
     }
 
     sol.box_types = problem_.box_types;
-    sol.objective_keys = state.objective_keys;
 
     return sol;
 }
