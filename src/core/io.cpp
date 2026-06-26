@@ -180,6 +180,8 @@ std::string algorithm_to_string(Algorithm a) noexcept
             return "glc";
         case Algorithm::RGS:
             return "rgs";
+        case Algorithm::BSG:
+            return "bsg";
         default:
             assert(false && "Unhandled Algorithm enum value");
             return "unknown";
@@ -195,6 +197,10 @@ Algorithm algorithm_from_string(const std::string& s) noexcept
     if (s == "rgs")
     {
         return Algorithm::RGS;
+    }
+    if (s == "bsg")
+    {
+        return Algorithm::BSG;
     }
     return Algorithm::GEP;
 }

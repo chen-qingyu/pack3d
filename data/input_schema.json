@@ -87,7 +87,7 @@
     "algorithm": {
       "type": "string",
       "description": "求解算法",
-      "enum": ["gep", "glc", "rgs"],
+      "enum": ["gep", "glc", "rgs", "bsg"],
       "default": "gep"
     },
     "constraints": {

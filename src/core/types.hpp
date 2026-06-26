@@ -122,6 +122,7 @@ enum class Algorithm : uint8_t
     GEP, // 贪心极点算法（默认）
     GLC, // 贪心前瞻构造
     RGS, // 随机贪心搜索
+    BSG, // 束搜索集装箱装载 (BSG-CLP)
 };
 
 // 求解状态

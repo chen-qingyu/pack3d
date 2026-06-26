@@ -6,6 +6,7 @@
 #include <spdlog/fmt/std.h>    // log optional
 #include <spdlog/spdlog.h>
 
+#include "algorithm/bsg/packer.hpp"
 #include "algorithm/gep/packer.hpp"
 #include "algorithm/glc/packer.hpp"
 #include "algorithm/rgs/packer.hpp"
@@ -71,6 +72,11 @@ Solution SolverEngine::solve()
         {
             gep::Packer gep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
             solution = gep.pack();
+            break;
+        }
+        case Algorithm::BSG:
+        {
+            solution = bsg::pack(problem_, box_type_map_, box_map_);
             break;
         }
     }
