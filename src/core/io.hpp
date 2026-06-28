@@ -8,8 +8,8 @@
 
 #include "types.hpp"
 
-// 项目统一使用 ordered_json 以保留字段插入顺序
-using json = nlohmann::ordered_json;
+// 项目统一使用 json 以支持自动转换为 Python dict
+using json = nlohmann::json;
 
 namespace pack3d
 {

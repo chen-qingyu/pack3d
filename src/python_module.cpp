@@ -1,6 +1,7 @@
 #include <pybind11/pybind11.h>
 
 #include "core/app.hpp"
+#include "pybind11_json.hpp"
 
 namespace py = pybind11;
 
