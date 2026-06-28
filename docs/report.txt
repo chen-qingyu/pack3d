@@ -1,9 +1,0 @@
-Packing Algorithm Performance Report
-
-Total Files Tested: 1600
-Average Volume Rate: 80.90%
-Average Duration: 0.003 s
-Average Memory Usage: 194 KB
-
-CPU: 13th Gen Intel(R) Core(TM) i7-13620H
-CPU Speed: 2400 MHz
