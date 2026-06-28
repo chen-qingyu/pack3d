@@ -35,7 +35,7 @@ int main(int argc, char** argv)
     argparse::ArgumentParser program("pack3d", "0.1.0");
 
     program.add_argument("input").help("Input JSON file path");
-    program.add_argument("-o", "--output-dir").help("Output directory (default: result/)").default_value("result");
+    program.add_argument("-o", "--output-dir").help("Output directory (default: output/)").default_value("output");
     program.add_argument("-t", "--time-limit").scan<'g', double>().help("Set time limit in seconds");
     program.add_argument("-s", "--support-rate").scan<'g', double>().help("Set support rate (0~1)");
     program.add_argument("--platform-limit").scan<'i', int>().help("Set platform limit");

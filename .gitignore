@@ -3,7 +3,7 @@
 !/.vscode/tasks.json
 /.xmake/
 /build/
-/result/
+/output/
 /data/br/
 /python/*.egg-info/
 /python/dist/
