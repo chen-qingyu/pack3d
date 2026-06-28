@@ -110,7 +110,7 @@ int main()
 
         // 运行求解器
         spdlog::set_level(spdlog::level::off);
-        auto j = hypercube::run(json::parse(json_input));
+        auto j = pack3d::run(json::parse(json_input));
         spdlog::set_level(spdlog::level::info);
 
         auto t1 = std::chrono::steady_clock::now();

@@ -32,7 +32,7 @@ static bool try_set(json& j, const argparse::ArgumentParser& p, const std::strin
 
 int main(int argc, char** argv)
 {
-    argparse::ArgumentParser program("hypercube", "0.1.0");
+    argparse::ArgumentParser program("pack3d", "0.1.0");
 
     program.add_argument("input").help("Input JSON file path");
     program.add_argument("-o", "--output-dir").help("Output directory (default: result/)").default_value("result");
@@ -85,7 +85,7 @@ int main(int argc, char** argv)
     }
 
     // 运行求解器
-    json result = hypercube::run(j);
+    json result = pack3d::run(j);
 
     // 输出
     fs::path in_path(input_file);

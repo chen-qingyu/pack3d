@@ -13,7 +13,7 @@
 #include "io.hpp"
 #include "tool.hpp"
 
-namespace hypercube
+namespace pack3d
 {
 
 SolverEngine::SolverEngine(const Problem& problem)
@@ -93,4 +93,4 @@ Solution SolverEngine::solve()
     return solution;
 }
 
-} // namespace hypercube
+} // namespace pack3d

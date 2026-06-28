@@ -12,7 +12,7 @@
 #include "../config.hpp"
 #include "block.hpp"
 
-namespace hypercube::glc
+namespace pack3d::glc
 {
 
 Packer::Packer(
@@ -499,4 +499,4 @@ int Packer::handle_tender_limit_groups(
     return 0;
 }
 
-} // namespace hypercube::glc
+} // namespace pack3d::glc

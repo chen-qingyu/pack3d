@@ -4,7 +4,7 @@
 
 #include "types.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 /// Expand 过程 (Algorithm 3)
@@ -16,4 +16,4 @@ std::vector<BSGState> expand(
     int w,
     const GlobalContext& ctx);
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

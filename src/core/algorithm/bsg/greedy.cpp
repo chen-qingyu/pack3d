@@ -6,7 +6,7 @@
 #include "kpa.hpp"
 #include "space.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 int64_t max_remaining_volume(const BSGState& state, const GlobalContext& ctx)
@@ -172,4 +172,4 @@ GreedyResult greedy_rollout(
     return {cur.used_volume, std::move(packed_counts), std::move(cur)};
 }
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

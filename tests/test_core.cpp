@@ -4,7 +4,7 @@
 #include "core/objectives.hpp"
 #include "core/types.hpp"
 
-using namespace hypercube;
+using namespace pack3d;
 
 TEST_CASE("Size::orient 产生正确的尺寸", "[core]")
 {

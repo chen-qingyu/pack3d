@@ -13,7 +13,7 @@
 #include "block.hpp"
 #include "kpa.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 namespace
@@ -222,4 +222,4 @@ PackResult solve(const GlobalContext& ctx,
     return result;
 }
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

@@ -6,7 +6,7 @@
 
 #include "types.hpp"
 
-namespace hypercube
+namespace pack3d
 {
 
 // 求解器引擎
@@ -26,4 +26,4 @@ private:
     bool has_weight_info_ = false;
 };
 
-} // namespace hypercube
+} // namespace pack3d

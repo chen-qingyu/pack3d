@@ -4,7 +4,7 @@
 
 #include "types.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 /// BeamSearch (Algorithm 2)
@@ -18,4 +18,4 @@ int64_t beam_search(
     BSGState& s_best,
     const GlobalContext& ctx);
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

@@ -2,7 +2,7 @@
 
 #include <chrono>
 
-namespace hypercube
+namespace pack3d
 {
 
 class TimeChecker
@@ -17,4 +17,4 @@ private:
     static double time_limit_;
 };
 
-} // namespace hypercube
+} // namespace pack3d

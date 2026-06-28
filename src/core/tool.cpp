@@ -1,6 +1,6 @@
 #include "tool.hpp"
 
-namespace hypercube
+namespace pack3d
 {
 
 std::chrono::steady_clock::time_point TimeChecker::start_time_{};
@@ -23,4 +23,4 @@ double TimeChecker::elapsed() noexcept
     return std::chrono::duration<double>(now - start_time_).count();
 }
 
-} // namespace hypercube
+} // namespace pack3d

@@ -6,7 +6,7 @@
 
 #include "types.hpp"
 
-namespace hypercube
+namespace pack3d
 {
 
 /// 检查箱子是否完全在容器边界内
@@ -38,4 +38,4 @@ namespace hypercube
                                      const Position& pos, const OrientedSize& osize,
                                      const RouteOrder& route) noexcept;
 
-} // namespace hypercube
+} // namespace pack3d

@@ -12,7 +12,7 @@
 #include "insert.hpp"
 #include "order.hpp"
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 Packer::Packer(
@@ -800,4 +800,4 @@ Solution Packer::pack()
     return solution;
 }
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

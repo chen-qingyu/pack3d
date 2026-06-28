@@ -13,7 +13,7 @@
 #include "block.hpp"
 #include "space.hpp"
 
-namespace hypercube::glc
+namespace pack3d::glc
 {
 
 Heuristic::Heuristic(
@@ -683,4 +683,4 @@ Heuristic::LocalPackScore Heuristic::complete_largest(
     return score_state(state);
 }
 
-} // namespace hypercube::glc
+} // namespace pack3d::glc

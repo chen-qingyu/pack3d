@@ -6,7 +6,7 @@
 #include "../../types.hpp"
 #include "state.hpp"
 
-namespace hypercube::gep
+namespace pack3d::gep
 {
 
 /// 单容器极点搜索：遍历已有容器极点和新容器原点，按目标投影选最优放置
@@ -36,4 +36,4 @@ private:
                                const ContainerLoad& load) const noexcept;
 };
 
-} // namespace hypercube::gep
+} // namespace pack3d::gep

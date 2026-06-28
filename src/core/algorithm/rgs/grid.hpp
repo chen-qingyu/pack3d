@@ -8,7 +8,7 @@
 #include "../../types.hpp"
 #include "state.hpp"
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 // 按论文 §4.4.4：平均边长作为 cell_size
@@ -36,4 +36,4 @@ void grid_register(
     const OrientedSize& osize,
     const std::vector<size_t>& neighbors) noexcept;
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

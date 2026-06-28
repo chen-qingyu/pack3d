@@ -9,7 +9,7 @@
 #include "../../types.hpp"
 #include "heuristic.hpp"
 
-namespace hypercube::glc
+namespace pack3d::glc
 {
 
 /// GLC 入口：将箱子分配到各个容器，调用 Heuristic 进行装载
@@ -71,4 +71,4 @@ private:
         std::vector<ContainerSlot>& slots);
 };
 
-} // namespace hypercube::glc
+} // namespace pack3d::glc

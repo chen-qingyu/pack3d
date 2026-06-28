@@ -8,7 +8,7 @@
 
 #include "../../constraints.hpp"
 #include "../../objectives.hpp"
-namespace hypercube::gep
+namespace pack3d::gep
 {
 
 Placer::Placer(const std::map<std::string, BoxType>& box_type_map,
@@ -454,4 +454,4 @@ void Placer::filter_extreme_points(std::vector<Position>& points,
     points = std::move(filtered);
 }
 
-} // namespace hypercube::gep
+} // namespace pack3d::gep

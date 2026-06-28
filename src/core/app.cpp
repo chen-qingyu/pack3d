@@ -13,7 +13,7 @@
 #include "io.hpp"
 #include "solver.hpp"
 
-namespace hypercube
+namespace pack3d
 {
 
 json run(const json& j) noexcept
@@ -51,4 +51,4 @@ json run(const json& j) noexcept
     return json(solution);
 }
 
-} // namespace hypercube
+} // namespace pack3d

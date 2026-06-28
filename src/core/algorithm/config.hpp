@@ -1,6 +1,6 @@
 #pragma once
 
-namespace hypercube::config
+namespace pack3d::config
 {
 
 // 全局
@@ -23,4 +23,4 @@ static constexpr double BSG_MAX_FR_WEAK = 1.00;   // box_types < 阈值
 static constexpr double BSG_MAX_FR_STRONG = 0.98; // box_types >= 阈值
 static constexpr int BSG_THRESHOLD_BOX_TYPES = 30;
 
-} // namespace hypercube::config
+} // namespace pack3d::config

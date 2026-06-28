@@ -8,7 +8,7 @@
 #include "kpa.hpp"
 #include "space.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 namespace
@@ -182,4 +182,4 @@ std::vector<BSGState> expand(
     return successors;
 }
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

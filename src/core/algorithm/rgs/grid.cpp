@@ -2,7 +2,7 @@
 
 #include <set>
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 int32_t compute_cell_size(
@@ -136,4 +136,4 @@ bool grid_collides(
     return false;
 }
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

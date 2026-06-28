@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace hypercube
+namespace pack3d
 {
 
 // 朝向
@@ -261,4 +261,4 @@ struct Solution
     std::vector<std::string> violations;
 };
 
-} // namespace hypercube
+} // namespace pack3d

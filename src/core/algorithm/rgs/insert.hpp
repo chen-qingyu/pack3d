@@ -10,7 +10,7 @@
 #include "order.hpp"
 #include "state.hpp"
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 // Alg1: 单 ULD 插入启发式
@@ -62,4 +62,4 @@ void commit_placement(
     Orientation orient,
     const Position& ep) noexcept;
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

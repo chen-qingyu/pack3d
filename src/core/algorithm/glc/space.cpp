@@ -4,7 +4,7 @@
 #include <cassert>
 #include <cmath>
 
-namespace hypercube::glc
+namespace pack3d::glc
 {
 
 namespace
@@ -179,4 +179,4 @@ bool transfer_space(std::vector<Space>& stack) noexcept
     return true;
 }
 
-} // namespace hypercube::glc
+} // namespace pack3d::glc

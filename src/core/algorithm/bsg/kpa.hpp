@@ -2,7 +2,7 @@
 
 #include "types.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 /// KPA (Knapsack Problem Algorithm) — K4 的 V_loss 计算基础
@@ -18,4 +18,4 @@ int64_t compute_f(const BSGState& state, const Cuboid& r,
 int64_t compute_v_loss(const BSGState& state, const Cuboid& r,
                        const GeneralBlock& b, const GlobalContext& ctx);
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

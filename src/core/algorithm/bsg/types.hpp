@@ -7,7 +7,7 @@
 
 #include "../../types.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 // ============================================================
@@ -181,4 +181,4 @@ struct PackResult
     int64_t used_volume = 0;
 };
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

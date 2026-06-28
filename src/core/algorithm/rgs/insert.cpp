@@ -8,7 +8,7 @@
 #include "../../tool.hpp"
 #include "grid.hpp"
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 namespace
@@ -425,4 +425,4 @@ std::vector<std::string> insertion_heuristic(
     return loaded_order;
 }
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

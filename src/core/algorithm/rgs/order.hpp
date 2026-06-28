@@ -7,7 +7,7 @@
 
 #include "../../types.hpp"
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 // 排序策略（论文 §4.2，5 种）
@@ -35,4 +35,4 @@ struct OrderEntry
     SortCriterion criterion,
     double rho) noexcept;
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

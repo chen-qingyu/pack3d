@@ -9,7 +9,7 @@
 
 #include "../config.hpp"
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 namespace
@@ -336,4 +336,4 @@ std::vector<OrderEntry> build_ordered_list(
     return ordered;
 }
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

@@ -3,7 +3,7 @@
 #include "core/io.hpp"
 #include "core/types.hpp"
 
-using namespace hypercube;
+using namespace pack3d;
 
 TEST_CASE("pre_validate_input 检测重复 ID", "[parser]")
 {

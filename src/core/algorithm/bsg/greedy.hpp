@@ -5,7 +5,7 @@
 
 #include "types.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 /// Greedy rollout 结果
@@ -30,4 +30,4 @@ GreedyResult greedy_rollout(
 /// 计算剩余箱子最大可能体积（剪枝用上界）
 int64_t max_remaining_volume(const BSGState& state, const GlobalContext& ctx);
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

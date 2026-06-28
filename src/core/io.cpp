@@ -11,7 +11,7 @@
 #include "algorithm/config.hpp"
 #include "solver.hpp"
 
-namespace hypercube
+namespace pack3d
 {
 
 std::string orientation_to_string(Orientation o) noexcept
@@ -443,4 +443,4 @@ void to_json(json& j, const Solution& sol)
     }
 }
 
-} // namespace hypercube
+} // namespace pack3d

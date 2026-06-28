@@ -1,4 +1,4 @@
-set_project("hypercube")
+set_project("pack3d")
 set_version("0.1.0")
 set_license("MIT")
 set_languages("cxx20")

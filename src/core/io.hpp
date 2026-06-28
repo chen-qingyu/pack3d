@@ -11,7 +11,7 @@
 // 项目统一使用 ordered_json 以保留字段插入顺序
 using json = nlohmann::ordered_json;
 
-namespace hypercube
+namespace pack3d
 {
 
 /// JSON Schema 校验（data/input_schema.json）
@@ -32,4 +32,4 @@ void from_json(const json& j, Box& bx);
 void from_json(const json& j, Problem& p);
 void to_json(json& j, const Solution& sol);
 
-} // namespace hypercube
+} // namespace pack3d

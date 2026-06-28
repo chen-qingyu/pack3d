@@ -5,7 +5,7 @@
 #include <functional>
 #include <unordered_set>
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 namespace
@@ -384,4 +384,4 @@ done:
     return blocks;
 }
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

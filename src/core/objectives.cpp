@@ -4,7 +4,7 @@
 #include <cmath>
 #include <numeric>
 
-namespace hypercube
+namespace pack3d
 {
 
 bool ObjectiveVector::is_better_than(const ObjectiveVector& rhs) const noexcept
@@ -107,4 +107,4 @@ int compare_objectives(const ObjectiveVector& a,
     return 0;
 }
 
-} // namespace hypercube
+} // namespace pack3d

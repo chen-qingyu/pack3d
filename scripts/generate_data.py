@@ -3,7 +3,7 @@ import os
 
 
 def parse_br_file(file):
-    """将 BR 格式文件转换为一组标准 hypercube JSON 输入"""
+    """将 BR 格式文件转换为一组标准 pack3d JSON 输入"""
     results = []
 
     with open(file, 'r') as f:

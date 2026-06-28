@@ -7,7 +7,7 @@
 
 #include "../../types.hpp"
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 // 单 ULD 评分：体积率 + 难装件惩罚（论文式(4)）
@@ -31,4 +31,4 @@ namespace hypercube::rgs
     const BoxType& box_type,
     const std::vector<ContainerType>& container_types) noexcept;
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

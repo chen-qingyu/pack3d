@@ -2,7 +2,7 @@
 
 #include "types.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 /// BSG-CLP 主入口 (Algorithm 1)
@@ -12,4 +12,4 @@ PackResult solve(const GlobalContext& ctx,
                  const std::vector<std::vector<std::string>>& box_ids_by_type,
                  double time_limit_sec);
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

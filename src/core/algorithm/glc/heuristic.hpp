@@ -9,7 +9,7 @@
 #include "block.hpp"
 #include "space.hpp"
 
-namespace hypercube::glc
+namespace pack3d::glc
 {
 
 /// 单个容器的装载结果
@@ -114,4 +114,4 @@ private:
         const std::vector<SimpleBlock>& all_blocks) const;
 };
 
-} // namespace hypercube::glc
+} // namespace pack3d::glc

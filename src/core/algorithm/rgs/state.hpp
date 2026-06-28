@@ -8,7 +8,7 @@
 
 #include "../../types.hpp"
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 // EP 排序：z,y,x 升序
@@ -36,4 +36,4 @@ struct EpContext
     std::set<Position, EpOrder> extreme_points;
 };
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

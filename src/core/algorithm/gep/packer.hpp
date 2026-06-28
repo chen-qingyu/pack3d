@@ -9,7 +9,7 @@
 #include "placer.hpp"
 #include "state.hpp"
 
-namespace hypercube::gep
+namespace pack3d::gep
 {
 
 // GEP 简单贪心极点算法
@@ -39,4 +39,4 @@ private:
     Solution build_solution(const SearchState& state, SolveStatus status) const;
 };
 
-} // namespace hypercube::gep
+} // namespace pack3d::gep

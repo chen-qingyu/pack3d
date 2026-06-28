@@ -6,7 +6,7 @@
 
 #include "../../types.hpp"
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 // RGS 多 ULD 主入口
@@ -44,4 +44,4 @@ private:
     static void rebuild_tracking(ContainerLoad& cl) noexcept;
 };
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

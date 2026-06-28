@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace hypercube
+namespace pack3d
 {
 
 bool check_boundary(const ContainerType& ctype, const Position& pos,
@@ -220,4 +220,4 @@ bool check_route_order(const ContainerLoad& load,
     return true;
 }
 
-} // namespace hypercube
+} // namespace pack3d

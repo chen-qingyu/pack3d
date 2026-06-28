@@ -9,7 +9,7 @@
 #include "greedy.hpp"
 #include "kpa.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 namespace
@@ -188,4 +188,4 @@ int64_t beam_search(
     return best_in_round;
 }
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

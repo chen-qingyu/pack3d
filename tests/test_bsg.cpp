@@ -8,8 +8,8 @@
 #include "core/algorithm/bsg/types.hpp"
 #include "core/tool.hpp"
 
-using namespace hypercube;
-using namespace hypercube::bsg;
+using namespace pack3d;
+using namespace pack3d::bsg;
 
 static GlobalContext make_ctx_1box()
 {

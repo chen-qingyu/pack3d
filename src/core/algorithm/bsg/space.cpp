@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 Position anchor_corner(const Cuboid& r, int32_t container_lx) noexcept
@@ -207,4 +207,4 @@ void remove_non_maximal(std::vector<Cuboid>& R) noexcept
     R.resize(w);
 }
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

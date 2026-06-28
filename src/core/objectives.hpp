@@ -5,7 +5,7 @@
 
 #include "types.hpp"
 
-namespace hypercube
+namespace pack3d
 {
 
 // 目标向量计算与比较
@@ -33,4 +33,4 @@ namespace hypercube
 [[nodiscard]] int compare_objectives(const ObjectiveVector& a,
                                      const ObjectiveVector& b) noexcept;
 
-} // namespace hypercube
+} // namespace pack3d

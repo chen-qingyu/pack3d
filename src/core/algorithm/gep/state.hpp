@@ -9,7 +9,7 @@
 #include "../../objectives.hpp"
 #include "../../types.hpp"
 
-namespace hypercube::gep
+namespace pack3d::gep
 {
 
 // 求解器评估的候选放置
@@ -48,4 +48,4 @@ struct SearchState
     bool infeasible = false;
 };
 
-} // namespace hypercube::gep
+} // namespace pack3d::gep

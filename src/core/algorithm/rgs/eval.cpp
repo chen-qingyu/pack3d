@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace hypercube::rgs
+namespace pack3d::rgs
 {
 
 int count_fit_uld_types(
@@ -100,4 +100,4 @@ double score_uld(
     return sv - penalty;
 }
 
-} // namespace hypercube::rgs
+} // namespace pack3d::rgs

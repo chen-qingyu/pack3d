@@ -2,7 +2,7 @@
 
 #include "../../types.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 /// BSG 多容器调度层
@@ -11,4 +11,4 @@ Solution pack(const Problem& problem,
               const std::map<std::string, BoxType>& box_type_map,
               const std::map<std::string, Box>& box_map);
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

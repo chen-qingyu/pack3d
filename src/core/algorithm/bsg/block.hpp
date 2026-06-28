@@ -4,7 +4,7 @@
 
 #include "types.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 /// GeneralBlockGeneration (K2)
@@ -19,4 +19,4 @@ std::vector<GeneralBlock> generate_blocks(
     double max_fr,
     int max_bl);
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

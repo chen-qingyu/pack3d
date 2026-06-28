@@ -12,7 +12,7 @@
 #include "block.hpp"
 #include "solver.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 Solution pack(const Problem& problem,
@@ -175,4 +175,4 @@ Solution pack(const Problem& problem,
     return sol;
 }
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

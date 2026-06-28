@@ -4,7 +4,7 @@
 
 #include "types.hpp"
 
-namespace hypercube::bsg
+namespace pack3d::bsg
 {
 
 // ============================================================
@@ -31,4 +31,4 @@ void update_residual_space(
 /// 移除所有被另一个 cuboid 完全包含的 cuboid
 void remove_non_maximal(std::vector<Cuboid>& R) noexcept;
 
-} // namespace hypercube::bsg
+} // namespace pack3d::bsg

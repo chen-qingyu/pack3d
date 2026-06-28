@@ -5,7 +5,7 @@
 
 #include "../../types.hpp"
 
-namespace hypercube::glc
+namespace pack3d::glc
 {
 
 // 简单块：同种箱子、同朝向、整数倍堆叠
@@ -47,4 +47,4 @@ private:
 /// 按体积降序排列
 void sort_blocks_by_volume_desc(std::vector<SimpleBlock>& blocks) noexcept;
 
-} // namespace hypercube::glc
+} // namespace pack3d::glc

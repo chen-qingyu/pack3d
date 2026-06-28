@@ -8,7 +8,7 @@
 #include "core/io.hpp"
 #include "core/types.hpp"
 
-using namespace hypercube;
+using namespace pack3d;
 
 // 从 JSON 文件加载测试场景
 static json load_data(const char* path)
