@@ -5,3 +5,6 @@
 /build/
 /result/
 /data/br/
+/python/*.egg-info/
+/python/dist/
+__pycache__/

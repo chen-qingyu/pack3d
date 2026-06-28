@@ -5,7 +5,7 @@ set_languages("cxx20")
 set_encodings("utf-8")
 
 add_rules("mode.debug", "mode.release")
-add_requires("spdlog 1.17", "nlohmann_json 3.12", "json-schema-validator 2.4", "argparse 3.2", "catch2 3.14")
+add_requires("spdlog 1.17", "nlohmann_json 3.12", "json-schema-validator 2.4", "argparse 3.2", "catch2 3.14", "pybind11 3.0")
 
 target("core")
     set_kind("static")
@@ -22,6 +22,12 @@ target("cli")
     add_packages("argparse")
     add_deps("core")
     add_files("src/main.cpp")
+
+target("lib")
+    add_rules("python.module")
+    add_deps("core")
+    add_packages("pybind11")
+    add_files("src/python_module.cpp")
 
 target("test")
     set_kind("binary")
