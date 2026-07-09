@@ -6,6 +6,9 @@ set_encodings("utf-8")
 
 add_rules("mode.debug", "mode.release")
 add_requires("spdlog 1.17", "nlohmann_json 3.12", "json-schema-validator 2.4", "argparse 3.2", "catch2 3.14", "pybind11 3.0")
+if is_plat("linux") then
+    add_requireconfs("pybind11.python", {override = true, configs = {headeronly = true}})
+end
 
 target("core")
     set_kind("static")
