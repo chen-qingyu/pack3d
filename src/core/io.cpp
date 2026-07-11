@@ -339,6 +339,10 @@ void to_json(json& j, const Solution& sol)
                 pj["position"]["y"] = pl.position.y;
                 pj["position"]["z"] = pl.position.z;
                 pj["orientation"] = orientation_to_string(pl.orientation);
+                pj["size"] = json::object();
+                pj["size"]["dx"] = pl.osize.dx;
+                pj["size"]["dy"] = pl.osize.dy;
+                pj["size"]["dz"] = pl.osize.dz;
                 pj["platform"] = pl.platform.empty() ? json(nullptr) : json(pl.platform);
                 pj["group"] = pl.group.empty() ? json(nullptr) : json(pl.group);
                 placements_json.push_back(std::move(pj));
