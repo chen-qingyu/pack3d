@@ -1,10 +1,13 @@
 #include "io.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <set>
 #include <sstream>
 #include <string>
 
+#include <magic_enum/magic_enum.hpp>
 #include <nlohmann/json-schema.hpp>
 #include <spdlog/spdlog.h>
 
@@ -14,56 +17,29 @@
 namespace pack3d
 {
 
+namespace
+{
+
+// enum_name 输出大写（如 "XYZ"），项目约定小写（"xyz"）
+std::string enum_to_lower(auto val) noexcept
+{
+    auto name = std::string{magic_enum::enum_name(val)};
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c)
+                   { return static_cast<char>(std::tolower(c)); });
+    return name;
+}
+
+} // namespace
+
 std::string orientation_to_string(Orientation o) noexcept
 {
-    switch (o)
-    {
-        case Orientation::XYZ:
-            return "xyz";
-        case Orientation::XZY:
-            return "xzy";
-        case Orientation::YXZ:
-            return "yxz";
-        case Orientation::YZX:
-            return "yzx";
-        case Orientation::ZXY:
-            return "zxy";
-        case Orientation::ZYX:
-            return "zyx";
-        default:
-            assert(false && "Unhandled Orientation enum value");
-            return "unknown";
-    }
+    return enum_to_lower(o);
 }
 
 Orientation orientation_from_string(const std::string& s) noexcept
 {
-    if (s == "xyz")
-    {
-        return Orientation::XYZ;
-    }
-    if (s == "xzy")
-    {
-        return Orientation::XZY;
-    }
-    if (s == "yxz")
-    {
-        return Orientation::YXZ;
-    }
-    if (s == "yzx")
-    {
-        return Orientation::YZX;
-    }
-    if (s == "zxy")
-    {
-        return Orientation::ZXY;
-    }
-    if (s == "zyx")
-    {
-        return Orientation::ZYX;
-    }
-    assert(false && "Unhandled Orientation string value");
-    return Orientation::XYZ;
+    auto val = magic_enum::enum_cast<Orientation>(s);
+    return val.value_or(Orientation::XYZ);
 }
 
 // 有值则序列化，无值则输出 null
@@ -172,61 +148,18 @@ void from_json(const json& j, Problem& p)
 
 std::string algorithm_to_string(Algorithm a) noexcept
 {
-    switch (a)
-    {
-        case Algorithm::GEP:
-            return "gep";
-        case Algorithm::GLC:
-            return "glc";
-        case Algorithm::RGS:
-            return "rgs";
-        case Algorithm::BSG:
-            return "bsg";
-        default:
-            assert(false && "Unhandled Algorithm enum value");
-            return "unknown";
-    }
+    return enum_to_lower(a);
 }
 
 Algorithm algorithm_from_string(const std::string& s) noexcept
 {
-    if (s == "gep")
-    {
-        return Algorithm::GEP;
-    }
-    if (s == "glc")
-    {
-        return Algorithm::GLC;
-    }
-    if (s == "rgs")
-    {
-        return Algorithm::RGS;
-    }
-    if (s == "bsg")
-    {
-        return Algorithm::BSG;
-    }
-    return Algorithm::GLC;
+    auto val = magic_enum::enum_cast<Algorithm>(s);
+    return val.value_or(Algorithm::GEP);
 }
 
 std::string status_to_string(SolveStatus s) noexcept
 {
-    switch (s)
-    {
-        case SolveStatus::Complete:
-            return "complete";
-        case SolveStatus::Invalid:
-            return "invalid";
-        case SolveStatus::Blocked:
-            return "blocked";
-        case SolveStatus::Timeout:
-            return "timeout";
-        case SolveStatus::Partial:
-            return "partial";
-        default:
-            assert(false && "Unhandled SolveStatus enum value");
-            return "unknown";
-    }
+    return enum_to_lower(s);
 }
 
 // 从 data/input_schema.json 读取 schema 并校验 JSON
