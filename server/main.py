@@ -147,7 +147,7 @@ def download_result(instance_id: str, run_id: str):
     if result is None:
         raise HTTPException(404, "result not found")
 
-    filename = f"{state.run_name}-result.json"
+    filename = f"{state.run_name}-output.json"
     encoded = quote(filename)
     content = json.dumps(result, indent=2, ensure_ascii=False)
 

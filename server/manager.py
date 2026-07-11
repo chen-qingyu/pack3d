@@ -49,7 +49,7 @@ class RunState:
     def get_result(self) -> dict | None:
         if self.status not in ("completed", "invalid"):
             return None
-        result_file = self.run_dir / "output" / "result.json"
+        result_file = self.run_dir / "output.json"
         if result_file.exists():
             return json.loads(result_file.read_text(encoding="utf-8"))
         return None
@@ -75,7 +75,7 @@ class InstanceState:
         return d
 
 
-def _run_worker(input_json: str, output_dir: str, random_seed: int, conn):
+def _run_worker(input_json: str, run_dir: str, random_seed: int, conn):
     """子进程入口：加载 pack3d 并运行求解器。"""
     import random
     random.seed(random_seed)
@@ -84,9 +84,7 @@ def _run_worker(input_json: str, output_dir: str, random_seed: int, conn):
     input_data = json.loads(input_json)
     result = pack3d.run(input_data)
 
-    out_path = Path(output_dir)
-    out_path.mkdir(parents=True, exist_ok=True)
-    (out_path / "result.json").write_text(
+    (Path(run_dir) / "output.json").write_text(
         json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
     # core 的 "complete" / "partial" / "timeout" / "blocked" 都是正常完成
@@ -183,8 +181,7 @@ class InstanceManager:
         if run_name is None:
             run_name = instance.instance_name
         run_dir = INSTANCES_ROOT / instance.instance_id / "runs" / run_id
-        out_dir = run_dir / "output"
-        out_dir.mkdir(parents=True)
+        run_dir.mkdir(parents=True)
         created_at = datetime.now(timezone.utc).isoformat()
 
         (run_dir / "input.json").write_text(input_json, encoding="utf-8")
@@ -194,7 +191,7 @@ class InstanceManager:
         parent_conn, child_conn = mp.Pipe()
         p = mp.Process(
             target=_run_worker,
-            args=(input_json, str(out_dir), random_seed, child_conn)
+            args=(input_json, str(run_dir), random_seed, child_conn)
         )
         p.start()
 
@@ -232,7 +229,6 @@ class InstanceManager:
         self._kill_run(state)
         state.status = "cancelled"
         db.update_run(self._conn, state.run_id, status="cancelled")
-        shutil.rmtree(state.run_dir / "output", ignore_errors=True)
         return state
 
     def delete_run(self, state: RunState) -> RunState:
