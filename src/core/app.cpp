@@ -18,7 +18,6 @@
 #include "algorithm/glc/packer.hpp"
 #include "algorithm/rgs/packer.hpp"
 #include "io.hpp"
-#include "objectives.hpp"
 #include "packer_base.hpp"
 
 namespace pack3d
@@ -100,7 +99,6 @@ json run(const json& j) noexcept
     spdlog::info("Input: {} boxes, {} box types, {} container types",
                  problem.boxes.size(), problem.box_types.size(), problem.container_types.size());
     spdlog::info("Algorithm: {}", algorithm_to_string(problem.algorithm));
-    spdlog::info("Objectives: {}", default_objective_keys());
     spdlog::info("Constraints: time limit {} s, support rate {:.2f}, platform limit {}, tender limit {}",
                  problem.time_limit, problem.support_rate, problem.platform_limit, problem.tender_limit);
 
