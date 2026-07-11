@@ -37,7 +37,7 @@ std::string orientation_to_string(Orientation o) noexcept
 
 Orientation orientation_from_string(const std::string& s) noexcept
 {
-    auto val = magic_enum::enum_cast<Orientation>(s);
+    auto val = magic_enum::enum_cast<Orientation>(s, magic_enum::case_insensitive);
     return val.value_or(Orientation::XYZ);
 }
 
@@ -152,7 +152,7 @@ std::string algorithm_to_string(Algorithm a) noexcept
 
 Algorithm algorithm_from_string(const std::string& s) noexcept
 {
-    auto val = magic_enum::enum_cast<Algorithm>(s);
+    auto val = magic_enum::enum_cast<Algorithm>(s, magic_enum::case_insensitive);
     return val.value_or(Algorithm::GEP);
 }
 
