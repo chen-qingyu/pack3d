@@ -90,7 +90,7 @@ pip install python/dist/xxx.whl
 可以直接运行脚本：
 
 ```bash
-python scripts/run.py data/demo.json
+python run.py data/demo.json
 ```
 
 ## 输入输出
@@ -120,13 +120,13 @@ data/
   br-origin/         BR 格式 benchmark 数据
   tests/             测试数据
 python/
-  readme.md          Python SDK 说明
+  README.md          Python SDK 说明
   pack3d/            Python SDK 入口
   setup.py           Python SDK 打包脚本
 scripts/
   generate_data.py   BR 格式转 JSON
   draw.py            可视化输出
-  run.py             Python 运行脚本
+run.py               Python CLI 脚本
 src/
   main.cpp            CLI 入口
   python_module.cpp   Python 绑定入口

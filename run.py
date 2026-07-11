@@ -30,6 +30,13 @@ if __name__ == "__main__":
         type=float,
         help="Time limit in seconds.",
     )
+    parser.add_argument(
+        "-s",
+        "--support-rate",
+        default=0.0,
+        type=float,
+        help="Support rate (0~1).",
+    )
     args = parser.parse_args()
 
     with open(args.file, encoding="utf-8") as f:
@@ -39,6 +46,8 @@ if __name__ == "__main__":
         input_data["algorithm"] = args.algorithm
     if args.time_limit is not None:
         input_data.setdefault("constraints", {})["time_limit"] = args.time_limit
+    if args.support_rate != 0.0:
+        input_data.setdefault("constraints", {})["support_rate"] = args.support_rate
 
     result = pack3d.run(input_data)
 
