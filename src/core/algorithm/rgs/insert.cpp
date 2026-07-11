@@ -317,17 +317,16 @@ void commit_placement(
 
     if (!box.platform.empty())
     {
-        auto& xmin = load.platform_x_min[box.platform];
-        auto& xmax = load.platform_x_max[box.platform];
-        int32_t x2 = ep.x + osize.dx;
-        if (load.platform_x_min.find(box.platform) == load.platform_x_min.end() || ep.x < xmin)
+        auto xmin_it = load.platform_x_min.find(box.platform);
+        if (xmin_it == load.platform_x_min.end() || ep.x < xmin_it->second)
         {
-            xmin = ep.x;
+            load.platform_x_min[box.platform] = ep.x;
         }
-        auto xm_it = load.platform_x_max.find(box.platform);
-        if (xm_it == load.platform_x_max.end() || x2 > xmax)
+        auto xmax_it = load.platform_x_max.find(box.platform);
+        int32_t x2 = ep.x + osize.dx;
+        if (xmax_it == load.platform_x_max.end() || x2 > xmax_it->second)
         {
-            xmax = x2;
+            load.platform_x_max[box.platform] = x2;
         }
     }
 
