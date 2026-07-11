@@ -40,12 +40,14 @@ class RunState:
             "error": self.error,
             "created_at": self.created_at,
         }
-        if self.status == "completed" and self.result is not None:
-            d["summary"] = self.result.get("summary")
+        if self.status in ("completed", "invalid") and self.result is not None:
+            d["summary"] = self.result["summary"]
+        if self.status == "invalid" and self.result is not None:
+            d["violations"] = self.result.get("violations", [])
         return d
 
     def get_result(self) -> dict | None:
-        if self.status != "completed":
+        if self.status not in ("completed", "invalid"):
             return None
         result_file = self.run_dir / "output" / "result.json"
         if result_file.exists():
@@ -75,24 +77,24 @@ class InstanceState:
 
 def _run_worker(input_json: str, output_dir: str, random_seed: int, conn):
     """子进程入口：加载 pack3d 并运行求解器。"""
-    try:
-        import random
-        random.seed(random_seed)
+    import random
+    random.seed(random_seed)
 
-        import pack3d
-        input_data = json.loads(input_json)
-        result = pack3d.run(input_data)
+    import pack3d
+    input_data = json.loads(input_json)
+    result = pack3d.run(input_data)
 
-        out_path = Path(output_dir)
-        out_path.mkdir(parents=True, exist_ok=True)
-        (out_path / "result.json").write_text(
-            json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    out_path = Path(output_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+    (out_path / "result.json").write_text(
+        json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
-        conn.send({"status": "completed", "result": result})
-    except Exception as e:
-        conn.send({"status": "failed", "error": str(e)})
-    finally:
-        conn.close()
+    # core 的 "complete" / "partial" / "timeout" / "blocked" 都是正常完成
+    # 只有 "invalid" 是输入问题
+    core_status = result["status"]
+    run_status = "invalid" if core_status == "invalid" else "completed"
+    conn.send({"status": run_status, "result": result})
+    conn.close()
 
 
 class InstanceManager:
@@ -259,10 +261,6 @@ class InstanceManager:
         if state.pipe and state.pipe.poll():
             msg = state.pipe.recv()
             state.status = msg["status"]
-            if msg["status"] == "completed":
-                state.result = msg.get("result")
-            elif msg["status"] == "failed":
-                state.error = msg.get("error")
-            db.update_run(self._conn, state.run_id,
-                          status=state.status, error=state.error)
+            state.result = msg["result"]
+            db.update_run(self._conn, state.run_id, status=state.status)
             self._kill_run(state)
