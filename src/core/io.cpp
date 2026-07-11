@@ -12,7 +12,6 @@
 #include <spdlog/spdlog.h>
 
 #include "algorithm/config.hpp"
-#include "solver.hpp"
 
 namespace pack3d
 {
