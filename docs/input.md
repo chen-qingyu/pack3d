@@ -79,7 +79,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 "algorithm": "glc"
 ```
 
-枚举值：`"glc"`（默认）、`"rgs"`、`"bsg"`。
+枚举值：`"gep"`（默认）、`"glc"`、`"rgs"`、`"bsg"`。
 
 算法相关常量配置集中在 `src/core/algorithm/config.hpp`（编译期确定）。
 
