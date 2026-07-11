@@ -66,6 +66,7 @@ JSON，顶层四个字段：
           "box_id": "a1",
           "box_type_id": "big_box",
           "position": { "x": 0, "y": 0, "z": 0 },
+          "size": { "dx": 50, "dy": 50, "dz": 50 },
           "orientation": "xyz",
           "platform": "P1",
           "group": "A"
@@ -85,6 +86,18 @@ JSON，顶层四个字段：
 ```
 
 容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置平台/分组时 `platform`/`group` 为 null）。
+
+placement 字段说明：
+
+| 字段          | 说明                              |
+| ------------- | --------------------------------- |
+| `box_id`      | 箱子实例 ID                       |
+| `box_type_id` | 箱子类型 ID                       |
+| `position`    | 放置位置（min corner）`{x, y, z}` |
+| `size`        | 朝向后的实际尺寸 `{dx, dy, dz}`   |
+| `orientation` | 朝向（`xyz`/`xzy`/...）           |
+| `platform`    | 平台 ID，未设置时为 null          |
+| `group`       | 分组 ID，未设置时为 null          |
 
 ## `violations` 校验违规（仅 `status: "invalid"` 时出现）
 

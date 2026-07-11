@@ -196,7 +196,7 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
 
 下载结果 JSON 文件（`application/json`，`Content-Disposition: attachment`）。
 
-文件名格式：`{run_name}-result.json`。
+文件名格式：`{run_name}-output.json`。
 
 ### `GET /api/instances/{instance_id}/runs/{run_id}/input`
 

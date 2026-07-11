@@ -139,16 +139,17 @@ src/
   python_module.cpp   Python 绑定入口
   core/
     app.hpp/.cpp        统一入口
-    packer_base.hpp     PackerBase 多态基类
-    solver.hpp/.cpp     算法路由
+    packer_base.hpp/.cpp PackerBase 多态基类
     types.hpp           共用类型
-    constraints.hpp     约束函数
-    objectives.hpp      目标向量
-    postprocess.hpp     共享后处理
-    tool.hpp            常用工具
+    constraints.hpp/.cpp 约束函数
+    objectives.hpp/.cpp  目标向量
+    postprocess.hpp/.cpp 共享后处理
+    io.hpp/.cpp          输入输出
+    tool.hpp/.cpp        常用工具
     algorithm/
-      config.hpp        编译期常量
-      gep/              Greedy Extreme Point
+      config.hpp          编译期常量
+      select_container.hpp/.cpp  统一选车
+      gep/                Greedy Extreme Point
       glc/              Greedy Lookahead Construction
       rgs/              Randomized Greedy Search
       bsg/              Beam Search Greedy
