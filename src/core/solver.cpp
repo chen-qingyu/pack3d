@@ -1,7 +1,6 @@
 #include "solver.hpp"
 
 #include <memory>
-#include <set>
 
 #include <spdlog/fmt/ranges.h> // log vector
 #include <spdlog/fmt/std.h>    // log optional
@@ -14,7 +13,6 @@
 #include "io.hpp"
 #include "objectives.hpp"
 #include "packer_base.hpp"
-#include "tool.hpp"
 
 namespace pack3d
 {
@@ -26,7 +24,6 @@ std::unique_ptr<PackerBase> make_packer(
     Algorithm algo,
     const Problem& problem,
     const std::map<std::string, BoxType>& box_type_map,
-    const std::map<std::string, ContainerType>& container_type_map,
     const std::map<std::string, Box>& box_map,
     bool has_weight_info)
 {
@@ -37,8 +34,7 @@ std::unique_ptr<PackerBase> make_packer(
         case Algorithm::GLC:
             return std::make_unique<GlcPacker>(problem, box_type_map, box_map, has_weight_info);
         case Algorithm::RGS:
-            return std::make_unique<RgsPacker>(problem, box_type_map, container_type_map,
-                                               box_map, has_weight_info);
+            return std::make_unique<RgsPacker>(problem, box_type_map, box_map, has_weight_info);
         case Algorithm::BSG:
             return std::make_unique<BsgPacker>(problem, box_type_map, box_map, has_weight_info);
         default:
@@ -54,10 +50,6 @@ SolverEngine::SolverEngine(const Problem& problem)
     for (const auto& bt : problem.box_types)
     {
         box_type_map_[bt.id] = bt;
-    }
-    for (const auto& ct : problem.container_types)
-    {
-        container_type_map_[ct.id] = ct;
     }
     for (const auto& bx : problem.boxes)
     {
@@ -83,12 +75,8 @@ Solution SolverEngine::solve()
     // 运行算法
     spdlog::info("===Algorithm Start===");
     auto packer = make_packer(problem_.algorithm, problem_, box_type_map_,
-                              container_type_map_, box_map_, has_weight_info_);
-    Solution solution;
-    if (packer)
-    {
-        solution = packer->pack();
-    }
+                              box_map_, has_weight_info_);
+    Solution solution = packer->pack();
     spdlog::info("===Algorithm End===");
 
     // 输出状态
