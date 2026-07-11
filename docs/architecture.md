@@ -274,11 +274,10 @@ ContainerLoad（共享）
 
 ## 8. 共享后处理
 
-`postprocess.hpp` 提供三个后处理阶段，所有算法共享，通过 `pack_single()` 回调重装：
+`postprocess.hpp` 提供两个后处理阶段，所有算法共享，通过 `pack_single()` 回调重装：
 
-1. **`repack_all_smaller`**：遍历每个容器，尝试用更小容器类型重装
-2. **`downsize_last`**：尾柜换最小能装下的容器类型
-3. **`merge_platforms`**：合并分散在多个容器中的同平台箱子
+1. **`repack_all_smaller`**：遍历每个容器，按体积升序尝试用更小容器类型重装（等价于 downsize）
+2. **`merge_platforms`**：合并分散在多个容器中的同平台箱子
 
 后处理在 `PackerBase::pack()` 末尾统一调用。
 

@@ -51,13 +51,23 @@ void postprocess(std::vector<ContainerLoad>& all_loads,
             }
 
             int64_t cur_vol = cl.type->inner_size.volume();
-            for (const auto& ct : container_types)
+
+            // 按体积升序排列（优先尝试最小容器，等价于 downsize）
+            std::vector<size_t> ct_indices;
+            ct_indices.reserve(container_types.size());
+            for (size_t ci = 0; ci < container_types.size(); ++ci)
             {
+                ct_indices.push_back(ci);
+            }
+            std::sort(ct_indices.begin(), ct_indices.end(),
+                      [&](size_t a, size_t b)
+                      { return container_types[a].inner_size.volume() <
+                               container_types[b].inner_size.volume(); });
+
+            for (size_t ci : ct_indices)
+            {
+                const auto& ct = container_types[ci];
                 if (ct.inner_size.volume() >= cur_vol)
-                {
-                    continue;
-                }
-                if (ct.id == cl.type->id)
                 {
                     continue;
                 }
@@ -128,90 +138,7 @@ void postprocess(std::vector<ContainerLoad>& all_loads,
         }
     }
 
-    // Phase 2: downsize_last — 尾柜换最小能装下的容器
-    if (all_loads.size() >= 1 && TimeChecker::check())
-    {
-        const auto& last = all_loads.back();
-        if (!last.placements.empty())
-        {
-            std::vector<Box> last_boxes;
-            for (const auto& pl : last.placements)
-            {
-                auto it = box_map.find(pl.box_id);
-                if (it != box_map.end())
-                {
-                    last_boxes.push_back(it->second);
-                }
-            }
-
-            const ContainerType* smaller = nullptr;
-            int64_t last_vol = last.type->inner_size.volume();
-            for (const auto& ct : container_types)
-            {
-                if (ct.inner_size.volume() >= last_vol)
-                {
-                    continue;
-                }
-
-                bool all_fit = true;
-                for (const auto& bx : last_boxes)
-                {
-                    auto bt_it = box_type_map.find(bx.box_type_id);
-                    if (bt_it == box_type_map.end())
-                    {
-                        all_fit = false;
-                        break;
-                    }
-                    bool any_orient = false;
-                    for (auto o : bt_it->second.allowed_orientations)
-                    {
-                        auto os = bt_it->second.size.orient(o);
-                        if (os.dx <= ct.inner_size.x && os.dy <= ct.inner_size.y && os.dz <= ct.inner_size.z)
-                        {
-                            any_orient = true;
-                            break;
-                        }
-                    }
-                    if (!any_orient)
-                    {
-                        all_fit = false;
-                        break;
-                    }
-                }
-                if (all_fit)
-                {
-                    smaller = &ct;
-                }
-            }
-
-            if (smaller != nullptr)
-            {
-                ContainerLoad repack = pack_single(last_boxes, *smaller);
-                if (repack.placements.size() == last_boxes.size())
-                {
-                    repack.instance_id = all_loads.back().instance_id;
-                    std::vector<ContainerLoad> candidate;
-                    candidate.reserve(all_loads.size());
-                    for (size_t j = 0; j < all_loads.size() - 1; ++j)
-                    {
-                        candidate.push_back(all_loads[j]);
-                    }
-                    candidate.push_back(std::move(repack));
-
-                    auto cand_obj = compute_objective(candidate);
-                    if (compare_objectives(cand_obj, best_obj) < 0)
-                    {
-                        all_loads = std::move(candidate);
-                        best_obj = cand_obj;
-                        spdlog::debug("Downsized last container from {} to {}",
-                                      last.type->id, smaller->id);
-                    }
-                }
-            }
-        }
-    }
-
-    // Phase 3: merge_and_reassign_platforms — 合并分散平台
+    // Phase 2: merge_platforms — 合并分散平台
     if (TimeChecker::check())
     {
         // 收集平台分布
