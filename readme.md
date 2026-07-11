@@ -7,7 +7,7 @@ pack3d 寓意将三维物体"打包"进容器空间，同时暗示将多种算�
 ## 架构概览
 
 ```
-JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> JSON Output
+JSON Input -> Parser -> Solver (GLC / RGS / BSG) -> JSON Output
 ```
 
 ## 支持范围
@@ -22,8 +22,7 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> JSON Output
 
 支持的算法：
 
-- `GEP`（默认）：贪心极点法 — 逐个箱子遍历极点找最优位置
-- `GLC`：贪心前瞻构造 — 块装载 + 前瞻评估
+- `GLC`（默认）：贪心前瞻构造 — 块装载 + 前瞻评估
 - `RGS`：随机贪心搜索 — 多策略排序 + Shaw 随机化 + 多起点采样
 - `BSG`：束搜索 — 宽度限制的启发式树搜索
 
@@ -54,7 +53,7 @@ xmake build
 `xmake run cli <file> [-a <algorithm>] [-t <seconds>] [-s <rate>] [--platform-limit <n>] [--tender-limit <n>] [-o <dir>]`
 
 - `file`：JSON 输入文件路径，必填
-- `-a`：算法，可选 `gep` / `glc` / `rgs` / `bsg`，默认 `gep`
+- `-a`：算法，可选 `glc` / `rgs` / `bsg`，默认 `glc`
 - `-t`：时间限制（秒），默认 `120`
 - `-s`：支撑率（0~1），默认 `0`
 - `--platform-limit`：平台数量限制，默认不限制
@@ -140,10 +139,10 @@ src/
     tool.hpp            常用工具
     algorithm/
       config.hpp        编译期常量
-      gep/              Greedy Extreme Point
       glc/              Greedy Lookahead Construction
       rgs/              Randomized Greedy Search
       bsg/              Beam Search Greedy
+    postprocess.hpp/.cpp  共享后处理
 tests/
   test_solver.cpp   求解器测试
   test_core.cpp     核心模块测试

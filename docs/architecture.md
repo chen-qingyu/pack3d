@@ -4,9 +4,11 @@
 
 `solve()` 根据 `problem_.algorithm.algorithm` 选择算法：
 
-- **`GEP`**（默认）— 贪心极点算法：逐个箱子遍历极点找最优位置，逐容器打开。见 §2。
-- **`GLC`** — 贪心前瞻构造：块装载 + 前瞻评估，全局调度器迭代分配容器。见 §4。
-- **`RGS`** — 随机贪心搜索：EP-first-fit + 多策略排序 + Shaw 随机化，多起点采样择优。见 §6。
+- **`GLC`**（默认）— 贪心前瞻构造：块装载 + 前瞻评估。见 §2。
+- **`RGS`** — 随机贪心搜索：EP-first-fit + 多策略排序 + Shaw 随机化，多起点采样择优。见 §4。
+- **`BSG`** — 束搜索：宽度限制的启发式树搜索。见 §5。
+
+三个算法均通过 `PackerBase` 多态基类接入统一的选车与后处理框架：`pack()` 模板方法负责选车 → 调用虚函数 `pack_single()` 填充单容器 → 收箱 → 后处理。
 
 ### 坐标系
 
@@ -14,116 +16,9 @@
 
 ---
 
-## 2. GEP 贪心极点法
+## 2. 目标向量优化
 
-### 2.1 整体流程
-
-```
-Packer::pack()
-  │
-  ├─ make_initial_state()         ── 初始状态（排序待装箱子）
-  │
-  ├─ construct_solution(state)    ── 主循环
-  │     │
-  │     ├─ while 有剩余箱子
-  │     │   ├─ check_time()       ── 超时检测
-  │     │   ├─ Placer::place_next_box()   ── 选最优位置放一个箱子
-  │     │   │   ├─ 遍历已有容器的极点，找最佳放置
-  │     │   │   ├─ 惰性 fills_container 检测
-  │     │   │   └─ 评估开新容器选项
-  │     │   │
-  │     │   └─ 若放不下：
-  │     │       ├─ check_tender_limit()   ── 组分散阻断检测
-  │     │       └─ open_new_container()   ── 开新容器
-  │     │
-  │     └─ update_best()          ── 全装完时记录最佳解
-  │
-  ├─ 收尾处理
-  │   ├─ infeasible -> 返回失败
-  │   ├─ all_packed -> 返回成功
-  │   ├─ 部分装箱 -> 返回 best_feasible
-  │   └─ 完全无解 -> 返回 no_solution
-  │
-  └─ build_solution()            ── 组装输出
-```
-
-### 2.2 数据结构
-
-```
-SearchState
-  ├─ remaining_boxes       待装箱列表（搜索过程中逐个移除）
-  ├─ open_containers       已打开的容器列表 (ContainerLoad)
-  │       ├─ placements    箱子的放置列表
-  │       ├─ used_volume   已用体积
-  │       ├─ platforms     本容器涉及的平台集合
-  │       ├─ groups        本容器涉及的分组集合
-  │       └─ platform_x_max / min  路线 X 跟踪
-  ├─ extreme_points        各容器的候选极点（instance_id -> 极点列表）
-  ├─ best_feasible         当前最优可行解（快照）
-  ├─ group_spread          分组->容器实例映射（tender_limit 用）
-  ├─ current_objective     当前目标缓存
-  └─ infeasible            是否被启发式判定为不可行
-```
-
-### 2.3 箱子排序策略
-
-`make_initial_state()` 对待装箱子进行一次排序，之后不再重试。
-排序策略固定为**按平台分组，同平台内按体积降序**：
-
-1. 空平台箱子视为默认平台，与有平台箱子统一按平台名字典序分组
-2. 同平台内按体积从大到小排序（大箱优先）
-3. 使用 `stable_sort`，同体积箱子保持原始相对顺序
-
-这种排序鼓励同平台箱子在搜索中被连续放置到同一容器中，有利于降低 `platform_split` 目标。
-
-### 2.4 开新容器策略
-
-`open_new_container()` 在无法放入任何已有容器时被调用。
-
-#### 选择逻辑
-
-```
-1. 收集可用容器类型
-2. 计算剩余箱子总体积
-3. 按体积升序排列
-4. 遍历：
-   - 容积 >= 剩余体积 且 所有箱子维度都能放入 -> 选这个（最小可用）
-   - 容积 >= 剩余体积 但维度放不下 -> 记住作为 fallback
-5. 没找到完美匹配 -> 用 fallback（容积足够的最小容器）
-6. 创建新容器实例，从原点 (0,0,0) 开始
-```
-
-#### 要点
-
-- 容积优先：优先用刚好装下剩余体积的最小容器，避免浪费空间
-- 维度检查：确保每个箱子在至少一个朝向下能放入（否则开了也白开）
-- 回退机制：若不存在容积够装全部剩余箱子的容器类型，退回全局最大的容器；否则退回容积足够的最小容器
-- 新容器的第一个极点是原点 `(0,0,0)`，后续放置会生成更多极点
-
-### 2.5 放置执行
-
-选定最优放置后，`apply_placement` 执行以下操作：
-
-1. 记录 Placement（box_id, position, orientation）
-2. 更新容器状态
-3. 生成新极点，过滤极点
-4. 更新 current_objective
-
-#### 极点生成
-
-每次放置后产生 3 个候选极点：
-
-- X 方向：`(pos.x + dx, pos.y, pos.z)`
-- Y 方向：`(pos.x, pos.y + dy, pos.z)`
-- Z 方向：`(pos.x, pos.y, pos.z + dz)`
-
-极点经过过滤（移除超出边界、在已有箱子内部、无意义的重复点），排序后优先尝试低处（Z 小）。
-
----
-
-## 3. 目标向量优化
-
-### 3.1 字典序比较
+### 2.1 字典序比较
 
 目标不是加权和，而是字典序。优先级高的维度先比，打平才看下一维。四个维度固定为：
 
@@ -132,60 +27,7 @@ SearchState
 3. `max_volume_rate` — 体积利用率最高
 4. `min_group_split` — 组拆分次数最少
 
-### 3.2 GEP 投影机制
-
-每次放置箱子时，GEP 对所有候选位置投影目标向量，选投影最优的那个。
-
-#### 投影流程
-
-对每个候选（已有容器的极点 / 新容器原点）：
-
-1. 从 current_objective 复制一份 proj
-2. 根据此放置的影响，更新 proj：
-   - 放入已有容器：无
-   - 放入已有容器 + 引入新平台：platform +1
-   - 放入已有容器 + 引入新组：group_split +1
-   - 装填此容器后再也放不进其他箱子：container +1, platform +1, group_split +1
-   - 开新容器：container +1, platform +1, group_split +1
-   - 新容器装不下后续箱子 -> 需要额外容器：container +N, platform +N, group_split +N
-
-3. avg_volume_rate 的估算：
-   - 放入已有容器：移除旧 rate，加入新 rate，重新平均
-   - 开新容器：count+1，追加新容器的 rate
-
-4. 用 compare_objectives(proj, best_proj) 选优
-
-#### fills_container 惰性检测
-
-当某个放置大概率会把容器"填死"（后续箱子放不进去），投影中提前计入额外容器的代价，让求解器在"撑满当前容器"和"开新容器"之间做出权衡。
-
-检测方式：
-
-1. 容积已满（cap_left <= 0）-> fills
-2. 否则生成放置后的极点
-3. 若无有效极点 -> fills
-4. 否则检查每个剩余箱子：是否均无法放入任何极点 -> fills
-
-### 3.4 GLC 的目标处理
-
-GLC 在**调度层**和**装载层**均有多目标感知：
-
-| 层级               | 机制                                             | 覆盖维度                  |
-| ------------------ | ------------------------------------------------ | ------------------------- |
-| **全局调度**       | 字典序目标投影（含未来平台/分组估算）            | 全部 4 维                 |
-| **容器内 Beam**    | `greedy_complete` 用 `compare_local_scores` 评分 | platform / volume / group |
-| **容器内最终选择** | 放置前多目标提前停止检查                         | platform / group          |
-
-调度层投影对每种容器类型计算 `ObjectiveVector`，包含 `future_platforms` 和 `future_groups` 估算（类似已有的 `future` 容器数估算），通过 `compare_objectives` 字典序选最优容器类型。
-
-装载层 `compare_local_scores` 按目标键比较 `platform_split` / `used_volume` / `group_count`，不含 `min_container_count`（单容器内不适用）。最终放置前做多目标提前停止：若放置候选块后完成态得分不优于当前态，停止装箱（避免引入多余平台/分组）。
-
-目标：`[min_container_count, max_volume_rate]`
-
-- 候选 A：放入已有大容器 -> container_count=2, volume_rate=0.8
-- 候选 B：开新一个小容器 -> container_count=3, volume_rate=0.9
-
-字典序先比 container_count：2 < 3 -> 选 A，即使 B 的 volume_rate 更高。
+平台和分组优化不在搜索过程中在线进行，而是通过统一的共享后处理完成（见 §6）。
 
 ---
 
@@ -273,17 +115,17 @@ GLC 在**调度层**和**装载层**均有多目标感知：
 
 ---
 
-## 5. 三算法对比
+## 6. 三算法对比
 
-| 维度     | GEP                               | GLC                                                               | RGS                                     |
-| -------- | --------------------------------- | ----------------------------------------------------------------- | --------------------------------------- |
-| 核心策略 | 逐箱贪心 + 极点搜索               | 块装载 + beam 搜索 + 前瞻评估                                     | EP-first-fit + 多策略排序 + 随机重启    |
-| 搜索粒度 | 单箱级                            | 块级（多箱一次放置）                                              | 单箱级                                  |
-| 容器分配 | 随装箱动态开新容器                | 全局调度器统一分配                                                | 全局调度（最稀缺优先）+ 后处理重装/合并 |
-| 目标优化 | 每步字典序投影，覆盖全部 4 个维度 | 调度层字典序投影 + 装载层多目标打分 + 提前停止，覆盖全部 4 个维度 | ULD 评分（体积率 − 难装件惩罚），单目标 |
-| 时限检查 | 每步 check_time                   | 调度层 + 装载层双重 check_time                                    | 每迭代 check_time                       |
-| 复杂度   | O(n·m·p)，n=箱子，m=容器，p=极点  | 较高（beam 展开 + 前瞻评估）                                      | O(M·n·e)，M=迭代数，e=EP 数             |
-| 适用场景 | 通用、轻量、约束简单的快速解      | 填充率要求高、可接受更长计算时间                                  | 多箱型场景，需要探索多样化布局          |
+| 维度     | GLC                              | RGS                                     | BSG                       |
+| -------- | -------------------------------- | --------------------------------------- | ------------------------- |
+| 核心策略 | 块装载 + beam 搜索 + 前瞻评估    | EP-first-fit + 多策略排序 + Shaw 随机化 | 束搜索 + KPA 块合并       |
+| 搜索粒度 | 块级（多箱一次放置）             | 单箱级                                  | 块级（多箱一次放置）      |
+| 容器分配 | 统一大优先调度 + 后处理          | 统一大优先调度 + 后处理                 | 统一大优先调度 + 后处理   |
+| 目标优化 | 装载层多目标打分 + 后处理完成    | ULD 评分（体积率）+ 后处理完成          | 体积率最大化 + 后处理完成 |
+| 时限检查 | 调度层 + 装载层双重 check_time   | 每迭代 check_time                       | 单容器内 check_time       |
+| 复杂度   | 较高（beam 展开 + 前瞻评估）     | O(M·n·e)，M=迭代数，e=EP 数             | 高（beam 展开 + 块表）    |
+| 适用场景 | 填充率要求高、可接受更长计算时间 | 多箱型场景，需要探索多样化布局          | 单容器填充率极高场景      |
 
 ---
 
@@ -431,7 +273,7 @@ ContainerLoad（共享）
 
 ### Placement.osize
 
-`Placement` 新增 `OrientedSize osize` 字段，放置时预计算朝向后的实际尺寸。消除了 `check_overlap`、`check_support` 及 GEP EP 过滤中反复的 `box_type_map.at().size.orient()` 调用。
+`Placement` 新增 `OrientedSize osize` 字段，放置时预计算朝向后的实际尺寸。消除了 `check_overlap`、`check_support` 中反复的 `box_type_map.at().size.orient()` 调用。
 
 - `check_overlap` 签名简化为 `(pos, osize, existing)`，不再需要 `box_type_map` 参数。
 - `check_support` 中支撑矩形和四角检测均使用 `pl.osize`，仅保留 `box_type_map` 用于读取 `stackable`。

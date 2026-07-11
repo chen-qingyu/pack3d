@@ -1,5 +1,6 @@
 #include "solver.hpp"
 
+#include <memory>
 #include <set>
 
 #include <spdlog/fmt/ranges.h> // log vector
@@ -11,10 +12,41 @@
 #include "algorithm/glc/packer.hpp"
 #include "algorithm/rgs/packer.hpp"
 #include "io.hpp"
+#include "objectives.hpp"
+#include "packer_base.hpp"
 #include "tool.hpp"
 
 namespace pack3d
 {
+
+namespace
+{
+
+std::unique_ptr<PackerBase> make_packer(
+    Algorithm algo,
+    const Problem& problem,
+    const std::map<std::string, BoxType>& box_type_map,
+    const std::map<std::string, ContainerType>& container_type_map,
+    const std::map<std::string, Box>& box_map,
+    bool has_weight_info)
+{
+    switch (algo)
+    {
+        case Algorithm::GEP:
+            return std::make_unique<GepPacker>(problem, box_type_map, box_map, has_weight_info);
+        case Algorithm::GLC:
+            return std::make_unique<GlcPacker>(problem, box_type_map, box_map, has_weight_info);
+        case Algorithm::RGS:
+            return std::make_unique<RgsPacker>(problem, box_type_map, container_type_map,
+                                               box_map, has_weight_info);
+        case Algorithm::BSG:
+            return std::make_unique<BsgPacker>(problem, box_type_map, box_map, has_weight_info);
+        default:
+            return nullptr;
+    }
+}
+
+} // namespace
 
 SolverEngine::SolverEngine(const Problem& problem)
     : problem_(problem)
@@ -40,9 +72,6 @@ SolverEngine::SolverEngine(const Problem& problem)
 // 主入口
 Solution SolverEngine::solve()
 {
-    // 初始化计时器
-    TimeChecker::init(problem_.time_limit);
-
     // 问题概要
     spdlog::info("Input: {} boxes, {} box types, {} container types",
                  problem_.boxes.size(), problem_.box_types.size(), problem_.container_types.size());
@@ -53,32 +82,12 @@ Solution SolverEngine::solve()
 
     // 运行算法
     spdlog::info("===Algorithm Start===");
+    auto packer = make_packer(problem_.algorithm, problem_, box_type_map_,
+                              container_type_map_, box_map_, has_weight_info_);
     Solution solution;
-    switch (problem_.algorithm)
+    if (packer)
     {
-        case Algorithm::GLC:
-        {
-            glc::Packer glc(problem_, box_type_map_, box_map_, has_weight_info_);
-            solution = glc.pack();
-            break;
-        }
-        case Algorithm::RGS:
-        {
-            rgs::Packer rgs(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
-            solution = rgs.pack();
-            break;
-        }
-        case Algorithm::GEP:
-        {
-            gep::Packer gep(problem_, box_type_map_, container_type_map_, box_map_, has_weight_info_);
-            solution = gep.pack();
-            break;
-        }
-        case Algorithm::BSG:
-        {
-            solution = bsg::pack(problem_, box_type_map_, box_map_);
-            break;
-        }
+        solution = packer->pack();
     }
     spdlog::info("===Algorithm End===");
 

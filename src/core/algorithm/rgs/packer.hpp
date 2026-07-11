@@ -4,44 +4,30 @@
 #include <string>
 #include <vector>
 
-#include "../../types.hpp"
+#include "../../packer_base.hpp"
 
-namespace pack3d::rgs
+namespace pack3d
 {
 
-// RGS 多 ULD 主入口
-class Packer
+/// RGS 算法：继承 PackerBase，实现 pack_single() 单容器填充
+class RgsPacker : public PackerBase
 {
 public:
-    Packer(
+    RgsPacker(
         const Problem& problem,
         const std::map<std::string, BoxType>& box_type_map,
         const std::map<std::string, ContainerType>& container_type_map,
         const std::map<std::string, Box>& box_map,
         bool has_weight_info);
 
-    [[nodiscard]] Solution pack();
+    ContainerLoad pack_single(
+        const std::vector<Box>& items,
+        const ContainerType& ct) override;
 
 private:
-    const Problem& problem_;
-    const std::map<std::string, BoxType>& box_type_map_;
     const std::map<std::string, ContainerType>& container_type_map_;
-    const std::map<std::string, Box>& box_map_;
-    bool has_weight_info_;
 
-    // 选下一个 ULD 类型（Alg7，最稀缺优先）
-    [[nodiscard]] const ContainerType* select_next_uld(
-        const std::vector<Box>& remaining,
-        const std::map<std::string, int>& container_usage) const noexcept;
-
-    // Alg5: 单 ULD 的 RGS 多起点搜索
-    [[nodiscard]] ContainerLoad rgs_single_uld(
-        const std::vector<Box>& items,
-        const ContainerType& ctype,
-        double penalty_denom) const noexcept;
-
-    // 根据 placements 重建 ContainerLoad 的追踪字段
     static void rebuild_tracking(ContainerLoad& cl) noexcept;
 };
 
-} // namespace pack3d::rgs
+} // namespace pack3d

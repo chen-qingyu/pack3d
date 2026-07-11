@@ -1,14 +1,19 @@
 #pragma once
 
-#include "../../types.hpp"
+#include "../../packer_base.hpp"
 
-namespace pack3d::bsg
+namespace pack3d
 {
 
-/// BSG 多容器调度层
-/// 选择最大的容器类型，将所有箱子打包进去
-Solution pack(const Problem& problem,
-              const std::map<std::string, BoxType>& box_type_map,
-              const std::map<std::string, Box>& box_map);
+/// BSG 算法：继承 PackerBase，实现 pack_single() 单容器填充
+class BsgPacker : public PackerBase
+{
+public:
+    using PackerBase::PackerBase;
 
-} // namespace pack3d::bsg
+    ContainerLoad pack_single(
+        const std::vector<Box>& items,
+        const ContainerType& ct) override;
+};
+
+} // namespace pack3d

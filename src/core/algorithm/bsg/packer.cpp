@@ -1,178 +1,104 @@
 #include "packer.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <set>
 
-#include <spdlog/spdlog.h>
-
-#include "../../constraints.hpp"
 #include "../../tool.hpp"
 #include "../config.hpp"
 #include "block.hpp"
 #include "solver.hpp"
+#include "types.hpp"
 
-namespace pack3d::bsg
+namespace pack3d
 {
 
-Solution pack(const Problem& problem,
-              const std::map<std::string, BoxType>& box_type_map,
-              const std::map<std::string, Box>& box_map)
+ContainerLoad BsgPacker::pack_single(
+    const std::vector<Box>& items,
+    const ContainerType& ct)
 {
-    Solution sol;
-    sol.status = SolveStatus::Complete;
-    sol.box_types = problem.box_types;
-
-    // BoxType 索引表（全局不变）
+    // 构建 BoxType 索引
     std::vector<BoxType> box_types;
     std::map<std::string, int> type_idx_map;
-    for (const auto& bt : problem.box_types)
+    for (const auto& bt : problem_.box_types)
     {
         type_idx_map[bt.id] = static_cast<int>(box_types.size());
         box_types.push_back(bt);
     }
     int n_types = static_cast<int>(box_types.size());
 
-    // 剩余箱子 ID 集合
-    std::set<std::string> remaining_ids;
-    for (const auto& bx : problem.boxes)
+    // 统计 per-type 数量和 ID 列表
+    std::vector<int> cur_counts(n_types, 0);
+    std::vector<std::vector<std::string>> cur_ids_by_type(n_types);
+    for (const auto& bx : items)
     {
-        remaining_ids.insert(bx.id);
+        auto it = type_idx_map.find(bx.box_type_id);
+        if (it == type_idx_map.end())
+        {
+            continue;
+        }
+        int ti = it->second;
+        cur_counts[ti]++;
+        cur_ids_by_type[ti].push_back(bx.id);
     }
 
-    std::map<std::string, int> container_usage;
-    int container_num = 0;
-    double sum_volume_rate = 0.0;
+    // 块生成
+    double max_fr = (n_types < config::BSG_THRESHOLD_BOX_TYPES)
+                        ? config::BSG_MAX_FR_WEAK
+                        : config::BSG_MAX_FR_STRONG;
+    auto blocks = bsg::generate_blocks(ct.inner_size, box_types, cur_counts,
+                                       max_fr, config::BSG_MAX_BL);
 
-    while (!remaining_ids.empty() && TimeChecker::check())
+    bsg::GlobalContext ctx;
+    ctx.container_size = ct.inner_size;
+    ctx.box_types = std::move(box_types);
+    ctx.blocks = std::move(blocks);
+
+    // 求解
+    bsg::PackResult pr = bsg::solve(ctx, cur_counts, cur_ids_by_type, problem_.time_limit);
+
+    ContainerLoad load;
+    load.type_id = ct.id;
+    load.type = &ct;
+    load.placements = std::move(pr.placements);
+    load.used_volume = pr.used_volume;
+
+    // 补充追踪字段（BSG 不解平台/分组，从 box_map 回填）
+    for (auto& pl : load.placements)
     {
-        // 选最大容器（考虑数量限制）
-        const ContainerType* best_ct = nullptr;
-        int64_t best_vol = -1;
-        for (const auto& ct : problem.container_types)
+        auto bx_it = box_map_.find(pl.box_id);
+        if (bx_it == box_map_.end())
         {
-            if (!ct.has_remaining(container_usage))
+            continue;
+        }
+        const auto& bx = bx_it->second;
+        pl.platform = bx.platform;
+        pl.group = bx.group;
+        if (!bx.platform.empty())
+        {
+            load.platforms.insert(bx.platform);
+            int32_t xmax = pl.position.x + pl.osize.dx;
+            auto it = load.platform_x_max.find(bx.platform);
+            if (it == load.platform_x_max.end() || xmax > it->second)
             {
-                continue;
+                load.platform_x_max[bx.platform] = xmax;
             }
-            int64_t v = ct.inner_size.volume();
-            if (v > best_vol)
+            auto it2 = load.platform_x_min.find(bx.platform);
+            if (it2 == load.platform_x_min.end() || pl.position.x < it2->second)
             {
-                best_vol = v;
-                best_ct = &ct;
+                load.platform_x_min[bx.platform] = pl.position.x;
             }
         }
-        if (best_ct == nullptr)
+        if (!bx.group.empty())
         {
-            break;
+            load.groups.insert(bx.group);
         }
-
-        // 统计当前剩余箱子的 per-type 数量和 ID 列表
-        std::vector<int> cur_counts(n_types, 0);
-        std::vector<std::vector<std::string>> cur_ids_by_type(n_types);
-        for (const auto& id : remaining_ids)
+        if (has_weight_info_ && bx.weight.has_value())
         {
-            const auto& bx = box_map.at(id);
-            auto it = type_idx_map.find(bx.box_type_id);
-            if (it == type_idx_map.end())
-            {
-                continue;
-            }
-            int ti = it->second;
-            cur_counts[ti]++;
-            cur_ids_by_type[ti].push_back(id);
+            load.total_weight += bx.weight.value();
         }
-
-        // 块生成
-        double max_fr = (n_types < 30) ? 1.00 : 0.98;
-        auto blocks = generate_blocks(best_ct->inner_size, box_types, cur_counts,
-                                      max_fr, config::BSG_MAX_BL);
-
-        GlobalContext ctx;
-        ctx.container_size = best_ct->inner_size;
-        ctx.box_types = box_types;
-        ctx.blocks = std::move(blocks);
-
-        // 求解
-        PackResult pr = solve(ctx, cur_counts, cur_ids_by_type, problem.time_limit);
-
-        // 记录容器
-        ++container_num;
-        container_usage[best_ct->id]++;
-
-        int64_t container_vol = best_ct->inner_size.volume();
-        double vol_rate = container_vol > 0
-                              ? static_cast<double>(pr.used_volume) / static_cast<double>(container_vol)
-                              : 0.0;
-
-        int left = static_cast<int>(remaining_ids.size()) - static_cast<int>(pr.placements.size());
-        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.4f}",
-                     container_num, best_ct->id, pr.placements.size(), left, vol_rate);
-
-        // 从剩余集合中移除已装箱
-        for (const auto& pl : pr.placements)
-        {
-            remaining_ids.erase(pl.box_id);
-        }
-
-        if (pr.placements.empty())
-        {
-            break;
-        }
-
-        // 容器摘要与放置
-        ContainerSummary cs;
-        cs.type_id = best_ct->id;
-        cs.inner_size = best_ct->inner_size;
-        cs.max_weight = best_ct->max_weight;
-        cs.used_volume = pr.used_volume;
-        cs.volume_rate = vol_rate;
-        cs.packed_count = static_cast<int>(pr.placements.size());
-        sol.container_summaries.push_back(std::move(cs));
-
-        for (auto& pl : pr.placements)
-        {
-            pl.container_id = best_ct->id;
-        }
-        sol.container_placements.push_back(std::move(pr.placements));
-
-        sum_volume_rate += vol_rate;
     }
 
-    // 汇总
-    int total_packed = 0;
-    for (const auto& cs : sol.container_summaries)
-    {
-        total_packed += cs.packed_count;
-    }
-    sol.packed_box_count = total_packed;
-    sol.unpacked_box_count = static_cast<int>(remaining_ids.size());
-    for (const auto& id : remaining_ids)
-    {
-        sol.unpacked_boxes.push_back(id);
-    }
-
-    int container_count = static_cast<int>(sol.container_summaries.size());
-    sol.objective.container_count = container_count;
-    sol.objective.avg_volume_rate = container_count > 0 ? sum_volume_rate / container_count : 0.0;
-    sol.objective.platform_split = 0;
-    sol.objective.group_split_sum = 0;
-
-    if (remaining_ids.empty())
-    {
-        sol.status = SolveStatus::Complete;
-    }
-    else if (!TimeChecker::check())
-    {
-        sol.status = SolveStatus::Timeout;
-    }
-    else
-    {
-        sol.status = SolveStatus::Partial;
-    }
-
-    sol.elapsed_second = TimeChecker::elapsed();
-    return sol;
+    return load;
 }
 
-} // namespace pack3d::bsg
+} // namespace pack3d

@@ -190,6 +190,10 @@ std::string algorithm_to_string(Algorithm a) noexcept
 
 Algorithm algorithm_from_string(const std::string& s) noexcept
 {
+    if (s == "gep")
+    {
+        return Algorithm::GEP;
+    }
     if (s == "glc")
     {
         return Algorithm::GLC;
@@ -202,7 +206,7 @@ Algorithm algorithm_from_string(const std::string& s) noexcept
     {
         return Algorithm::BSG;
     }
-    return Algorithm::GEP;
+    return Algorithm::GLC;
 }
 
 std::string status_to_string(SolveStatus s) noexcept

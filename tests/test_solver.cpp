@@ -26,7 +26,7 @@ TEST_CASE("fixed_default_objectives", "[solver]")
 {
     auto base = load_data("data/demo.json");
 
-    for (auto algo : {"gep", "glc", "rgs"})
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
         base["algorithm"] = algo;
         auto res = run(base);
@@ -43,7 +43,7 @@ TEST_CASE("min_container_count", "[solver]")
 {
     auto base = load_data("data/tests/test_min_container.json");
 
-    for (auto algo : {"gep", "glc", "rgs"})
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
         base["algorithm"] = algo;
         auto res = run(base);
@@ -60,7 +60,7 @@ TEST_CASE("min_platform_split", "[solver]")
 {
     auto base = load_data("data/tests/test_min_platform.json");
 
-    for (auto algo : {"gep", "glc", "rgs"})
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
         base["algorithm"] = algo;
         auto res = run(base);
@@ -80,7 +80,7 @@ TEST_CASE("max_volume_rate", "[solver]")
 {
     auto base = load_data("data/tests/test_volume_first.json");
 
-    for (auto algo : {"gep", "glc", "rgs"})
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
         base["algorithm"] = algo;
         auto res = run(base);
@@ -97,7 +97,7 @@ TEST_CASE("min_group_split", "[solver]")
 {
     auto base = load_data("data/tests/test_group_split.json");
 
-    for (auto algo : {"gep", "glc", "rgs"})
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
         base["algorithm"] = algo;
         auto res = run(base);
