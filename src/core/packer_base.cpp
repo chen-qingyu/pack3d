@@ -121,6 +121,7 @@ Solution PackerBase::build_solution(
         cs.platforms = std::vector<std::string>(cl.platforms.begin(), cl.platforms.end());
         cs.groups = std::vector<std::string>(cl.groups.begin(), cl.groups.end());
         sol.container_summaries.push_back(std::move(cs));
+        sol.container_placements.push_back(cl.placements);
     }
 
     return sol;
