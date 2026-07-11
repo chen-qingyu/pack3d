@@ -178,18 +178,19 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
 
 返回单个 run 状态：
 
-| status      | 说明                             |
-| ----------- | -------------------------------- |
-| `running`   | 求解执行中，`summary` 为 null    |
-| `completed` | 完成，`summary` 包含装箱结果汇总 |
-| `failed`    | 失败，`error` 包含错误信息       |
-| `cancelled` | 已终止                           |
+| status      | 说明                                |
+| ----------- | ----------------------------------- |
+| `running`   | 求解执行中，`summary` 为 null       |
+| `completed` | 正常完成，`summary` 包含装箱结果    |
+| `invalid`   | 输入非法，`violations` 包含错误详情 |
+| `failed`    | 异常中断（如服务重启）              |
+| `cancelled` | 用户终止                            |
 
 ### `GET /api/instances/{instance_id}/runs/{run_id}/result`
 
 返回完整求解结果 JSON，包含 `status`、`summary`、`result`（含容器装载详情）。
 
-仅 `completed` 状态可获取，否则返回 `409`。
+仅 `completed` 或 `invalid` 状态可获取，否则返回 `409`。
 
 ### `GET /api/instances/{instance_id}/runs/{run_id}/result/download`
 

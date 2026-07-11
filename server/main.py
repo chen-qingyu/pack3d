@@ -1,14 +1,12 @@
 """pack3d-api: 三维装箱求解器 HTTP API 服务。"""
 
 import json
-import io
-import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from .manager import InstanceManager
@@ -103,7 +101,7 @@ def rename_instance(instance_id: str, req: NameRequest):
 def delete_instance(instance_id: str):
     state = _get_instance_or_404(instance_id)
     manager.delete_instance(state)
-    return {"instance_id": instance_id, "status": "deleted"}
+    return Response(status_code=204)
 
 
 # runs
@@ -132,7 +130,7 @@ def get_run(instance_id: str, run_id: str):
 @app.get("/api/instances/{instance_id}/runs/{run_id}/result")
 def get_result(instance_id: str, run_id: str):
     state = _get_run_or_404(instance_id, run_id)
-    if state.status != "completed":
+    if state.status not in ("completed", "invalid"):
         raise HTTPException(409, f"run is {state.status}, result not ready")
     result = state.get_result()
     if result is None:
@@ -143,7 +141,7 @@ def get_result(instance_id: str, run_id: str):
 @app.get("/api/instances/{instance_id}/runs/{run_id}/result/download")
 def download_result(instance_id: str, run_id: str):
     state = _get_run_or_404(instance_id, run_id)
-    if state.status != "completed":
+    if state.status not in ("completed", "invalid"):
         raise HTTPException(409, f"run is {state.status}, result not ready")
     result = state.get_result()
     if result is None:
@@ -186,11 +184,12 @@ def cancel_run(instance_id: str, run_id: str):
     if state.status != "running":
         raise HTTPException(409, f"run is {state.status}, cannot cancel")
     state = manager.stop_run(state)
-    return {"run_id": state.run_id, "status": state.status}
+    instance = _get_instance_or_404(instance_id)
+    return state.to_dict(instance.instance_name)
 
 
 @app.delete("/api/instances/{instance_id}/runs/{run_id}")
 def delete_run(instance_id: str, run_id: str):
     state = _get_run_or_404(instance_id, run_id)
-    state = manager.delete_run(state)
-    return {"run_id": state.run_id, "status": "deleted"}
+    manager.delete_run(state)
+    return Response(status_code=204)
