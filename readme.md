@@ -7,7 +7,7 @@ pack3d 寓意将三维物体"打包"进容器空间，同时暗示将多种算�
 ## 架构概览
 
 ```
-JSON Input -> Parser -> Solver (GLC / RGS / BSG) -> JSON Output
+JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON Output
 ```
 
 ## 支持范围
@@ -22,11 +22,12 @@ JSON Input -> Parser -> Solver (GLC / RGS / BSG) -> JSON Output
 
 支持的算法：
 
-- `GLC`（默认）：贪心前瞻构造 — 块装载 + 前瞻评估
+- `GEP`（默认）：极点贪心法 — 体积降序 + EP 优先填充
+- `GLC`：贪心前瞻构造 — 块装载 + beam 搜索
 - `RGS`：随机贪心搜索 — 多策略排序 + Shaw 随机化 + 多起点采样
-- `BSG`：束搜索 — 宽度限制的启发式树搜索
+- `BSG`：束搜索 — 宽度限制的启发式树搜索 + KPA 块合并
 
-目标字典序：`min_container_count` -> `min_platform_split` -> `max_volume_rate` -> `min_group_split`
+目标字典序：`min_container_count -> min_platform_split -> max_volume_rate -> min_group_split`
 
 支持的箱子朝向：XYZ、XZY、YXZ、YZX、ZXY、ZYX（6 种旋转），每种箱子类型可配置允许的朝向子集。
 
@@ -34,9 +35,8 @@ JSON Input -> Parser -> Solver (GLC / RGS / BSG) -> JSON Output
 
 ### 环境要求
 
-1. C++ 编译器，需要支持 C++20
-2. XMake 3.0+
-3. Python 3.9+（仅打包安装 Python SDK 时需要）
+1. C++ 编译器，需要支持 [C++20](https://en.cppreference.com/cpp/20) 标准
+2. [XMake](https://github.com/xmake-io/xmake) 3.0+
 
 ### 构建
 
@@ -50,48 +50,45 @@ xmake build
 
 ### 运行
 
-`xmake run cli <file> [-a <algorithm>] [-t <seconds>] [-s <rate>] [--platform-limit <n>] [--tender-limit <n>] [-o <dir>]`
+提供三种使用方式。
 
-- `file`：JSON 输入文件路径，必填
-- `-a`：算法，可选 `glc` / `rgs` / `bsg`，默认 `glc`
-- `-t`：时间限制（秒），默认 `120`
-- `-s`：支撑率（0~1），默认 `0`
-- `--platform-limit`：平台数量限制，默认不限制
-- `--tender-limit`：标段数量限制，默认不限制
-- `-o`：JSON 输出目录，默认 `output`
+#### CLI
+
+通过命令行直接运行求解器。
 
 ```bash
-xmake run cli data/demo.json
-xmake run cli data/demo.json -o result/ -a glc -t 30 -s 0.6
+xmake run cli data/demo.json -a gep -t 30 -s 0.6
 ```
 
-### Python SDK
+输入文件路径必填；`-a` 默认 `gep`；`-t` 默认 `120`；`-s` 默认 `0`。
 
-可以作为 Python 包安装，供用户在 Python 环境中调用。
+#### SDK
 
-打包 Python SDK：
-
-```bash
-python -m build python
-```
-
-打包后会在 `python/dist/` 目录生成 `.whl` 和 `.tar.gz` 文件。
-若在同一台机器上打包和安装，推荐 `.whl`；如果需要跨机器安装，推荐 `.tar.gz`：
+需要 Python 3.9+。作为 Python 包供上层代码调用。
 
 ```bash
 pip install python/dist/xxx.whl
 ```
 
-包名是 `pack3d`，提供 `pack3d.run(input) -> output` 函数：
+```python
+import pack3d
+result = pack3d.run({"container_types": [...], "box_types": [...], "boxes": [...]})
+```
 
-- `input`：一个 dict，内容与 JSON 输入文件格式一致
-- `output`：一个 dict，内容与 JSON 输出文件格式一致
+也提供命令行脚本：`python run.py data/demo.json`
 
-可以直接运行脚本：
+详见 [python/README.md](python/README.md)
+
+#### API
+
+通过 HTTP 服务远程调用求解器。
 
 ```bash
-python run.py data/demo.json
+pip install fastapi uvicorn
+python -m uvicorn server.main:app --host 127.0.0.1 --port 8000
 ```
+
+详见 [docs/api.md](docs/api.md)
 
 ## 输入输出
 
@@ -119,10 +116,20 @@ data/
   input_schema.json  输入 JSON Schema
   br-origin/         BR 格式 benchmark 数据
   tests/             测试数据
+docs/
+  architecture.md    求解器架构
+  constraints.md     约束条件
+  input.md           输入格式
+  output.md          输出格式
+  api.md             HTTP API 文档
 python/
   README.md          Python SDK 说明
   pack3d/            Python SDK 入口
   setup.py           Python SDK 打包脚本
+server/
+  main.py            FastAPI 端点
+  manager.py         实例/运行生命周期
+  db.py              SQLite 持久化
 scripts/
   generate_data.py   BR 格式转 JSON
   draw.py            可视化输出
@@ -132,21 +139,24 @@ src/
   python_module.cpp   Python 绑定入口
   core/
     app.hpp/.cpp        统一入口
+    packer_base.hpp     PackerBase 多态基类
     solver.hpp/.cpp     算法路由
     types.hpp           共用类型
     constraints.hpp     约束函数
     objectives.hpp      目标向量
+    postprocess.hpp     共享后处理
     tool.hpp            常用工具
     algorithm/
       config.hpp        编译期常量
+      gep/              Greedy Extreme Point
       glc/              Greedy Lookahead Construction
       rgs/              Randomized Greedy Search
       bsg/              Beam Search Greedy
-    postprocess.hpp/.cpp  共享后处理
 tests/
   test_solver.cpp   求解器测试
   test_core.cpp     核心模块测试
   test_parser.cpp   解析测试
+  test_bsg.cpp      BSG 测试
 ```
 
 ## 实现说明
