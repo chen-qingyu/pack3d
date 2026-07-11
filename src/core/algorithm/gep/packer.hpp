@@ -4,39 +4,20 @@
 #include <string>
 #include <vector>
 
-#include "../../constraints.hpp"
-#include "../../types.hpp"
-#include "placer.hpp"
-#include "state.hpp"
+#include "../../packer_base.hpp"
 
-namespace pack3d::gep
+namespace pack3d
 {
 
-// GEP 简单贪心极点算法
-class Packer
+/// GEP 算法：极点优先填充（单容器，顺序贪心）
+class GepPacker : public PackerBase
 {
 public:
-    Packer(
-        const Problem& problem,
-        const std::map<std::string, BoxType>& box_type_map,
-        const std::map<std::string, ContainerType>& container_type_map,
-        const std::map<std::string, Box>& box_map,
-        bool has_weight_info);
+    using PackerBase::PackerBase;
 
-    [[nodiscard]] Solution pack();
-
-private:
-    const Problem& problem_;
-    const std::map<std::string, BoxType>& box_type_map_;
-    const std::map<std::string, ContainerType>& container_type_map_;
-    const std::map<std::string, Box>& box_map_;
-    bool has_weight_info_;
-    Placer placer_;
-
-    SearchState make_initial_state() const;
-    bool construct_solution(SearchState& state);
-    void update_best(SearchState& state);
-    Solution build_solution(const SearchState& state, SolveStatus status) const;
+    ContainerLoad pack_single(
+        const std::vector<Box>& items,
+        const ContainerType& ct) override;
 };
 
-} // namespace pack3d::gep
+} // namespace pack3d
