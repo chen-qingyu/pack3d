@@ -4,6 +4,7 @@ import json
 import io
 import zipfile
 from contextlib import asynccontextmanager
+from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import FastAPI, HTTPException
@@ -22,8 +23,29 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="pack3d-api", lifespan=lifespan)
 manager = InstanceManager()
 
+# --- info endpoints (no auth, always available) ---
 
-# request models
+
+@app.get("/api/info")
+def api_info():
+    return {
+        "name": "pack3d-api",
+        "version": "0.1.0",
+        "algorithms": ["gep", "glc", "rgs", "bsg"],
+        "objectives": ["min_container_count", "min_platform_split", "max_volume_rate", "min_group_split"],
+        "orientations": ["xyz", "xzy", "yxz", "yzx", "zxy", "zyx"],
+    }
+
+
+@app.get("/api/schema")
+def api_schema():
+    schema_path = Path("data/input_schema.json")
+    if not schema_path.exists():
+        raise HTTPException(404, "input_schema.json not found")
+    return json.loads(schema_path.read_text(encoding="utf-8"))
+
+
+# --- request models ---
 
 class NameRequest(BaseModel):
     name: str = Field(min_length=1, max_length=128)
