@@ -145,11 +145,11 @@ src/
     objectives.hpp/.cpp  目标向量
     postprocess.hpp/.cpp 共享后处理
     io.hpp/.cpp          输入输出
+    select_container.hpp/.cpp  统一选车
     tool.hpp/.cpp        常用工具
     algorithm/
       config.hpp          编译期常量
-      select_container.hpp/.cpp  统一选车
-      gep/                Greedy Extreme Point
+      gep/              Greedy Extreme Point
       glc/              Greedy Lookahead Construction
       rgs/              Randomized Greedy Search
       bsg/              Beam Search Greedy

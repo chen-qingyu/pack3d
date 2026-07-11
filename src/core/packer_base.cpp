@@ -2,9 +2,9 @@
 
 #include <spdlog/spdlog.h>
 
-#include "algorithm/select_container.hpp"
 #include "objectives.hpp"
 #include "postprocess.hpp"
+#include "select_container.hpp"
 #include "tool.hpp"
 
 namespace pack3d
