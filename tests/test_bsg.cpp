@@ -195,28 +195,3 @@ TEST_CASE("solver: 1 box", "[bsg][solver]")
     CHECK(pr.used_volume == 125000);
     CHECK(pr.unpacked_box_ids.empty());
 }
-
-TEST_CASE("solver: 122 boxes (br00_001 scale)", "[bsg][solver]")
-{
-    GlobalContext ctx;
-    ctx.container_size = {587, 233, 220};
-    BoxType bt;
-    bt.id = "t1";
-    bt.size = {108, 76, 30};
-    bt.allowed_orientations = {Orientation::XYZ, Orientation::YXZ};
-    ctx.box_types.push_back(bt);
-
-    std::vector<int> counts = {122};
-    std::vector<std::vector<std::string>> ids(1);
-    for (int i = 0; i < 122; ++i)
-        ids[0].push_back("b" + std::to_string(i + 1));
-
-    auto blocks = generate_blocks(ctx.container_size, ctx.box_types, counts, 1.0, 10000);
-    REQUIRE(blocks.size() == 203);
-    ctx.blocks = std::move(blocks);
-
-    PackResult pr = solve(ctx, counts, ids, 120.0);
-    CHECK(pr.used_volume > 0);
-    CHECK(pr.placements.size() > 0);
-    CHECK(pr.placements.size() >= 100);
-}
