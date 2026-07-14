@@ -335,6 +335,9 @@ std::vector<GeneralBlock> generate_blocks(
                     const auto& b = blocks[j];
 
                     auto mx = try_merge_x(a, b, container_size, max_fr, available_counts);
+                    auto my = try_merge_y(a, b, container_size, max_fr, available_counts);
+                    auto mz = try_merge_z(a, b, container_size, max_fr, available_counts);
+
                     if (mx.has_value())
                     {
                         add_block(*mx);
@@ -344,7 +347,6 @@ std::vector<GeneralBlock> generate_blocks(
                         }
                     }
 
-                    auto my = try_merge_y(a, b, container_size, max_fr, available_counts);
                     if (my.has_value())
                     {
                         add_block(*my);
@@ -354,7 +356,6 @@ std::vector<GeneralBlock> generate_blocks(
                         }
                     }
 
-                    auto mz = try_merge_z(a, b, container_size, max_fr, available_counts);
                     if (mz.has_value())
                     {
                         add_block(*mz);
