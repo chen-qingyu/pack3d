@@ -2,9 +2,11 @@
 
 #include "core/algorithm/bsg/beam.hpp"
 #include "core/algorithm/bsg/block.hpp"
+#include "core/algorithm/bsg/expand.hpp"
 #include "core/algorithm/bsg/greedy.hpp"
 #include "core/algorithm/bsg/kpa.hpp"
 #include "core/algorithm/bsg/solver.hpp"
+#include "core/algorithm/bsg/space.hpp"
 #include "core/algorithm/bsg/types.hpp"
 #include "core/tool.hpp"
 
@@ -46,8 +48,75 @@ TEST_CASE("KPA: dp and f(b,r)", "[bsg][kpa]")
 
     Cuboid r{{0, 0, 0}, 100, 100, 100};
     int64_t fv = compute_f(s, r, b, ctx);
-    // V(b)=125000, V(r)=1e6, V_loss=875000, f=-750000
+    // V(b)=125000, V_loss=875000, f=-750000.
     CHECK(fv == -750000);
+
+    GeneralBlock sparse = b;
+    sparse.osize = {100, 50, 50};
+    sparse.single_box_volume = 125000;
+    // The score must use packed box volume, not sparse block bounding volume.
+    CHECK(compute_f(s, r, sparse, ctx) == -625000);
+}
+
+TEST_CASE("space selection: all corners and volume tie-break", "[bsg][space]")
+{
+    Size container{10, 10, 10};
+    std::vector<Cuboid> spaces{
+        {{2, 0, 0}, 1, 1, 1},
+        {{0, 2, 0}, 3, 3, 3},
+    };
+
+    SpaceSelection selection = select_free_space(spaces, container);
+    CHECK(selection.cuboid_index == 1);
+    CHECK(selection.anchor == Position{0, 2, 0});
+
+    Cuboid cuboid{{2, 3, 4}, 5, 5, 5};
+    selection = select_free_space({cuboid}, container);
+    CHECK(selection.anchor == Position{2, 8, 9});
+
+    GeneralBlock block;
+    block.osize = {1, 1, 1};
+    CHECK(placement_position(cuboid, block, selection.anchor) == Position{2, 7, 8});
+}
+
+TEST_CASE("expand: enforces support constraint", "[bsg][support]")
+{
+    GlobalContext ctx;
+    ctx.container_size = {100, 100, 100};
+    ctx.support_rate = 1.0;
+
+    BoxType box_type;
+    box_type.id = "base";
+    box_type.size = {100, 100, 50};
+    box_type.allowed_orientations = {Orientation::XYZ};
+    box_type.stackable = false;
+    ctx.box_types = {box_type};
+    ctx.blocks = generate_blocks(ctx.container_size, ctx.box_types, {2}, 1.0, 10000);
+
+    int block_index = -1;
+    for (size_t i = 0; i < ctx.blocks.size(); ++i)
+    {
+        if (ctx.blocks[i].osize.dx == 100 &&
+            ctx.blocks[i].osize.dy == 100 &&
+            ctx.blocks[i].osize.dz == 50)
+        {
+            block_index = static_cast<int>(i);
+            break;
+        }
+    }
+    REQUIRE(block_index >= 0);
+
+    BSGState state;
+    state.R = {{{0, 0, 50}, 100, 100, 50}};
+    state.remaining_counts = {1};
+    state.available_blocks = {block_index};
+    state.placements = {{block_index, {0, 0, 0}}};
+    run_kpa(state, ctx);
+
+    CHECK(expand(state, 1, ctx).empty());
+
+    ctx.box_types[0].stackable = true;
+    CHECK(expand(state, 1, ctx).size() == 1);
 }
 
 TEST_CASE("block generation: simple", "[bsg][block]")

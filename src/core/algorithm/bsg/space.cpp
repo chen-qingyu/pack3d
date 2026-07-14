@@ -1,23 +1,56 @@
 #include "space.hpp"
 
 #include <algorithm>
+#include <limits>
 
 namespace pack3d::bsg
 {
 
-Position anchor_corner(const Cuboid& r, int32_t container_lx) noexcept
+SpaceSelection select_free_space(const std::vector<Cuboid>& spaces,
+                                 const Size& container_size) noexcept
 {
-    (void)container_lx;
-    // 曼哈顿距离到门 (L, 0, 0) 最小: X 取最大, Y/Z 取最小
-    return {r.x_max(), r.pos.y, r.pos.z};
+    SpaceSelection best;
+    best.distance = std::numeric_limits<int32_t>::max();
+
+    for (size_t i = 0; i < spaces.size(); ++i)
+    {
+        const auto& r = spaces[i];
+        for (int x_side = 0; x_side < 2; ++x_side)
+        {
+            for (int y_side = 0; y_side < 2; ++y_side)
+            {
+                for (int z_side = 0; z_side < 2; ++z_side)
+                {
+                    Position anchor{
+                        x_side == 0 ? r.pos.x : r.x_max(),
+                        y_side == 0 ? r.pos.y : r.y_max(),
+                        z_side == 0 ? r.pos.z : r.z_max(),
+                    };
+                    int32_t distance =
+                        (x_side == 0 ? anchor.x : container_size.x - anchor.x) +
+                        (y_side == 0 ? anchor.y : container_size.y - anchor.y) +
+                        (z_side == 0 ? anchor.z : container_size.z - anchor.z);
+                    if (distance < best.distance ||
+                        (distance == best.distance && r.volume() > spaces[best.cuboid_index].volume()))
+                    {
+                        best = {i, anchor, distance};
+                    }
+                }
+            }
+        }
+    }
+
+    return best;
 }
 
 Position placement_position(const Cuboid& r, const GeneralBlock& b,
-                            int32_t container_lx) noexcept
+                            const Position& anchor) noexcept
 {
-    auto anchor = anchor_corner(r, container_lx);
-    // 块的 X-max 对 anchor.x, Y-min 对 anchor.y, Z-min 对 anchor.z
-    return {anchor.x - b.osize.dx, anchor.y, anchor.z};
+    return {
+        anchor.x == r.pos.x ? anchor.x : anchor.x - b.osize.dx,
+        anchor.y == r.pos.y ? anchor.y : anchor.y - b.osize.dy,
+        anchor.z == r.pos.z ? anchor.z : anchor.z - b.osize.dz,
+    };
 }
 
 namespace

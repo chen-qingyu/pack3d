@@ -2,24 +2,17 @@
 
 #include <algorithm>
 #include <cassert>
-#include <limits>
 #include <utility>
 
 #include "kpa.hpp"
 #include "space.hpp"
+#include "support.hpp"
 
 namespace pack3d::bsg
 {
 
 namespace
 {
-
-// Manhattan 距离（anchor corner 到门）
-int manhattan_distance(const Cuboid& r, int32_t container_lx) noexcept
-{
-    auto a = anchor_corner(r, container_lx);
-    return (container_lx - a.x) + a.y + a.z;
-}
 
 // 过滤 available_blocks：移除依赖已耗尽箱型的块
 void filter_available(std::vector<int>& avail,
@@ -71,19 +64,8 @@ std::vector<BSGState> expand(
         return successors;
     }
 
-    // K3: 选 Manhattan 距离最小的 cuboid
-    int32_t best_dist = std::numeric_limits<int32_t>::max();
-    size_t best_r_idx = 0;
-    for (size_t i = 0; i < s.R.size(); ++i)
-    {
-        int d = manhattan_distance(s.R[i], ctx.container_size.x);
-        if (d < best_dist)
-        {
-            best_dist = d;
-            best_r_idx = i;
-        }
-    }
-    const Cuboid& r = s.R[best_r_idx];
+    SpaceSelection selection = select_free_space(s.R, ctx.container_size);
+    const Cuboid& r = s.R[selection.cuboid_index];
 
     // K4: 对每个可用块计算 f(b, r)，取 top-w
     // 确保 KPA 已计算
@@ -153,7 +135,11 @@ std::vector<BSGState> expand(
         BSGState succ = s; // copy
 
         // K5: 计算放置位置
-        Position place_pos = placement_position(r, b, ctx.container_size.x);
+        Position place_pos = placement_position(r, b, selection.anchor);
+        if (!is_supported(s, place_pos, b.osize, ctx))
+        {
+            continue;
+        }
 
         // 更新残差空间
         update_residual_space(succ.R, place_pos, b.osize);

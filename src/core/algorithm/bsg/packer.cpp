@@ -50,6 +50,7 @@ ContainerLoad BsgPacker::pack_single(
 
     bsg::GlobalContext ctx;
     ctx.container_size = ct.inner_size;
+    ctx.support_rate = problem_.support_rate;
     ctx.box_types = std::move(box_types);
     ctx.blocks = std::move(blocks);
 

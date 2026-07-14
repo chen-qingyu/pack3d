@@ -136,7 +136,7 @@ int64_t compute_f(const BSGState& state, const Cuboid& r,
     {
         return std::numeric_limits<int64_t>::lowest();
     }
-    return b.volume() - compute_v_loss(state, r, b, ctx);
+    return b.single_box_volume - compute_v_loss(state, r, b, ctx);
 }
 
 } // namespace pack3d::bsg

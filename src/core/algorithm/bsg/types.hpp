@@ -149,6 +149,9 @@ struct GlobalContext
     // 容器尺寸
     Size container_size;
 
+    // 最小底面支撑率；0 表示不启用支撑约束
+    double support_rate = 0.0;
+
     // 箱子类型（索引即 type_idx）
     std::vector<BoxType> box_types;
 

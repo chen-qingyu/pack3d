@@ -7,17 +7,25 @@
 namespace pack3d::bsg
 {
 
+struct SpaceSelection
+{
+    size_t cuboid_index = 0;
+    Position anchor;
+    int32_t distance = 0;
+};
+
 // ============================================================
 // Cover representation 操作 (K1)
 // ============================================================
 
-/// 计算 cuboid r 的 anchor corner（曼哈顿距离最小的角，K3/K5）
-/// 返回：anchor corner 坐标（块将以此为基准放置）
-Position anchor_corner(const Cuboid& r, int32_t container_lx) noexcept;
+/// 根据八个对应角的 Manhattan 距离选择残差空间和 anchor（K3/K5）。
+/// 距离并列时选择体积更大的残差空间。
+SpaceSelection select_free_space(const std::vector<Cuboid>& spaces,
+                                 const Size& container_size) noexcept;
 
 /// 计算块 b 在 cuboid r 中的放置位置（min corner），以 anchor corner 对齐
 Position placement_position(const Cuboid& r, const GeneralBlock& b,
-                            int32_t container_lx) noexcept;
+                            const Position& anchor) noexcept;
 
 /// 在残差空间 R 中放置一个块，更新 cover representation
 /// block_pos: 块的 min corner 坐标

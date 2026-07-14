@@ -5,6 +5,7 @@
 
 #include "kpa.hpp"
 #include "space.hpp"
+#include "support.hpp"
 
 namespace pack3d::bsg
 {
@@ -70,20 +71,8 @@ GreedyResult greedy_rollout(
             }
         }
 
-        // K3: 选 Manhattan 距离最小的 cuboid
-        int32_t best_dist = std::numeric_limits<int32_t>::max();
-        size_t best_r_idx = 0;
-        for (size_t i = 0; i < cur.R.size(); ++i)
-        {
-            int d = (ctx.container_size.x - cur.R[i].x_max()) +
-                    cur.R[i].pos.y + cur.R[i].pos.z;
-            if (d < best_dist)
-            {
-                best_dist = d;
-                best_r_idx = i;
-            }
-        }
-        const Cuboid& r = cur.R[best_r_idx];
+        SpaceSelection selection = select_free_space(cur.R, ctx.container_size);
+        const Cuboid& r = cur.R[selection.cuboid_index];
 
         // K4: 选 f(b, r) 最大的块
         int best_bi = -1;
@@ -110,6 +99,12 @@ GreedyResult greedy_rollout(
                 continue;
             }
 
+            Position place_pos = placement_position(r, b, selection.anchor);
+            if (!is_supported(cur, place_pos, b.osize, ctx))
+            {
+                continue;
+            }
+
             int64_t fv = compute_f(cur, r, b, ctx);
             if (fv > best_f)
             {
@@ -125,7 +120,7 @@ GreedyResult greedy_rollout(
 
         // 放置
         const auto& b = ctx.blocks[best_bi];
-        Position place_pos = placement_position(r, b, ctx.container_size.x);
+        Position place_pos = placement_position(r, b, selection.anchor);
 
         update_residual_space(cur.R, place_pos, b.osize);
 
