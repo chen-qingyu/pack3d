@@ -180,6 +180,39 @@ TEST_CASE("block generation: simple", "[bsg][block]")
     CHECK(blocks[0].merge_axis == GeneralBlock::MergeAxis::None);
 }
 
+TEST_CASE("block generation: general blocks allow bounded gaps", "[bsg][block]")
+{
+    Size container{30, 20, 10};
+    std::vector<BoxType> box_types;
+
+    BoxType wide;
+    wide.id = "wide";
+    wide.size = {10, 20, 10};
+    wide.allowed_orientations = {Orientation::XYZ};
+    box_types.push_back(wide);
+
+    BoxType narrow;
+    narrow.id = "narrow";
+    narrow.size = {10, 19, 10};
+    narrow.allowed_orientations = {Orientation::XYZ};
+    box_types.push_back(narrow);
+
+    auto blocks = generate_blocks(container, box_types, {1, 1}, 0.95, 10000);
+    bool found_general = false;
+    for (const auto& block : blocks)
+    {
+        if (block.merge_axis == GeneralBlock::MergeAxis::X &&
+            block.osize.dx == 20 && block.osize.dy == 20 && block.osize.dz == 10 &&
+            block.members.size() == 2 && block.single_box_volume == 3900 &&
+            block.volume() == 4000)
+        {
+            found_general = true;
+            break;
+        }
+    }
+    CHECK(found_general);
+}
+
 TEST_CASE("greedy rollout: 1 box", "[bsg][greedy]")
 {
     auto ctx = make_ctx_1box();
