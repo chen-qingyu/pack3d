@@ -57,6 +57,11 @@ int64_t beam_search(
 
         for (auto& s : S)
         {
+            if (!TimeChecker::check())
+            {
+                break;
+            }
+
             // 确保 KPA 已计算
             run_kpa(s, ctx);
 
@@ -98,39 +103,45 @@ int64_t beam_search(
             size_t idx = 0;
             bool keep = true;
         };
-        std::vector<Slot> slots(S_prime.size());
+        std::vector<Slot> slots;
+        slots.reserve(S_prime.size());
         std::unordered_map<uint64_t, size_t> seen; // hash → slot index
 
         for (size_t i = 0; i < S_prime.size(); ++i)
         {
+            if (!TimeChecker::check())
+            {
+                break;
+            }
+
             auto gr = greedy_rollout(S_prime[i], s_best_volume, ctx);
             int64_t score = gr.total_volume;
+            Slot slot{score, i, true};
 
             // 去相似：相同 packed_counts 只保留 used_volume 更小的
             uint64_t h = hash_counts(gr.packed_counts);
             auto it = seen.find(h);
             if (it != seen.end())
             {
-                size_t j = it->second;
-                if (S_prime[i].used_volume < S_prime[j].used_volume)
+                Slot& previous = slots[it->second];
+                if (S_prime[i].used_volume < S_prime[previous.idx].used_volume)
                 {
                     // 当前 state 已装更少 → 保留当前，淘汰旧的
-                    slots[j].keep = false;
-                    it->second = i;
+                    previous.keep = false;
+                    it->second = slots.size();
                 }
                 else
                 {
                     // 旧的更好 → 淘汰当前
-                    slots[i].keep = false;
+                    slot.keep = false;
                 }
             }
             else
             {
-                seen[h] = i;
+                seen[h] = slots.size();
             }
 
-            slots[i].score = score;
-            slots[i].idx = i;
+            slots.push_back(slot);
 
             // 更新全局最优
             if (score > s_best_volume)
@@ -138,6 +149,11 @@ int64_t beam_search(
                 s_best_volume = score;
                 s_best = std::move(gr.final_state);
             }
+        }
+
+        if (slots.empty())
+        {
+            break;
         }
 
         // 过滤：保留 keep=true 的
