@@ -124,16 +124,14 @@ std::optional<GeneralBlock> try_merge_x(
     const Size& container_size, double max_fr,
     const std::vector<int>& available_counts)
 {
-    if (a.osize.dy != b.osize.dy || a.osize.dz != b.osize.dz)
-    {
-        return std::nullopt;
-    }
     int32_t new_dx = a.osize.dx + b.osize.dx;
+    int32_t new_dy = std::max(a.osize.dy, b.osize.dy);
+    int32_t new_dz = std::max(a.osize.dz, b.osize.dz);
     if (new_dx > container_size.x)
     {
         return std::nullopt;
     }
-    int64_t new_vol = static_cast<int64_t>(new_dx) * a.osize.dy * a.osize.dz;
+    int64_t new_vol = static_cast<int64_t>(new_dx) * new_dy * new_dz;
     int64_t box_vol = a.single_box_volume + b.single_box_volume;
     if (static_cast<double>(box_vol) / static_cast<double>(new_vol) < max_fr)
     {
@@ -146,7 +144,7 @@ std::optional<GeneralBlock> try_merge_x(
     }
     GeneralBlock result;
     result.id = next_block_id();
-    result.osize = {new_dx, a.osize.dy, a.osize.dz};
+    result.osize = {new_dx, new_dy, new_dz};
     result.members = std::move(members);
     result.total_box_count = a.total_box_count + b.total_box_count;
     result.single_box_volume = box_vol;
@@ -161,16 +159,14 @@ std::optional<GeneralBlock> try_merge_y(
     const Size& container_size, double max_fr,
     const std::vector<int>& available_counts)
 {
-    if (a.osize.dx != b.osize.dx || a.osize.dz != b.osize.dz)
-    {
-        return std::nullopt;
-    }
+    int32_t new_dx = std::max(a.osize.dx, b.osize.dx);
     int32_t new_dy = a.osize.dy + b.osize.dy;
+    int32_t new_dz = std::max(a.osize.dz, b.osize.dz);
     if (new_dy > container_size.y)
     {
         return std::nullopt;
     }
-    int64_t new_vol = static_cast<int64_t>(a.osize.dx) * new_dy * a.osize.dz;
+    int64_t new_vol = static_cast<int64_t>(new_dx) * new_dy * new_dz;
     int64_t box_vol = a.single_box_volume + b.single_box_volume;
     if (static_cast<double>(box_vol) / static_cast<double>(new_vol) < max_fr)
     {
@@ -183,7 +179,7 @@ std::optional<GeneralBlock> try_merge_y(
     }
     GeneralBlock result;
     result.id = next_block_id();
-    result.osize = {a.osize.dx, new_dy, a.osize.dz};
+    result.osize = {new_dx, new_dy, new_dz};
     result.members = std::move(members);
     result.total_box_count = a.total_box_count + b.total_box_count;
     result.single_box_volume = box_vol;
@@ -198,16 +194,14 @@ std::optional<GeneralBlock> try_merge_z(
     const Size& container_size, double max_fr,
     const std::vector<int>& available_counts)
 {
-    if (a.osize.dx != b.osize.dx || a.osize.dy != b.osize.dy)
-    {
-        return std::nullopt;
-    }
+    int32_t new_dx = std::max(a.osize.dx, b.osize.dx);
+    int32_t new_dy = std::max(a.osize.dy, b.osize.dy);
     int32_t new_dz = a.osize.dz + b.osize.dz;
     if (new_dz > container_size.z)
     {
         return std::nullopt;
     }
-    int64_t new_vol = static_cast<int64_t>(a.osize.dx) * a.osize.dy * new_dz;
+    int64_t new_vol = static_cast<int64_t>(new_dx) * new_dy * new_dz;
     int64_t box_vol = a.single_box_volume + b.single_box_volume;
     if (static_cast<double>(box_vol) / static_cast<double>(new_vol) < max_fr)
     {
@@ -220,7 +214,7 @@ std::optional<GeneralBlock> try_merge_z(
     }
     GeneralBlock result;
     result.id = next_block_id();
-    result.osize = {a.osize.dx, a.osize.dy, new_dz};
+    result.osize = {new_dx, new_dy, new_dz};
     result.members = std::move(members);
     result.total_box_count = a.total_box_count + b.total_box_count;
     result.single_box_volume = box_vol;
