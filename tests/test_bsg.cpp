@@ -58,6 +58,25 @@ TEST_CASE("KPA: dp and f(b,r)", "[bsg][kpa]")
     CHECK(compute_f(s, r, sparse, ctx) == -625000);
 }
 
+TEST_CASE("KPA: considers all allowed dimensions", "[bsg][kpa]")
+{
+    GlobalContext ctx;
+    ctx.container_size = {80, 80, 80};
+
+    BoxType box_type;
+    box_type.id = "rotatable";
+    box_type.size = {100, 50, 20};
+    box_type.allowed_orientations = {Orientation::XYZ, Orientation::YXZ};
+    ctx.box_types = {box_type};
+
+    BSGState state;
+    state.remaining_counts = {1};
+    run_kpa(state, ctx);
+
+    REQUIRE(state.kpa_L.has_value());
+    CHECK((*state.kpa_L)[80] == 50);
+}
+
 TEST_CASE("space selection: all corners and volume tie-break", "[bsg][space]")
 {
     Size container{10, 10, 10};
@@ -77,6 +96,29 @@ TEST_CASE("space selection: all corners and volume tie-break", "[bsg][space]")
     GeneralBlock block;
     block.osize = {1, 1, 1};
     CHECK(placement_position(cuboid, block, selection.anchor) == Position{2, 7, 8});
+}
+
+TEST_CASE("residual space: uses overlapping cover", "[bsg][space]")
+{
+    std::vector<Cuboid> spaces{{{0, 0, 0}, 100, 100, 100}};
+    update_residual_space(spaces, {0, 0, 0}, {50, 50, 50});
+
+    REQUIRE(spaces.size() == 3);
+    CHECK(spaces[0].pos == Position{50, 0, 0});
+    CHECK(spaces[0].lx == 50);
+    CHECK(spaces[0].ly == 100);
+    CHECK(spaces[0].lz == 100);
+    CHECK(spaces[1].pos == Position{0, 50, 0});
+    CHECK(spaces[1].lx == 100);
+    CHECK(spaces[1].ly == 50);
+    CHECK(spaces[1].lz == 100);
+    CHECK(spaces[2].pos == Position{0, 0, 50});
+    CHECK(spaces[2].lx == 100);
+    CHECK(spaces[2].ly == 100);
+    CHECK(spaces[2].lz == 50);
+    CHECK(spaces[0].overlaps(spaces[1]));
+    CHECK(spaces[0].overlaps(spaces[2]));
+    CHECK(spaces[1].overlaps(spaces[2]));
 }
 
 TEST_CASE("expand: enforces support constraint", "[bsg][support]")

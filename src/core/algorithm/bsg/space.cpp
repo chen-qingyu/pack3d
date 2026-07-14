@@ -57,7 +57,7 @@ namespace
 {
 
 // 从 cuboid r 中挖掉区域 [ox_min, ox_max) × [oy_min, oy_max) × [oz_min, oz_max)
-// 最多产生 6 个新 cuboid（非重叠部分）
+// 最多产生 6 个可重叠 cuboid，构成 residual-space cover。
 void subtract_overlap(const Cuboid& r,
                       int32_t ox_min, int32_t ox_max,
                       int32_t oy_min, int32_t oy_max,
@@ -114,8 +114,8 @@ void subtract_overlap(const Cuboid& r,
     if (cy_max < ry_max)
     {
         Cuboid c;
-        c.pos = {cx_min, cy_max, rz_min};
-        c.lx = cx_max - cx_min;
+        c.pos = {rx_min, cy_max, rz_min};
+        c.lx = r.lx;
         c.ly = ry_max - cy_max;
         c.lz = r.lz;
         out.push_back(c);
@@ -125,8 +125,8 @@ void subtract_overlap(const Cuboid& r,
     if (cy_min > ry_min)
     {
         Cuboid c;
-        c.pos = {cx_min, ry_min, rz_min};
-        c.lx = cx_max - cx_min;
+        c.pos = {rx_min, ry_min, rz_min};
+        c.lx = r.lx;
         c.ly = cy_min - ry_min;
         c.lz = r.lz;
         out.push_back(c);
@@ -136,9 +136,9 @@ void subtract_overlap(const Cuboid& r,
     if (cz_max < rz_max)
     {
         Cuboid c;
-        c.pos = {cx_min, cy_min, cz_max};
-        c.lx = cx_max - cx_min;
-        c.ly = cy_max - cy_min;
+        c.pos = {rx_min, ry_min, cz_max};
+        c.lx = r.lx;
+        c.ly = r.ly;
         c.lz = rz_max - cz_max;
         out.push_back(c);
     }
@@ -147,9 +147,9 @@ void subtract_overlap(const Cuboid& r,
     if (cz_min > rz_min)
     {
         Cuboid c;
-        c.pos = {cx_min, cy_min, rz_min};
-        c.lx = cx_max - cx_min;
-        c.ly = cy_max - cy_min;
+        c.pos = {rx_min, ry_min, rz_min};
+        c.lx = r.lx;
+        c.ly = r.ly;
         c.lz = cz_min - rz_min;
         out.push_back(c);
     }

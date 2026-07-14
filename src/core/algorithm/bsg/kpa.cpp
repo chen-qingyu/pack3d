@@ -10,9 +10,8 @@ namespace pack3d::bsg
 namespace
 {
 
-// 对单个轴跑 0-1 背包 DP，返回前缀 max 后的 dp 数组
-// 每个箱子取其所有合法朝向中对该轴的最优维度作为 item weight
-// （避免同箱多朝向重复建 item，减轻 KPA 高估）
+// 对单个轴跑多选背包 DP，返回前缀 max 后的 dp 数组。
+// 每件箱子至多选择一个允许朝向，避免同一箱子在多个朝向中被重复使用。
 std::vector<int> knapsack_axis(
     int cap,
     const std::vector<int>& remaining_counts,
@@ -31,34 +30,36 @@ std::vector<int> knapsack_axis(
 
         const auto& bt = box_types[ti];
 
-        // 取该箱型所有合法朝向中对该轴的最优维度
-        int best_len = 0;
+        std::vector<int> lengths;
         for (auto orient : bt.allowed_orientations)
         {
             int len = dim_fn(bt.size.orient(orient));
-            if (len > best_len)
+            if (len > 0 && len <= cap)
             {
-                best_len = len;
+                lengths.push_back(len);
             }
         }
-        if (best_len <= 0 || best_len > cap)
+        std::sort(lengths.begin(), lengths.end());
+        lengths.erase(std::unique(lengths.begin(), lengths.end()), lengths.end());
+        if (lengths.empty())
         {
             continue;
         }
 
-        // 二进制拆分 0-1 背包
-        int k = 1;
-        int remaining = count;
-        while (remaining > 0)
+        for (int copy = 0; copy < count; ++copy)
         {
-            int take = std::min(k, remaining);
-            int w = take * best_len;
-            for (int c = cap; c >= w; --c)
+            std::vector<int> next = dp;
+            for (int c = 0; c <= cap; ++c)
             {
-                dp[c] = std::max(dp[c], dp[c - w] + w);
+                for (int len : lengths)
+                {
+                    if (c + len <= cap)
+                    {
+                        next[c + len] = std::max(next[c + len], dp[c] + len);
+                    }
+                }
             }
-            remaining -= take;
-            k <<= 1;
+            dp = std::move(next);
         }
     }
 
