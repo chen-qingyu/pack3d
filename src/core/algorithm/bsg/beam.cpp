@@ -60,12 +60,19 @@ int64_t beam_search(
             // 确保 KPA 已计算
             run_kpa(s, ctx);
 
-            // 首层用 w² 但须防 int 溢出
+            // 首层用 min(w², 可用块数)，避免无效扩张和 int 溢出。
             int ew;
             if (is_first_layer)
             {
-                int64_t ww = static_cast<int64_t>(w) * w;
-                ew = static_cast<int>(std::min<int64_t>(ww, 50000));
+                int candidate_count = static_cast<int>(s.available_blocks.size());
+                if (w >= candidate_count || w > candidate_count / w)
+                {
+                    ew = candidate_count;
+                }
+                else
+                {
+                    ew = w * w;
+                }
             }
             else
             {

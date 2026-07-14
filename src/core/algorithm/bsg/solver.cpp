@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <queue>
 #include <set>
 #include <unordered_map>
@@ -147,13 +148,16 @@ PackResult solve(const GlobalContext& ctx,
             break;
         }
 
-        // w 上限：不超过可用块数，也不超过合理最大值
-        static constexpr int MAX_W = 1000;
-        int max_w = std::min(static_cast<int>(ctx.blocks.size()), MAX_W);
-        int next_w = static_cast<int>(std::ceil(std::sqrt(2.0) * w));
-        if (next_w > max_w || next_w <= w)
+        double next_w_value = std::ceil(std::sqrt(2.0) * static_cast<double>(w));
+        if (next_w_value > static_cast<double>(std::numeric_limits<int>::max()))
         {
-            spdlog::debug("BSG-CLP: w capped at {}", std::max(w, max_w));
+            spdlog::debug("BSG-CLP: w overflow prevented at {}", w);
+            break;
+        }
+        int next_w = static_cast<int>(next_w_value);
+        if (next_w <= w)
+        {
+            spdlog::debug("BSG-CLP: w no longer increases at {}", w);
             break;
         }
         w = next_w;
