@@ -14,7 +14,7 @@ using json = nlohmann::json;
 namespace pack3d
 {
 
-/// JSON Schema 校验（data/input_schema.json）
+/// JSON Schema 校验（编译时嵌入 input_schema.h）
 [[nodiscard]] std::vector<std::string> validate_schema(const json& j) noexcept;
 
 /// 输入语义校验（schema 无法表达的跨字段校验：重复 ID、引用完整性、路线等）

@@ -2,9 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
-#include <fstream>
 #include <set>
-#include <sstream>
 #include <string>
 
 #include <magic_enum/magic_enum.hpp>
@@ -12,6 +10,7 @@
 #include <spdlog/spdlog.h>
 
 #include "algorithm/config.hpp"
+#include "input_schema.h"
 
 namespace pack3d
 {
@@ -161,21 +160,13 @@ std::string status_to_string(SolveStatus s) noexcept
     return enum_to_lower(s);
 }
 
-// 从 data/input_schema.json 读取 schema 并校验 JSON
+// 使用编译时嵌入的 schema 校验 JSON
 std::vector<std::string> validate_schema(const json& j) noexcept
 {
     std::vector<std::string> out;
     try
     {
-        std::ifstream ifs("data/input_schema.json");
-        if (!ifs.is_open())
-        {
-            out.push_back("cannot open data/input_schema.json");
-            return out;
-        }
-        std::stringstream buf;
-        buf << ifs.rdbuf();
-        auto schema = json::parse(buf.str());
+        auto schema = json::parse(std::string{pack3d::INPUT_SCHEMA});
         nlohmann::json_schema::json_validator validator;
         validator.set_root_schema(schema);
         validator.validate(j);

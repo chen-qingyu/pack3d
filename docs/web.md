@@ -94,7 +94,7 @@ http://127.0.0.1:5173
 python -m uvicorn server.main:app --host 127.0.0.1 --port 8000
 ```
 
-需要长期运行时，请使用 systemd、Windows 服务、Docker 或其他进程管理器托管该进程。不要把工作目录改到仓库之外，因为后端使用相对路径访问 `instances/`，引擎也会读取 `data/input_schema.json` 做输入校验。
+需要长期运行时，请使用 systemd、Windows 服务、Docker 或其他进程管理器托管该进程。不要把工作目录改到仓库之外，因为后端使用相对路径访问 `instances/`。
 
 ### 4.2 构建前端
 
@@ -258,16 +258,6 @@ http://127.0.0.1:8000/api/instances
 本地开发时确认后端端口是 `8000`。如果修改了端口，需要同步修改 [web/vite.config.ts](../web/vite.config.ts) 中的代理地址。
 
 生产环境确认网关的 `/api/` location 已转发到 FastAPI，而不是只托管了 `web/dist`。
-
-### 引擎启动时报 `data/input_schema.json not found`
-
-请从仓库根目录启动后端或 CLI：
-
-```bash
-python -m uvicorn server.main:app --host 127.0.0.1 --port 8000
-```
-
-不要从 `server/` 或其他目录直接启动，因为引擎 C++ 侧按当前工作目录读取 `data/input_schema.json` 做输入校验。
 
 ### 页面能打开，但刷新子路径后出现 404
 
