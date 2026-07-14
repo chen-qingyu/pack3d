@@ -1,0 +1,33 @@
+{
+  "name": "web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@mantine/core": "9.4.1",
+    "@mantine/hooks": "9.4.1",
+    "@mantine/notifications": "9.4.1",
+    "d3-scale-chromatic": "3.1.0",
+    "lucide-react": "1.24.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@types/d3-scale-chromatic": "3.1.0",
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@types/three": "0.185.1",
+    "@vitejs/plugin-react": "6.0.3",
+    "oxlint": "1.74.0",
+    "typescript": "7.0.2",
+    "vite": "8.1.4"
+  }
+}
