@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <argparse/argparse.hpp>
 #include <spdlog/spdlog.h>
 
 #include "core/app.hpp"
@@ -84,8 +85,30 @@ struct FileResult
     double memory_kb;   // KB
 };
 
-int main()
+int main(int argc, char** argv)
 {
+    argparse::ArgumentParser program("report", "0.1.0");
+    program.add_argument("-a", "--algorithm")
+        .help("Set algorithm")
+        .choices("gep", "glc", "rgs", "bsg");
+    program.add_argument("-t", "--time-limit")
+        .help("Set time limit in seconds")
+        .scan<'g', double>()
+        .default_value(120.0);
+
+    try
+    {
+        program.parse_args(argc, argv);
+    }
+    catch (const std::exception& e)
+    {
+        spdlog::error("{}", e.what());
+        return 1;
+    }
+
+    std::string algo = program.get<std::string>("-a");
+    double time_limit = program.get<double>("-t");
+
     if (!fs::exists("data/br/"))
     {
         spdlog::warn("data/br/ not found, return.");
@@ -101,7 +124,9 @@ int main()
         std::ifstream ifs(path);
         std::stringstream buf;
         buf << ifs.rdbuf();
-        std::string json_input = buf.str();
+        auto input = json::parse(buf.str());
+        input["algorithm"] = algo;
+        input["constraints"]["time_limit"] = time_limit;
 
         // 重置追踪，记录起始时间
         g_allocated.store(0);
@@ -110,7 +135,7 @@ int main()
 
         // 运行求解器
         spdlog::set_level(spdlog::level::off);
-        auto j = pack3d::run(json::parse(json_input));
+        auto j = pack3d::run(input);
         spdlog::set_level(spdlog::level::info);
 
         auto t1 = std::chrono::steady_clock::now();
@@ -151,6 +176,8 @@ int main()
 
     std::ofstream txt("report/report.txt");
     txt << "Packing Algorithm Performance Report\n\n";
+    txt << fmt::format("Algorithm: {}\n", algo);
+    txt << fmt::format("Time Limit: {:.0f} s\n", time_limit);
     txt << fmt::format("Total Files Tested: {}\n", results.size());
     txt << fmt::format("Average Volume Rate: {:.2f}%\n", avg_rate);
     txt << fmt::format("Average Duration: {:.3f} s\n", avg_dur);

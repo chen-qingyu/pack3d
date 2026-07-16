@@ -40,7 +40,7 @@ int main(int argc, char** argv)
     program.add_argument("-s", "--support-rate").scan<'g', double>().help("Set support rate (0~1)");
     program.add_argument("--platform-limit").scan<'i', int>().help("Set platform limit");
     program.add_argument("--tender-limit").scan<'i', int>().help("Set tender limit");
-    program.add_argument("-a", "--algorithm").help("Set algorithm");
+    program.add_argument("-a", "--algorithm").help("Set algorithm").choices("gep", "glc", "rgs", "bsg");
 
     try
     {
