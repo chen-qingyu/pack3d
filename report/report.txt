@@ -1,8 +1,8 @@
 Packing Algorithm Performance Report
 
-Algorithm: gep
 Time Limit: 120 s
-Total Files Tested: 1600
-Average Volume Rate: 82.02%
-Average Duration: 0.003 s
-Average Memory Usage: 260 KB
+Total Files: 1600
+
+Algo      Rate(%)   Dur(s)  Mem(KB)  Status
+----------------------------------------------------------
+gep         82.02    0.003      260  {"partial": 1600}
