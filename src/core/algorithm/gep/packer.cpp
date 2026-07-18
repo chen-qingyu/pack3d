@@ -9,7 +9,8 @@ namespace pack3d
 
 ContainerLoad GepPacker::pack_single(
     const std::vector<Box>& items,
-    const ContainerType& ct)
+    const ContainerType& ct,
+    bool /*stop_when_complete*/)
 {
     // 箱子按体积降序排序
     std::vector<Box> sorted = items;

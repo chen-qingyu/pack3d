@@ -51,12 +51,14 @@ void merge_platforms(std::vector<ContainerLoad>& all_loads,
         }
 
         std::vector<Box> items;
+        int64_t items_volume = 0;
         for (size_t ci : unique_cis)
         {
             for (const auto& pl : all_loads[ci].placements)
             {
                 if (pl.platform == plat)
                 {
+                    items_volume += pl.osize.volume();
                     auto it = box_map.find(pl.box_id);
                     if (it != box_map.end())
                     {
@@ -80,7 +82,11 @@ void merge_platforms(std::vector<ContainerLoad>& all_loads,
         for (size_t ci : ct_indices)
         {
             const auto& ct = container_types[ci];
-            ContainerLoad sload = packer.pack_single(items, ct);
+            if (items_volume > ct.inner_size.volume())
+            {
+                continue;
+            }
+            ContainerLoad sload = packer.pack_single(items, ct, true);
             if (sload.placements.size() != items.size())
             {
                 continue;
@@ -211,7 +217,7 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
             continue;
         }
 
-        ContainerLoad new_load = packer.pack_single(items, ct);
+        ContainerLoad new_load = packer.pack_single(items, ct, true);
         if (new_load.placements.size() != items.size())
         {
             continue;

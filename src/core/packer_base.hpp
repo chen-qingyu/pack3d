@@ -29,7 +29,8 @@ public:
 
     virtual ContainerLoad pack_single(
         const std::vector<Box>& items,
-        const ContainerType& ct) = 0;
+        const ContainerType& ct,
+        bool stop_when_complete = false) = 0;
 
     Solution pack();
 

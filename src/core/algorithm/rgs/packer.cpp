@@ -14,7 +14,8 @@ namespace pack3d
 
 ContainerLoad RgsPacker::pack_single(
     const std::vector<Box>& items,
-    const ContainerType& ct)
+    const ContainerType& ct,
+    bool stop_when_complete)
 {
     // rgs_single_uld：单容器多起点搜索，评分用纯体积率
     static const rgs::SortCriterion criteria[] = {
@@ -47,6 +48,12 @@ ContainerLoad RgsPacker::pack_single(
             auto loaded1 = rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
             (void)loaded1;
 
+            if (stop_when_complete && load.placements.size() == items.size())
+            {
+                best_load = std::move(load);
+                goto done;
+            }
+
             double score = load.volume_rate();
             if (score > best_score)
             {
@@ -71,6 +78,12 @@ ContainerLoad RgsPacker::pack_single(
             rgs::EpContext ctx;
             auto loaded2 = rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
             (void)loaded2;
+
+            if (stop_when_complete && load.placements.size() == items.size())
+            {
+                best_load = std::move(load);
+                goto done;
+            }
 
             double score = load.volume_rate();
             if (score > best_score)

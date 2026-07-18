@@ -9,7 +9,8 @@ namespace pack3d
 
 ContainerLoad GlcPacker::pack_single(
     const std::vector<Box>& items,
-    const ContainerType& ct)
+    const ContainerType& ct,
+    bool /*stop_when_complete*/)
 {
     std::vector<const Box*> box_ptrs;
     box_ptrs.reserve(items.size());

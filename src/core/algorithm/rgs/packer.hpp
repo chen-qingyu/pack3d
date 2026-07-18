@@ -17,7 +17,8 @@ public:
 
     ContainerLoad pack_single(
         const std::vector<Box>& items,
-        const ContainerType& ct) override;
+        const ContainerType& ct,
+        bool stop_when_complete = false) override;
 };
 
 } // namespace pack3d

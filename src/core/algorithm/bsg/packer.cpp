@@ -14,7 +14,8 @@ namespace pack3d
 
 ContainerLoad BsgPacker::pack_single(
     const std::vector<Box>& items,
-    const ContainerType& ct)
+    const ContainerType& ct,
+    bool /*stop_when_complete*/)
 {
     // 构建 BoxType 索引
     std::vector<BoxType> box_types;
