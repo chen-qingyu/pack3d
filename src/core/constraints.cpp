@@ -179,6 +179,20 @@ static bool yz_overlap(const Position& a, const OrientedSize& as,
     return true;
 }
 
+static bool xy_overlap(const Position& a, const OrientedSize& as,
+                       const Position& b, const OrientedSize& bs) noexcept
+{
+    if (a.x >= b.x + bs.dx || b.x >= a.x + as.dx)
+    {
+        return false;
+    }
+    if (a.y >= b.y + bs.dy || b.y >= a.y + as.dy)
+    {
+        return false;
+    }
+    return true;
+}
+
 bool check_route_order(const ContainerLoad& load,
                        const std::string& platform,
                        const Position& pos, const OrientedSize& osize,
@@ -209,25 +223,45 @@ bool check_route_order(const ContainerLoad& load,
             continue;
         }
 
-        if (!yz_overlap(pos, osize, pl.position, pl.osize))
-        {
-            continue;
-        }
-
         size_t other_idx = oit->second;
 
-        if (my_idx < other_idx)
+        // YZ 重叠 → 先装平台必须在 X 深处（更左）
+        if (yz_overlap(pos, osize, pl.position, pl.osize))
         {
-            if (pos.x + osize.dx > pl.position.x)
+            if (my_idx < other_idx)
             {
-                return false;
+                if (pos.x + osize.dx > pl.position.x)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                if (pos.x < pl.position.x + pl.osize.dx)
+                {
+                    return false;
+                }
             }
         }
-        else
+
+        // XY 重叠 → 后装平台不能叠压在先装平台上方
+        if (xy_overlap(pos, osize, pl.position, pl.osize))
         {
-            if (pos.x < pl.position.x + pl.osize.dx)
+            if (my_idx < other_idx)
             {
-                return false;
+                // candidate 是先装平台，已有的是后装平台；后装不能压在先装上
+                if (pl.position.z == pos.z + osize.dz)
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                // candidate 是后装平台，已有的是先装平台；后装不能压在先装上
+                if (pos.z == pl.position.z + pl.osize.dz)
+                {
+                    return false;
+                }
             }
         }
     }
