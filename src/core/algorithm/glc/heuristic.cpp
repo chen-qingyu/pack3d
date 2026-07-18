@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <cassert>
 #include <map>
-#include <queue>
 #include <set>
 
 #include "../../constraints.hpp"
@@ -123,10 +122,6 @@ bool Heuristic::check_block_feasible(
         }
         need_route = problem_.route.has_value();
     }
-
-    // 预计算块的 x 范围（供路线/平台跟踪用，避免逐箱重复计算）
-    int32_t block_min_x = space.pos.x;
-    int32_t block_max_x = space.pos.x + block.nx * single.dx;
 
     // ---- 逐箱检查：边界、重叠、支撑、路线 ----
     ContainerLoad sim = state;
@@ -292,64 +287,21 @@ Heuristic::LocalPackScore Heuristic::score_state(const ContainerLoad& state) con
 int Heuristic::compare_local_scores(const LocalPackScore& a,
                                     const LocalPackScore& b) const
 {
-    if (a.platform_split < b.platform_split)
+    if (a.platform_split != b.platform_split)
     {
-        return -1;
+        return a.platform_split < b.platform_split ? -1 : 1;
     }
-    if (a.platform_split > b.platform_split)
+    if (a.used_volume != b.used_volume)
     {
-        return 1;
+        return a.used_volume > b.used_volume ? -1 : 1;
     }
-
-    if (a.used_volume > b.used_volume)
+    if (a.group_count != b.group_count)
     {
-        return -1;
+        return a.group_count < b.group_count ? -1 : 1;
     }
-    if (a.used_volume < b.used_volume)
+    if (a.placed_count != b.placed_count)
     {
-        return 1;
-    }
-
-    if (a.group_count < b.group_count)
-    {
-        return -1;
-    }
-    if (a.group_count > b.group_count)
-    {
-        return 1;
-    }
-
-    if (a.used_volume > b.used_volume)
-    {
-        return -1;
-    }
-    if (a.used_volume < b.used_volume)
-    {
-        return 1;
-    }
-    if (a.placed_count > b.placed_count)
-    {
-        return -1;
-    }
-    if (a.placed_count < b.placed_count)
-    {
-        return 1;
-    }
-    if (a.platform_split < b.platform_split)
-    {
-        return -1;
-    }
-    if (a.platform_split > b.platform_split)
-    {
-        return 1;
-    }
-    if (a.group_count < b.group_count)
-    {
-        return -1;
-    }
-    if (a.group_count > b.group_count)
-    {
-        return 1;
+        return a.placed_count > b.placed_count ? -1 : 1;
     }
     return 0;
 }
@@ -483,7 +435,8 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
             continue;
         }
 
-        // 自适应候选数：块平均大小越小，候选数越少（小块多时边际收益低）
+        // 自适应候选数：块包含箱子越多（大块），候选数越多
+        // avg_block_size 小时（多小块场景）取 width 下限以控制开销
         int eval_limit = std::min(static_cast<int>(viable.size()),
                                   std::max(width, static_cast<int>(kKeepTopN * avg_block_size)));
         std::vector<const SimpleBlock*> candidates(viable.begin(), viable.begin() + eval_limit);
