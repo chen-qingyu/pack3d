@@ -260,13 +260,26 @@ TEST_CASE("beam search: 1 box + double effort", "[bsg][beam]")
 
 TEST_CASE("solver: 1 box", "[bsg][solver]")
 {
+    TimeChecker::init(120.0);
     auto ctx = make_ctx_1box();
     auto blocks = generate_blocks(ctx.container_size, ctx.box_types, {1}, 1.0, 10000);
     ctx.blocks = std::move(blocks);
 
-    PackResult pr = solve(ctx, {1}, {{"b1"}}, 120.0);
+    PackResult pr = solve(ctx, {1}, {{"b1"}});
     CHECK(pr.success);
     CHECK(pr.placements.size() == 1);
     CHECK(pr.used_volume == 125000);
     CHECK(pr.unpacked_box_ids.empty());
+}
+
+TEST_CASE("solver respects caller time limit", "[bsg][solver]")
+{
+    TimeChecker::init(0.0);
+    auto ctx = make_ctx_1box();
+    auto blocks = generate_blocks(ctx.container_size, ctx.box_types, {1}, 1.0, 10000);
+    ctx.blocks = std::move(blocks);
+
+    PackResult pr = solve(ctx, {1}, {{"b1"}});
+    CHECK(!pr.success);
+    CHECK(pr.placements.empty());
 }

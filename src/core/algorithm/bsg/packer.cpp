@@ -56,7 +56,7 @@ ContainerLoad BsgPacker::pack_single(
     ctx.blocks = std::move(blocks);
 
     // 求解
-    bsg::PackResult pr = bsg::solve(ctx, cur_counts, cur_ids_by_type, problem_.time_limit);
+    bsg::PackResult pr = bsg::solve(ctx, cur_counts, cur_ids_by_type);
 
     ContainerLoad load;
     load.type_id = ct.id;

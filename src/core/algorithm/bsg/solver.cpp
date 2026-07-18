@@ -94,8 +94,7 @@ void expand_block_placements(
 
 PackResult solve(const GlobalContext& ctx,
                  const std::vector<int>& initial_counts,
-                 const std::vector<std::vector<std::string>>& box_ids_by_type,
-                 double time_limit_sec)
+                 const std::vector<std::vector<std::string>>& box_ids_by_type)
 {
     PackResult result;
 
@@ -112,9 +111,8 @@ PackResult solve(const GlobalContext& ctx,
     }
     s0.used_volume = 0;
 
-    TimeChecker::init(time_limit_sec);
-
     int w = 1;
+    int stagnant_rounds = 0;
     int64_t s_best_volume = 0;
     BSGState s_best;
 
@@ -136,6 +134,7 @@ PackResult solve(const GlobalContext& ctx,
     while (TimeChecker::check())
     {
         spdlog::debug("Beam round: w={}", w);
+        int64_t previous_best_volume = s_best_volume;
         int64_t round_best = beam_search(s0, w, s_best_volume, s_best, ctx);
         spdlog::debug("Beam round done: w={}, best={}, s_best_vol={}, placements={}",
                       w, round_best, s_best_volume, s_best.placements.size());
@@ -146,6 +145,20 @@ PackResult solve(const GlobalContext& ctx,
             spdlog::debug("BSG-CLP: optimal reached ({} / {}), stopping early",
                           s_best_volume, total_box_volume);
             break;
+        }
+
+        if (s_best_volume > previous_best_volume)
+        {
+            stagnant_rounds = 0;
+        }
+        else
+        {
+            ++stagnant_rounds;
+            if (stagnant_rounds >= 2)
+            {
+                spdlog::debug("BSG-CLP: no improvement for {} rounds, stopping", stagnant_rounds);
+                break;
+            }
         }
 
         double next_w_value = std::ceil(std::sqrt(2.0) * static_cast<double>(w));
