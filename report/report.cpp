@@ -3,12 +3,14 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <map>
 #include <new>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #include <argparse/argparse.hpp>
+#include <spdlog/fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
 #include "core/app.hpp"
@@ -85,12 +87,92 @@ struct FileResult
     double memory_kb;   // KB
 };
 
+// 对 data/br/ 下所有文件跑指定算法，返回结果列表
+static std::vector<FileResult> run_algorithm(const std::string& algo, double time_limit)
+{
+    std::vector<FileResult> results;
+    for (const auto& entry : fs::directory_iterator("data/br/"))
+    {
+        auto path = entry.path();
+
+        std::ifstream ifs(path);
+        std::stringstream buf;
+        buf << ifs.rdbuf();
+        auto input = json::parse(buf.str());
+        input["algorithm"] = algo;
+        input["constraints"]["time_limit"] = time_limit;
+
+        g_allocated.store(0);
+        g_peak.store(0);
+        auto t0 = std::chrono::steady_clock::now();
+
+        spdlog::set_level(spdlog::level::off);
+        auto j = pack3d::run(input);
+        spdlog::set_level(spdlog::level::info);
+
+        auto t1 = std::chrono::steady_clock::now();
+        size_t mem_peak = get_peak_bytes();
+
+        std::string status = j["status"].get<std::string>();
+        double volume_rate = j["result"]["containers"][0]["volume_rate"].get<double>() * 100.0;
+
+        double duration = std::chrono::duration<double>(t1 - t0).count();
+        double memory_kb = static_cast<double>(mem_peak) / 1024.0;
+
+        std::string fname = path.filename().string();
+        results.push_back({fname, status, volume_rate, duration, memory_kb});
+
+        spdlog::info("[{}] {} - status: {}, rate: {:.2f}%, duration: {:.3f} s, memory: {:.0f} KB",
+                     algo, fname, status, volume_rate, duration, memory_kb);
+    }
+    return results;
+}
+
+static void write_csv(const std::string& algo, const std::vector<FileResult>& results)
+{
+    std::string csv_path = fmt::format("report/report-{}.csv", algo);
+    std::ofstream csv(csv_path);
+    csv << "filename,status,volume_rate(%),duration(s),memory(KB)\n";
+    for (const auto& r : results)
+    {
+        csv << fmt::format("{},{},{:.2f},{:.3f},{:.0f}\n", r.filename, r.status, r.volume_rate, r.duration, r.memory_kb);
+    }
+}
+
+static void write_summary_txt(double time_limit,
+                              const std::vector<std::string>& algos,
+                              const std::vector<std::vector<FileResult>>& all_results)
+{
+    std::ofstream txt("report/report.txt");
+    txt << "Packing Algorithm Performance Report\n\n";
+    txt << fmt::format("Time Limit: {:.0f} s\n", time_limit);
+    txt << fmt::format("Total Files: {}\n\n", all_results[0].size());
+
+    txt << fmt::format("{:<8} {:>8} {:>8} {:>8}  {}\n", "Algo", "Rate(%)", "Dur(s)", "Mem(KB)", "Status");
+    txt << "----------------------------------------------------------\n";
+    for (size_t i = 0; i < algos.size(); ++i)
+    {
+        const auto& results = all_results[i];
+        double sum_rate = 0, sum_dur = 0, sum_mem = 0;
+        std::map<std::string, int> status_count;
+        for (const auto& r : results)
+        {
+            sum_rate += r.volume_rate;
+            sum_dur += r.duration;
+            sum_mem += r.memory_kb;
+            status_count[r.status]++;
+        }
+        auto n = results.size();
+        txt << fmt::format("{:<8} {:>8.2f} {:>8.3f} {:>8.0f}  {}\n", algos[i], sum_rate / n, sum_dur / n, sum_mem / n, status_count);
+    }
+}
+
 int main(int argc, char** argv)
 {
     argparse::ArgumentParser program("report", "0.1.0");
     program.add_argument("-a", "--algorithm")
         .help("Set algorithm")
-        .choices("gep", "glc", "rgs", "bsg");
+        .choices("gep", "glc", "rgs", "bsg", "all");
     program.add_argument("-t", "--time-limit")
         .help("Set time limit in seconds")
         .scan<'g', double>()
@@ -115,73 +197,15 @@ int main(int argc, char** argv)
         return 1;
     }
 
-    std::vector<FileResult> results;
-    for (const auto& entry : fs::directory_iterator("data/br/"))
+    std::vector<std::string> algos = (algo == "all") ? std::vector<std::string>{"gep", "glc", "rgs", "bsg"} : std::vector<std::string>{algo};
+    std::vector<std::vector<FileResult>> all_results;
+    for (const auto& a : algos)
     {
-        auto path = entry.path();
-
-        // 读取输入
-        std::ifstream ifs(path);
-        std::stringstream buf;
-        buf << ifs.rdbuf();
-        auto input = json::parse(buf.str());
-        input["algorithm"] = algo;
-        input["constraints"]["time_limit"] = time_limit;
-
-        // 重置追踪，记录起始时间
-        g_allocated.store(0);
-        g_peak.store(0);
-        auto t0 = std::chrono::steady_clock::now();
-
-        // 运行求解器
-        spdlog::set_level(spdlog::level::off);
-        auto j = pack3d::run(input);
-        spdlog::set_level(spdlog::level::info);
-
-        auto t1 = std::chrono::steady_clock::now();
-        size_t mem_peak = get_peak_bytes();
-
-        std::string status = j["status"].get<std::string>();
-        double volume_rate = j["result"]["containers"][0]["volume_rate"].get<double>() * 100.0;
-
-        double duration = std::chrono::duration<double>(t1 - t0).count();
-        double memory_kb = static_cast<double>(mem_peak) / 1024.0;
-
-        std::string fname = path.filename().string();
-        results.push_back({fname, status, volume_rate, duration, memory_kb});
-
-        spdlog::info("{} - status: {}, rate: {:.2f}%, duration: {:.3f} s, memory: {:.0f} KB",
-                     fname, status, volume_rate, duration, memory_kb);
+        auto results = run_algorithm(a, time_limit);
+        write_csv(a, results);
+        all_results.push_back(std::move(results));
     }
-
-    // 写 CSV
-    std::ofstream csv("report/report.csv");
-    csv << "filename,status,volume_rate(%),duration(s),memory(KB)\n";
-    for (const auto& r : results)
-    {
-        csv << fmt::format("{},{},{:.2f},{:.3f},{:.0f}\n", r.filename, r.status, r.volume_rate, r.duration, r.memory_kb);
-    }
-
-    // 写 TXT
-    double sum_rate = 0, sum_dur = 0, sum_mem = 0;
-    for (const auto& r : results)
-    {
-        sum_rate += r.volume_rate;
-        sum_dur += r.duration;
-        sum_mem += r.memory_kb;
-    }
-    double avg_rate = sum_rate / results.size();
-    double avg_dur = sum_dur / results.size();
-    double avg_mem = sum_mem / results.size();
-
-    std::ofstream txt("report/report.txt");
-    txt << "Packing Algorithm Performance Report\n\n";
-    txt << fmt::format("Algorithm: {}\n", algo);
-    txt << fmt::format("Time Limit: {:.0f} s\n", time_limit);
-    txt << fmt::format("Total Files Tested: {}\n", results.size());
-    txt << fmt::format("Average Volume Rate: {:.2f}%\n", avg_rate);
-    txt << fmt::format("Average Duration: {:.3f} s\n", avg_dur);
-    txt << fmt::format("Average Memory Usage: {:.0f} KB\n", avg_mem);
+    write_summary_txt(time_limit, algos, all_results);
 
     return 0;
 }
