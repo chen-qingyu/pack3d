@@ -1,0 +1,1538 @@
+{
+  "container_types": [
+    {
+      "id": "20GP",
+      "inner_size": {
+        "x": 5890,
+        "y": 2320,
+        "z": 2230
+      },
+      "max_weight": 18000.0
+    },
+    {
+      "id": "40GP",
+      "inner_size": {
+        "x": 11960,
+        "y": 2320,
+        "z": 2230
+      },
+      "max_weight": 23000.0
+    },
+    {
+      "id": "40HQ",
+      "inner_size": {
+        "x": 11960,
+        "y": 2320,
+        "z": 2600
+      },
+      "max_weight": 23000.0
+    }
+  ],
+  "box_types": [
+    {
+      "id": "t1",
+      "size": {
+        "x": 1200,
+        "y": 800,
+        "z": 990
+      },
+      "allowed_orientations": ["xyz", "yxz"]
+    },
+    {
+      "id": "t2",
+      "size": {
+        "x": 1200,
+        "y": 800,
+        "z": 755
+      },
+      "allowed_orientations": ["xyz", "yxz"]
+    },
+    {
+      "id": "t3",
+      "size": {
+        "x": 1200,
+        "y": 800,
+        "z": 980
+      },
+      "allowed_orientations": ["xyz", "yxz"]
+    },
+    {
+      "id": "t4",
+      "size": {
+        "x": 1200,
+        "y": 800,
+        "z": 550
+      },
+      "allowed_orientations": ["xyz", "yxz"]
+    }
+  ],
+  "boxes": [
+    {
+      "id": "b1",
+      "box_type_id": "t1",
+      "weight": 81.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b2",
+      "box_type_id": "t1",
+      "weight": 81.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b3",
+      "box_type_id": "t1",
+      "weight": 81.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b4",
+      "box_type_id": "t1",
+      "weight": 80.5,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b5",
+      "box_type_id": "t1",
+      "weight": 75.5,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b6",
+      "box_type_id": "t1",
+      "weight": 80.5,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b7",
+      "box_type_id": "t1",
+      "weight": 81.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b8",
+      "box_type_id": "t1",
+      "weight": 80.5,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b9",
+      "box_type_id": "t1",
+      "weight": 81.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b10",
+      "box_type_id": "t1",
+      "weight": 80.5,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b11",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b12",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b13",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b14",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b15",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b16",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b17",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b18",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b19",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b20",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b21",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b22",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b23",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b24",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b25",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b26",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b27",
+      "box_type_id": "t2",
+      "weight": 86.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b28",
+      "box_type_id": "t2",
+      "weight": 86.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b29",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b30",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b31",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b32",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b33",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b34",
+      "box_type_id": "t2",
+      "weight": 86.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b35",
+      "box_type_id": "t2",
+      "weight": 86.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b36",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b37",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b38",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b39",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b40",
+      "box_type_id": "t2",
+      "weight": 86.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b41",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b42",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b43",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b44",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b45",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b46",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b47",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b48",
+      "box_type_id": "t2",
+      "weight": 86.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b49",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b50",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b51",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b52",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b53",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b54",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b55",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b56",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b57",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b58",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b59",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b60",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b61",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b62",
+      "box_type_id": "t2",
+      "weight": 86.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b63",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b64",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b65",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b66",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b67",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b68",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b69",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b70",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b71",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b72",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b73",
+      "box_type_id": "t2",
+      "weight": 89.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b74",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b75",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b76",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b77",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b78",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b79",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b80",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b81",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b82",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b83",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b84",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b85",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b86",
+      "box_type_id": "t2",
+      "weight": 89.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b87",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b88",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b89",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b90",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b91",
+      "box_type_id": "t2",
+      "weight": 89.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b92",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b93",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b94",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b95",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b96",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b97",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b98",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b99",
+      "box_type_id": "t2",
+      "weight": 86.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b100",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b101",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b102",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b103",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b104",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b105",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b106",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b107",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b108",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b109",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b110",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b111",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b112",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b113",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b114",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b115",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b116",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b117",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b118",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b119",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b120",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b121",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b122",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b123",
+      "box_type_id": "t2",
+      "weight": 89.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b124",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b125",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b126",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b127",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b128",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b129",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b130",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b131",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b132",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b133",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b134",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b135",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b136",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b137",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b138",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b139",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b140",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b141",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b142",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b143",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b144",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b145",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b146",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b147",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b148",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b149",
+      "box_type_id": "t2",
+      "weight": 85.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b150",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b151",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b152",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b153",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b154",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b155",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b156",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b157",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b158",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b159",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b160",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b161",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b162",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b163",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b164",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b165",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b166",
+      "box_type_id": "t2",
+      "weight": 86.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b167",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b168",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b169",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b170",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b171",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b172",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b173",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b174",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b175",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b176",
+      "box_type_id": "t2",
+      "weight": 85.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b177",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b178",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b179",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b180",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b181",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b182",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b183",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b184",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b185",
+      "box_type_id": "t2",
+      "weight": 87.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b186",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b187",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b188",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b189",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b190",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b191",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b192",
+      "box_type_id": "t2",
+      "weight": 89.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b193",
+      "box_type_id": "t2",
+      "weight": 88.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b194",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b195",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b196",
+      "box_type_id": "t2",
+      "weight": 89.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b197",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b198",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b199",
+      "box_type_id": "t2",
+      "weight": 87.5,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b200",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b201",
+      "box_type_id": "t2",
+      "weight": 88.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b202",
+      "box_type_id": "t2",
+      "weight": 89.0,
+      "group": "g2",
+      "platform": "p2"
+    },
+    {
+      "id": "b203",
+      "box_type_id": "t3",
+      "weight": 89.5,
+      "group": "g3",
+      "platform": "p1"
+    },
+    {
+      "id": "b204",
+      "box_type_id": "t3",
+      "weight": 90.0,
+      "group": "g3",
+      "platform": "p1"
+    },
+    {
+      "id": "b205",
+      "box_type_id": "t3",
+      "weight": 90.5,
+      "group": "g3",
+      "platform": "p1"
+    },
+    {
+      "id": "b206",
+      "box_type_id": "t3",
+      "weight": 92.0,
+      "group": "g3",
+      "platform": "p1"
+    },
+    {
+      "id": "b207",
+      "box_type_id": "t3",
+      "weight": 91.5,
+      "group": "g3",
+      "platform": "p1"
+    },
+    {
+      "id": "b208",
+      "box_type_id": "t3",
+      "weight": 91.0,
+      "group": "g3",
+      "platform": "p1"
+    },
+    {
+      "id": "b209",
+      "box_type_id": "t4",
+      "weight": 58.0,
+      "group": "g3",
+      "platform": "p1"
+    }
+  ],
+  "constraints": {
+    "support_rate": 1.0
+  },
+  "route": ["p1", "p2"]
+}
