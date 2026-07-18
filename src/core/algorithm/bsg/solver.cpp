@@ -2,7 +2,6 @@
 
 #include <cassert>
 #include <cmath>
-#include <limits>
 #include <queue>
 #include <set>
 #include <unordered_map>
@@ -10,6 +9,7 @@
 #include <spdlog/spdlog.h>
 
 #include "../../tool.hpp"
+#include "../config.hpp"
 #include "beam.hpp"
 #include "block.hpp"
 #include "kpa.hpp"
@@ -112,7 +112,6 @@ PackResult solve(const GlobalContext& ctx,
     s0.used_volume = 0;
 
     int w = 1;
-    int stagnant_rounds = 0;
     int64_t s_best_volume = 0;
     BSGState s_best;
 
@@ -134,7 +133,6 @@ PackResult solve(const GlobalContext& ctx,
     while (TimeChecker::check())
     {
         spdlog::debug("Beam round: w={}", w);
-        int64_t previous_best_volume = s_best_volume;
         int64_t round_best = beam_search(s0, w, s_best_volume, s_best, ctx);
         spdlog::debug("Beam round done: w={}, best={}, s_best_vol={}, placements={}",
                       w, round_best, s_best_volume, s_best.placements.size());
@@ -147,33 +145,13 @@ PackResult solve(const GlobalContext& ctx,
             break;
         }
 
-        if (s_best_volume > previous_best_volume)
+        if (w >= config::BSG_MAX_W)
         {
-            stagnant_rounds = 0;
-        }
-        else
-        {
-            ++stagnant_rounds;
-            if (stagnant_rounds >= 2)
-            {
-                spdlog::debug("BSG-CLP: no improvement for {} rounds, stopping", stagnant_rounds);
-                break;
-            }
+            spdlog::debug("BSG-CLP: reached maximum beam width {}, stopping", w);
+            break;
         }
 
-        double next_w_value = std::ceil(std::sqrt(2.0) * static_cast<double>(w));
-        if (next_w_value > static_cast<double>(std::numeric_limits<int>::max()))
-        {
-            spdlog::debug("BSG-CLP: w overflow prevented at {}", w);
-            break;
-        }
-        int next_w = static_cast<int>(next_w_value);
-        if (next_w <= w)
-        {
-            spdlog::debug("BSG-CLP: w no longer increases at {}", w);
-            break;
-        }
-        w = next_w;
+        w = static_cast<int>(std::ceil(std::sqrt(2.0) * static_cast<double>(w)));
     }
 
     if (s_best_volume <= 0)

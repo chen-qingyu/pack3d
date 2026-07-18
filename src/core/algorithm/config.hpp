@@ -22,5 +22,6 @@ static constexpr int BSG_MAX_BL = 10000;
 static constexpr double BSG_MAX_FR_WEAK = 1.00;   // box_types < 阈值
 static constexpr double BSG_MAX_FR_STRONG = 0.98; // box_types >= 阈值
 static constexpr int BSG_THRESHOLD_BOX_TYPES = 30;
+static constexpr int BSG_MAX_W = 15;
 
 } // namespace pack3d::config
