@@ -52,19 +52,28 @@ std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
 {
     std::vector<const SimpleBlock*> viable;
 
-    for (const auto& block : all_blocks)
+    // 利用 dx_index_ 仅扫描 dx ≤ space.lx 的块（避免 O(B) 全量扫描）
+    auto end_it = std::upper_bound(
+        dx_index_.begin(), dx_index_.end(), space.lx,
+        [](int32_t lx, const std::pair<int32_t, size_t>& p) noexcept
+        {
+            return lx < p.first;
+        });
+
+    for (auto it = dx_index_.begin(); it != end_it; ++it)
     {
-        // 库存检查
-        auto it = available.find(block.box_type_id);
-        if (it == available.end() || it->second.size() < static_cast<size_t>(block.box_count))
+        const SimpleBlock& block = all_blocks[it->second];
+
+        // 其余两维的快速尺寸检查
+        if (block.osize.dy > space.ly || block.osize.dz > space.lz)
         {
             continue;
         }
 
-        // 尺寸检查：块能否放入当前空间
-        if (block.osize.dx > space.lx ||
-            block.osize.dy > space.ly ||
-            block.osize.dz > space.lz)
+        // 库存检查
+        auto avail_it = available.find(block.box_type_id);
+        if (avail_it == available.end() ||
+            avail_it->second.size() < static_cast<size_t>(block.box_count))
         {
             continue;
         }
@@ -423,6 +432,15 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
 
     sort_blocks_by_volume_desc(all_blocks);
 
+    // 构建 dx 维度索引：按块 dx 升序排列，避免 filter_viable_blocks 中 O(B) 全量扫描
+    dx_index_.clear();
+    dx_index_.reserve(all_blocks.size());
+    for (size_t i = 0; i < all_blocks.size(); ++i)
+    {
+        dx_index_.emplace_back(all_blocks[i].osize.dx, i);
+    }
+    std::sort(dx_index_.begin(), dx_index_.end());
+
     // 自适应：当块平均大小很小时（多箱型少数量场景），降低 beam 搜索精度
     int64_t total_box_count = 0;
     for (const auto& b : all_blocks)
@@ -444,22 +462,9 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
     std::vector<Space> stack;
     stack.push_back({{0, 0, 0}, container_.inner_size.x, container_.inner_size.y, container_.inner_size.z});
 
-    while (!stack.empty() && !available.empty() && !all_blocks.empty())
+    while (!stack.empty() && !available.empty())
     {
         if (!TimeChecker::check())
-        {
-            break;
-        }
-
-        all_blocks.erase(
-            std::remove_if(all_blocks.begin(), all_blocks.end(),
-                           [&](const SimpleBlock& b)
-                           {
-                               auto it = available.find(b.box_type_id);
-                               return it == available.end() || it->second.size() < static_cast<size_t>(b.box_count);
-                           }),
-            all_blocks.end());
-        if (all_blocks.empty())
         {
             break;
         }
@@ -594,6 +599,11 @@ Heuristic::LocalPackScore Heuristic::greedy_complete(
 {
     while (!stack.empty())
     {
+        if (!TimeChecker::check())
+        {
+            break;
+        }
+
         Space space = stack.back();
         stack.pop_back();
 
@@ -639,6 +649,11 @@ Heuristic::LocalPackScore Heuristic::complete_largest(
 {
     while (!stack.empty())
     {
+        if (!TimeChecker::check())
+        {
+            break;
+        }
+
         Space space = stack.back();
         stack.pop_back();
 

@@ -58,6 +58,10 @@ private:
     BlockGenerator block_gen_;
     std::map<std::string, double> type_avg_weight_;
 
+    /// dx 维度索引：(block.dx, index into all_blocks)，按 dx 升序排列。
+    /// filter_viable_blocks 利用此索引避免 O(B) 全量扫描，仅检查 dx ≤ space.lx 的块。
+    std::vector<std::pair<int32_t, size_t>> dx_index_;
+
     /// 从块表中筛选当前空间可行的候选块
     [[nodiscard]] std::vector<const SimpleBlock*> filter_viable_blocks(
         const std::vector<SimpleBlock>& all_blocks,
