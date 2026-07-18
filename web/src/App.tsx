@@ -1,21 +1,25 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppShell, Box, Button, Divider, Group, Loader, NavLink, Stack, Text, TextInput, ThemeIcon, Tooltip } from '@mantine/core'
-import { Archive, ChevronRight, Package, Plus, Search, Server } from 'lucide-react'
+import { Archive, ChevronRight, FileJson, Package, Plus, Search, Server, Upload } from 'lucide-react'
 import { api } from './api'
 import type { Instance, ResultData, Run } from './api'
 import { EmptyInstances, InstanceOverview } from './components/InstanceOverview'
+import { OfflineViewer } from './components/OfflineViewer'
 import { RunDetail } from './components/RunDetail'
 import { RunEditor } from './components/RunEditor'
 import { initialInput } from './format'
 import { useRunPolling } from './hooks/useRunPolling'
+import { parseOfflineResult } from './offline'
 
-type View = 'instances' | 'new-run' | 'run'
+type View = 'instances' | 'new-run' | 'run' | 'offline'
 
 function App() {
   const [instances, setInstances] = useState<Instance[]>([])
   const [selectedInstance, setSelectedInstance] = useState<Instance | null>(null)
   const [activeRun, setActiveRun] = useState<Run | null>(null)
   const [result, setResult] = useState<ResultData | null>(null)
+  const [offlineResult, setOfflineResult] = useState<ResultData | null>(null)
+  const [offlineFileName, setOfflineFileName] = useState('')
   const [view, setView] = useState<View>('instances')
   const [inputText, setInputText] = useState(initialInput)
   const [inputError, setInputError] = useState('')
@@ -42,7 +46,7 @@ function App() {
       if (response.instances[0]) setSelectedInstance(response.instances[0])
     }).catch((reason: Error) => {
       setApiOnline(false)
-      setError(reason.message)
+      console.warn('pack3d API is offline:', reason.message)
     }).finally(() => setLoading(false))
   }, [])
 
@@ -169,6 +173,17 @@ function App() {
     reader.readAsText(file)
   }
 
+  const loadOfflineFile = async (file: File) => {
+    try {
+      setOfflineResult(parseOfflineResult(await file.text()))
+      setOfflineFileName(file.name)
+      setError('')
+      setView('offline')
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : '无法读取输出 JSON')
+    }
+  }
+
   if (loading) return <Stack align="center" justify="center" h="100vh"><Loader /><Text c="dimmed">正在连接 pack3d 服务</Text></Stack>
 
   return <AppShell header={{ height: 64 }} navbar={{ width: 280, breakpoint: 'sm' }} padding="lg">
@@ -181,6 +196,8 @@ function App() {
     <AppShell.Navbar p="md">
       <Stack h="100%">
         <Group justify="space-between"><Text size="sm" fw={600}>实例</Text><Tooltip label="创建实例"><Button variant="subtle" size="compact-sm" onClick={() => document.getElementById('instance-name')?.focus()}><Plus size={16} /></Button></Tooltip></Group>
+        <Button component="label" variant="light" leftSection={<Upload size={16} />}>离线打开 JSON<input hidden type="file" accept="application/json,.json" onChange={(event) => { const file = event.target.files?.[0]; if (file) void loadOfflineFile(file); event.currentTarget.value = '' }} /></Button>
+        <NavLink active={view === 'offline'} label="离线查看" description={offlineFileName || '本地结果'} leftSection={<FileJson size={16} />} onClick={() => setView('offline')} />
         <TextInput leftSection={<Search size={15} />} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索实例" />
         <Stack gap={4} style={{ overflowY: 'auto' }}>{filteredInstances.map((instance) => <NavLink key={instance.instance_id} active={selectedInstance?.instance_id === instance.instance_id} label={instance.instance_name} description={`${instance.run_count} 次运行`} leftSection={<Archive size={16} />} rightSection={<ChevronRight size={15} />} onClick={() => void selectInstance(instance)} />)}{!filteredInstances.length && <Text size="sm" c="dimmed" ta="center" py="md">暂无实例</Text>}</Stack>
         <Group gap={0} mt="auto"><TextInput id="instance-name" value={instanceName} onChange={(event) => setInstanceName(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && void createInstance()} placeholder="新实例名称" style={{ flex: 1 }} /><Button onClick={() => void createInstance()}><Plus size={16} /></Button></Group>
@@ -189,7 +206,8 @@ function App() {
     </AppShell.Navbar>
     <AppShell.Main>
       <Stack gap="sm" mb="md">{error && <Box><Text c="red" size="sm">{error}</Text></Box>}{notice && <Box><Text c="teal" size="sm">{notice}</Text></Box>}</Stack>
-      {!selectedInstance && <EmptyInstances onCreate={() => document.getElementById('instance-name')?.focus()} />}
+      {view === 'offline' && <OfflineViewer fileName={offlineFileName} result={offlineResult} onFile={(file) => void loadOfflineFile(file)} />}
+      {!selectedInstance && view !== 'offline' && <EmptyInstances onCreate={() => document.getElementById('instance-name')?.focus()} />}
       {selectedInstance && view === 'instances' && <InstanceOverview instance={selectedInstance} onNewRun={() => void openNewRun(selectedInstance)} onRename={() => void renameInstance()} onDelete={() => void deleteInstance(selectedInstance)} onOpenRun={(run) => void openRun(run)} onDeleteRun={(run) => void deleteRun(run)} />}
       {selectedInstance && view === 'new-run' && <RunEditor inputText={inputText} setInputText={setInputText} inputError={inputError} runName={runName} setRunName={setRunName} randomSeed={randomSeed} setRandomSeed={setRandomSeed} onBack={() => setView('instances')} onRun={() => void createRun()} onFile={loadFile} onFormat={() => { const parsed = validateInput(inputText); if (parsed) setInputText(JSON.stringify(parsed, null, 2)) }} />}
       {selectedInstance && view === 'run' && activeRun && <RunDetail run={activeRun} result={result} onBack={() => setView('instances')} onCancel={() => void cancelRun()} onDelete={() => void deleteRun(activeRun)} onNewRun={() => void openNewRun(selectedInstance, activeRun)} onRename={() => void renameRun()} />}

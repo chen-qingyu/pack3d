@@ -45,7 +45,7 @@ function Viewer3D({ containers, boxTypes }: {
     const mount = mountRef.current
     const scene = new THREE.Scene()
     scene.background = new THREE.Color('#101923')
-    const camera = new THREE.PerspectiveCamera(42, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 10000)
+    const camera = new THREE.PerspectiveCamera(42, mount.clientWidth / Math.max(1, mount.clientHeight), 0.1, 1_000_000)
     camera.position.set(5, 5, 5)
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
