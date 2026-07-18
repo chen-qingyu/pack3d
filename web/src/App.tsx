@@ -6,12 +6,24 @@ import type { Instance, ResultData, Run } from './api'
 import { EmptyInstances, InstanceOverview } from './components/InstanceOverview'
 import { OfflineViewer } from './components/OfflineViewer'
 import { RunDetail } from './components/RunDetail'
-import { RunEditor } from './components/RunEditor'
-import { initialInput } from './format'
+import { INITIAL_FORM, RunEditor, type RunFormState } from './components/RunEditor'
 import { useRunPolling } from './hooks/useRunPolling'
 import { parseOfflineResult } from './offline'
 
 type View = 'instances' | 'new-run' | 'run' | 'offline'
+
+const UI_OVERRIDE_KEYS = ['algorithm']
+const UI_CONSTRAINT_KEYS = ['time_limit', 'support_rate', 'platform_limit', 'tender_limit']
+
+const stripUiOverrides = (input: Record<string, unknown>) => {
+  for (const key of UI_OVERRIDE_KEYS) delete input[key]
+  const constraints = input.constraints as Record<string, unknown> | undefined
+  if (constraints) {
+    for (const key of UI_CONSTRAINT_KEYS) delete constraints[key]
+    if (Object.keys(constraints).length === 0) delete input.constraints
+  }
+  return input
+}
 
 function App() {
   const [instances, setInstances] = useState<Instance[]>([])
@@ -21,21 +33,21 @@ function App() {
   const [offlineResult, setOfflineResult] = useState<ResultData | null>(null)
   const [offlineFileName, setOfflineFileName] = useState('')
   const [view, setView] = useState<View>('instances')
-  const [inputText, setInputText] = useState(initialInput)
-  const [inputError, setInputError] = useState('')
   const [loading, setLoading] = useState(true)
   const [apiOnline, setApiOnline] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [instanceName, setInstanceName] = useState('')
-  const [runName, setRunName] = useState('')
-  const [randomSeed, setRandomSeed] = useState('42')
-  const [algorithm, setAlgorithm] = useState<string | null>(null)
-  const [timeLimit, setTimeLimit] = useState<string | number>('')
-  const [supportRate, setSupportRate] = useState<string | number>('')
-  const [platformLimit, setPlatformLimit] = useState<string | number>('')
-  const [tenderLimit, setTenderLimit] = useState<string | number>('')
   const [search, setSearch] = useState('')
+  const [form, setForm] = useState<RunFormState>(INITIAL_FORM)
+
+  const setField = <K extends keyof RunFormState>(field: K, value: RunFormState[K]) => {
+    setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const resetConstraintOverrides = () => {
+    setForm((prev) => ({ ...prev, algorithm: null, timeLimit: '', supportRate: '', platformLimit: '', tenderLimit: '' }))
+  }
 
   const refreshInstances = useCallback(async () => {
     const response = await api.listInstances()
@@ -100,103 +112,46 @@ function App() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : '重命名失败') }
   }
 
-  const UI_OVERRIDE_KEYS = ['algorithm']
-  const UI_CONSTRAINT_KEYS = ['time_limit', 'support_rate', 'platform_limit', 'tender_limit']
-
-  const stripUiOverrides = (input: Record<string, unknown>) => {
-    for (const key of UI_OVERRIDE_KEYS) delete input[key]
-    const constraints = input.constraints as Record<string, unknown> | undefined
-    if (constraints) {
-      for (const key of UI_CONSTRAINT_KEYS) delete constraints[key]
-      if (Object.keys(constraints).length === 0) delete input.constraints
-    }
-    return input
-  }
-
   const openNewRun = async (instance: Instance, sourceRun?: Run) => {
     setSelectedInstance(instance)
-    setRunName(instance.instance_name)
-    setInputError('')
-    setAlgorithm(null)
-    setTimeLimit('')
-    setSupportRate('')
-    setPlatformLimit('')
-    setTenderLimit('')
+    resetConstraintOverrides()
+    setForm({ ...INITIAL_FORM, runName: instance.instance_name })
     try {
       const previous = sourceRun || instance.runs?.find((run) => run.status === 'completed')
       if (previous) {
         const raw = await api.getInput(instance.instance_id, previous.run_id)
-        setInputText(JSON.stringify(stripUiOverrides(raw), null, 2))
-      } else {
-        setInputText(initialInput)
+        setField('inputText', JSON.stringify(stripUiOverrides(raw), null, 2))
       }
-    } catch { setInputText(initialInput) }
+    } catch { /* keep initialInput */ }
     setView('new-run')
-  }
-
-  const validateInput = (text: string): Record<string, unknown> | null => {
-    try {
-      const parsed = JSON.parse(text) as Record<string, unknown>
-      setInputError('')
-      return parsed
-    } catch (reason) {
-      setInputError(reason instanceof Error ? `JSON 语法错误：${reason.message}` : 'JSON 语法错误')
-      return null
-    }
   }
 
   const createRun = async () => {
     if (!selectedInstance) return
-    const input = validateInput(inputText)
-    if (!input) return
+    let input: Record<string, unknown>
+    try { input = JSON.parse(form.inputText) as Record<string, unknown> } catch { return }
 
-    if (algorithm) {
-      if ('algorithm' in input) { setInputError('JSON 已指定 algorithm，不能同时通过界面覆盖。'); return }
-      input.algorithm = algorithm
-    }
-    if (timeLimit !== '' && timeLimit !== null) {
-      const secs = Number(timeLimit)
-      if (secs > 0) {
-        const constraints = (input.constraints || {}) as Record<string, unknown>
-        if ('time_limit' in constraints) { setInputError('JSON 已指定 constraints.time_limit，不能同时通过界面覆盖。'); return }
-        constraints.time_limit = secs
-        input.constraints = constraints
-      }
-    }
+    if (form.algorithm) input.algorithm = form.algorithm
 
-    const constraintsInjection = (input.constraints || {}) as Record<string, unknown>
-    let needConstraints = false
-
-    if (supportRate !== '' && supportRate !== null) {
-      const val = Number(supportRate)
-      if (val > 0) {
-        if ('support_rate' in constraintsInjection) { setInputError('JSON 已指定 constraints.support_rate，不能同时通过界面覆盖。'); return }
-        constraintsInjection.support_rate = val
-        needConstraints = true
-      }
+    const overrides: Array<{ state: string | number; key: string }> = [
+      { state: form.timeLimit, key: 'time_limit' },
+      { state: form.supportRate, key: 'support_rate' },
+      { state: form.platformLimit, key: 'platform_limit' },
+      { state: form.tenderLimit, key: 'tender_limit' },
+    ]
+    const constraints = (input.constraints || {}) as Record<string, unknown>
+    let constraintsDirty = false
+    for (const { state, key } of overrides) {
+      if (state === '' || state === null) continue
+      const val = Number(state)
+      if (val <= 0) continue
+      constraints[key] = val
+      constraintsDirty = true
     }
-    if (platformLimit !== '' && platformLimit !== null) {
-      const val = Number(platformLimit)
-      if (val >= 1) {
-        if ('platform_limit' in constraintsInjection) { setInputError('JSON 已指定 constraints.platform_limit，不能同时通过界面覆盖。'); return }
-        constraintsInjection.platform_limit = val
-        needConstraints = true
-      }
-    }
-    if (tenderLimit !== '' && tenderLimit !== null) {
-      const val = Number(tenderLimit)
-      if (val >= 1) {
-        if ('tender_limit' in constraintsInjection) { setInputError('JSON 已指定 constraints.tender_limit，不能同时通过界面覆盖。'); return }
-        constraintsInjection.tender_limit = val
-        needConstraints = true
-      }
-    }
-    if (needConstraints) {
-      input.constraints = constraintsInjection
-    }
+    if (constraintsDirty) input.constraints = constraints
 
     try {
-      const created = await api.createRun(selectedInstance.instance_id, input, Number(randomSeed) || 42, runName.trim() || selectedInstance.instance_name)
+      const created = await api.createRun(selectedInstance.instance_id, input, Number(form.randomSeed) || 42, form.runName.trim() || selectedInstance.instance_name)
       setActiveRun(created)
       setResult(null)
       setView('run')
@@ -243,7 +198,7 @@ function App() {
 
   const loadFile = (file: File) => {
     const reader = new FileReader()
-    reader.onload = () => setInputText(String(reader.result || ''))
+    reader.onload = () => setField('inputText', String(reader.result || ''))
     reader.readAsText(file)
   }
 
@@ -283,7 +238,7 @@ function App() {
       {view === 'offline' && <OfflineViewer fileName={offlineFileName} result={offlineResult} onFile={(file) => void loadOfflineFile(file)} />}
       {!selectedInstance && view !== 'offline' && <EmptyInstances onCreate={() => document.getElementById('instance-name')?.focus()} />}
       {selectedInstance && view === 'instances' && <InstanceOverview instance={selectedInstance} onNewRun={() => void openNewRun(selectedInstance)} onRename={() => void renameInstance()} onDelete={() => void deleteInstance(selectedInstance)} onOpenRun={(run) => void openRun(run)} onDeleteRun={(run) => void deleteRun(run)} />}
-      {selectedInstance && view === 'new-run' && <RunEditor inputText={inputText} setInputText={setInputText} inputError={inputError} runName={runName} setRunName={setRunName} randomSeed={randomSeed} setRandomSeed={setRandomSeed} algorithm={algorithm} setAlgorithm={setAlgorithm} timeLimit={timeLimit} setTimeLimit={setTimeLimit} supportRate={supportRate} setSupportRate={setSupportRate} platformLimit={platformLimit} setPlatformLimit={setPlatformLimit} tenderLimit={tenderLimit} setTenderLimit={setTenderLimit} onBack={() => setView('instances')} onRun={() => void createRun()} onFile={loadFile} onFormat={() => { const parsed = validateInput(inputText); if (parsed) setInputText(JSON.stringify(parsed, null, 2)) }} />}
+      {selectedInstance && view === 'new-run' && <RunEditor form={form} setField={setField} onBack={() => setView('instances')} onRun={() => void createRun()} onFile={loadFile} onFormat={() => { try { setField('inputText', JSON.stringify(JSON.parse(form.inputText) as Record<string, unknown>, null, 2)) } catch { /* ignore */ } }} />}
       {selectedInstance && view === 'run' && activeRun && <RunDetail run={activeRun} result={result} onBack={() => setView('instances')} onCancel={() => void cancelRun()} onDelete={() => void deleteRun(activeRun)} onNewRun={() => void openNewRun(selectedInstance, activeRun)} onRename={() => void renameRun()} />}
     </AppShell.Main>
   </AppShell>

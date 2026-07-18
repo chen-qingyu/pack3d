@@ -3,7 +3,6 @@ import { Button, Container, Group, Paper, SimpleGrid, Stack, Text, Title } from 
 import { Archive, Box as BoxIcon, FileJson, Gauge, LoaderCircle, Upload } from 'lucide-react'
 import type { ResultData } from '../api'
 import { formatPercent } from '../format'
-import { offlineContainers } from '../offline'
 import { Metric } from './Ui'
 
 const Viewer3D = lazy(() => import('../Viewer3D'))
@@ -15,7 +14,7 @@ type OfflineViewerProps = {
 }
 
 export function OfflineViewer({ fileName, result, onFile }: OfflineViewerProps) {
-    const containers = result ? offlineContainers(result) : []
+    const containers = result?.result?.containers ?? []
     const boxTypes = result?.result?.box_types ?? []
     const summary = result?.summary
 

@@ -1,4 +1,4 @@
-import type { ContainerResult, ResultData } from './api'
+import type { ResultData } from './api'
 
 type JsonObject = Record<string, unknown>
 
@@ -25,6 +25,3 @@ export function parseOfflineResult(text: string): ResultData {
     return value as unknown as ResultData
 }
 
-export function offlineContainers(result: ResultData): ContainerResult[] {
-    return result.result?.containers ?? []
-}
