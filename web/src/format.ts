@@ -1,8 +1,30 @@
+export interface RunFormState {
+  inputText: string
+  runName: string
+  randomSeed: string
+  algorithm: string | null
+  timeLimit: string | number
+  supportRate: string | number
+  platformLimit: string | number
+  tenderLimit: string | number
+}
+
 export const initialInput = `{
   "container_types": [],
   "box_types": [],
   "boxes": []
 }`
+
+export const INITIAL_FORM: RunFormState = {
+  inputText: initialInput,
+  runName: '',
+  randomSeed: '42',
+  algorithm: null,
+  timeLimit: '',
+  supportRate: '',
+  platformLimit: '',
+  tenderLimit: '',
+}
 
 export const statusLabel: Record<string, string> = {
   running: '运行中',

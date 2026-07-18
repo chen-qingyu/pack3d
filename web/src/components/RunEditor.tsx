@@ -1,28 +1,6 @@
 import { ArrowLeft, Check, FileJson, Gauge, Play, RefreshCw, Upload } from 'lucide-react'
 import { ActionIcon, Button, Container, Grid, Group, NumberInput, Paper, Select, Stack, Text, TextInput, Textarea, ThemeIcon, Title } from '@mantine/core'
-import { initialInput } from '../format'
-
-export interface RunFormState {
-  inputText: string
-  runName: string
-  randomSeed: string
-  algorithm: string | null
-  timeLimit: string | number
-  supportRate: string | number
-  platformLimit: string | number
-  tenderLimit: string | number
-}
-
-export const INITIAL_FORM: RunFormState = {
-  inputText: initialInput,
-  runName: '',
-  randomSeed: '42',
-  algorithm: null,
-  timeLimit: '',
-  supportRate: '',
-  platformLimit: '',
-  tenderLimit: '',
-}
+import { initialInput, type RunFormState } from '../format'
 
 type RunEditorProps = {
   form: RunFormState
