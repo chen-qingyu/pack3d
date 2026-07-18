@@ -317,17 +317,6 @@ void commit_placement(
 
     if (!box.platform.empty())
     {
-        auto xmin_it = load.platform_x_min.find(box.platform);
-        if (xmin_it == load.platform_x_min.end() || ep.x < xmin_it->second)
-        {
-            load.platform_x_min[box.platform] = ep.x;
-        }
-        auto xmax_it = load.platform_x_max.find(box.platform);
-        int32_t x2 = ep.x + osize.dx;
-        if (xmax_it == load.platform_x_max.end() || x2 > xmax_it->second)
-        {
-            load.platform_x_max[box.platform] = x2;
-        }
     }
 
     grid_register(ctx, load.placements, idx);

@@ -124,16 +124,6 @@ bool Heuristic::check_block_feasible(
     if (!block.platform.empty())
     {
         sim.platforms.insert(block.platform);
-        auto xmax_it = sim.platform_x_max.find(block.platform);
-        if (xmax_it == sim.platform_x_max.end() || block_max_x > xmax_it->second)
-        {
-            sim.platform_x_max[block.platform] = block_max_x;
-        }
-        auto xmin_it = sim.platform_x_min.find(block.platform);
-        if (xmin_it == sim.platform_x_min.end() || block_min_x < xmin_it->second)
-        {
-            sim.platform_x_min[block.platform] = block_min_x;
-        }
     }
 
     for (int iz = 0; iz < block.nz; ++iz)
@@ -235,18 +225,6 @@ void Heuristic::place_block(
                 if (!block.platform.empty())
                 {
                     state.platforms.insert(block.platform);
-                    int32_t box_max_x = pos.x + single.dx;
-                    auto xmax_it = state.platform_x_max.find(block.platform);
-                    if (xmax_it == state.platform_x_max.end() || box_max_x > xmax_it->second)
-                    {
-                        state.platform_x_max[block.platform] = box_max_x;
-                    }
-                    int32_t box_min_x = pos.x;
-                    auto xmin_it = state.platform_x_min.find(block.platform);
-                    if (xmin_it == state.platform_x_min.end() || box_min_x < xmin_it->second)
-                    {
-                        state.platform_x_min[block.platform] = box_min_x;
-                    }
                 }
 
                 if (!block.group.empty())
@@ -274,8 +252,6 @@ PackResult Heuristic::make_result(
     r.total_weight = state.total_weight;
     r.platforms = state.platforms;
     r.groups = state.groups;
-    r.platform_x_max = state.platform_x_max;
-    r.platform_x_min = state.platform_x_min;
     r.placements = state.placements;
 
     std::set<std::string> packed;

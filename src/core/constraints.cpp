@@ -165,6 +165,20 @@ bool check_platform_limit(const ContainerLoad& load,
     return static_cast<int>(load.platforms.size()) < platform_limit;
 }
 
+static bool yz_overlap(const Position& a, const OrientedSize& as,
+                       const Position& b, const OrientedSize& bs) noexcept
+{
+    if (a.y >= b.y + bs.dy || b.y >= a.y + as.dy)
+    {
+        return false;
+    }
+    if (a.z >= b.z + bs.dz || b.z >= a.z + as.dz)
+    {
+        return false;
+    }
+    return true;
+}
+
 bool check_route_order(const ContainerLoad& load,
                        const std::string& platform,
                        const Position& pos, const OrientedSize& osize,
@@ -183,36 +197,37 @@ bool check_route_order(const ContainerLoad& load,
 
     size_t my_idx = it->second;
 
-    for (const auto& [other_plat, other_min_x] : load.platform_x_min)
+    for (const auto& pl : load.placements)
     {
-        if (other_plat == platform)
+        if (pl.platform == platform || pl.platform.empty())
         {
             continue;
         }
-        auto oit = route.index_of.find(other_plat);
+        auto oit = route.index_of.find(pl.platform);
         if (oit == route.index_of.end())
+        {
+            continue;
+        }
+
+        if (!yz_overlap(pos, osize, pl.position, pl.osize))
         {
             continue;
         }
 
         size_t other_idx = oit->second;
 
-        if (my_idx > other_idx)
+        if (my_idx < other_idx)
         {
-            if (pos.x < other_min_x)
+            if (pos.x + osize.dx > pl.position.x)
             {
                 return false;
             }
         }
         else
         {
-            auto max_it = load.platform_x_max.find(other_plat);
-            if (max_it != load.platform_x_max.end())
+            if (pos.x < pl.position.x + pl.osize.dx)
             {
-                if (pos.x + osize.dx > max_it->second)
-                {
-                    return false;
-                }
+                return false;
             }
         }
     }

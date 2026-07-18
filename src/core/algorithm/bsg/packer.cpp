@@ -78,17 +78,6 @@ ContainerLoad BsgPacker::pack_single(
         if (!bx.platform.empty())
         {
             load.platforms.insert(bx.platform);
-            int32_t xmax = pl.position.x + pl.osize.dx;
-            auto it = load.platform_x_max.find(bx.platform);
-            if (it == load.platform_x_max.end() || xmax > it->second)
-            {
-                load.platform_x_max[bx.platform] = xmax;
-            }
-            auto it2 = load.platform_x_min.find(bx.platform);
-            if (it2 == load.platform_x_min.end() || pl.position.x < it2->second)
-            {
-                load.platform_x_min[bx.platform] = pl.position.x;
-            }
         }
         if (!bx.group.empty())
         {

@@ -33,8 +33,6 @@ ContainerLoad GlcPacker::pack_single(
         load.total_weight = pr.total_weight;
         load.platforms = std::move(pr.platforms);
         load.groups = std::move(pr.groups);
-        load.platform_x_max = std::move(pr.platform_x_max);
-        load.platform_x_min = std::move(pr.platform_x_min);
     }
 
     return load;

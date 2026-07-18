@@ -180,11 +180,6 @@ struct ContainerLoad
     int64_t used_volume = 0;
     double total_weight = 0.0;
 
-    // 路线跟踪：platform -> X 方向边界
-    // 更深 = 更小的 X（靠里）。先装的平台在最深处（X 最小）。
-    std::map<std::string, int32_t> platform_x_max;
-    std::map<std::string, int32_t> platform_x_min;
-
     int32_t inner_x() const noexcept
     {
         return type->inner_size.x;

@@ -22,8 +22,6 @@ struct PackResult
     double total_weight = 0.0;
     std::set<std::string> platforms;
     std::set<std::string> groups;
-    std::map<std::string, int32_t> platform_x_max;
-    std::map<std::string, int32_t> platform_x_min;
 };
 
 /// 容器内装载引擎（GLC 块装载法）

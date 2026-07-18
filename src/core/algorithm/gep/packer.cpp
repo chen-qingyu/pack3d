@@ -116,17 +116,6 @@ ContainerLoad GepPacker::pack_single(
                 if (!box.platform.empty())
                 {
                     load.platforms.insert(box.platform);
-                    int32_t xmax = pos.x + os.dx;
-                    auto it = load.platform_x_max.find(box.platform);
-                    if (it == load.platform_x_max.end() || xmax > it->second)
-                    {
-                        load.platform_x_max[box.platform] = xmax;
-                    }
-                    auto it2 = load.platform_x_min.find(box.platform);
-                    if (it2 == load.platform_x_min.end() || pos.x < it2->second)
-                    {
-                        load.platform_x_min[box.platform] = pos.x;
-                    }
                 }
                 if (!box.group.empty())
                 {
