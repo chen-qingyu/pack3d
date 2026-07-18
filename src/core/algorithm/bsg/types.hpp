@@ -134,11 +134,23 @@ struct BSGState
     // 已用体积
     int64_t used_volume = 0;
 
+    // 项目约束使用的叶子箱状态；仅在 item_classes 非空时维护。
+    ContainerLoad constraint_load;
+    std::vector<int> item_class_indices;
+
     // KPA 缓存 (K4) — lazy init
     // kpa_X[c] = max linear extension along axis X using remaining boxes with capacity c
     std::optional<std::vector<int>> kpa_L;
     std::optional<std::vector<int>> kpa_W;
     std::optional<std::vector<int>> kpa_H;
+};
+
+struct ItemClass
+{
+    std::string box_type_id;
+    std::string platform;
+    double weight = 0.0;
+    std::vector<std::string> box_ids;
 };
 
 // ============================================================
@@ -148,12 +160,18 @@ struct GlobalContext
 {
     // 容器尺寸
     Size container_size;
+    ContainerType container_type;
 
     // 最小底面支撑率；0 表示不启用支撑约束
     double support_rate = 0.0;
 
     // 箱子类型（索引即 type_idx）
     std::vector<BoxType> box_types;
+    std::vector<ItemClass> item_classes;
+    std::map<std::string, BoxType> box_type_map;
+    std::optional<int> platform_limit;
+    std::optional<RouteOrder> route;
+    bool has_weight_info = false;
 
     // 全局块列表（GeneralBlockGeneration 产物）
     std::vector<GeneralBlock> blocks;

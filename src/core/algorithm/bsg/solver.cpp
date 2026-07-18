@@ -110,6 +110,11 @@ PackResult solve(const GlobalContext& ctx,
         s0.available_blocks.push_back(i);
     }
     s0.used_volume = 0;
+    if (!ctx.item_classes.empty())
+    {
+        s0.constraint_load.type = &ctx.container_type;
+        s0.constraint_load.type_id = ctx.container_type.id;
+    }
 
     int w = 1;
     int64_t s_best_volume = 0;
@@ -160,7 +165,7 @@ PackResult solve(const GlobalContext& ctx,
         return result;
     }
 
-    // 将 s_best 的块展开为独立箱子
+    // 将搜索状态中的叶子箱绑定到实际 ID。约束模式下叶子状态已在放置时验证。
     std::vector<std::queue<std::string>> id_queues(n_types);
     for (int ti = 0; ti < n_types; ++ti)
     {
@@ -170,18 +175,32 @@ PackResult solve(const GlobalContext& ctx,
         }
     }
 
-    // 构建 id → index 映射
-    std::unordered_map<int64_t, int> id_to_idx;
-    for (int i = 0; i < static_cast<int>(ctx.blocks.size()); ++i)
-    {
-        id_to_idx[ctx.blocks[i].id] = i;
-    }
-
     std::vector<Placement> placements;
-    for (const auto& pb : s_best.placements)
+    if (!ctx.item_classes.empty())
     {
-        expand_block_placements(pb.block_idx, pb.anchor, ctx.blocks, id_to_idx, ctx.box_types,
-                                id_queues, placements);
+        placements = s_best.constraint_load.placements;
+        assert(placements.size() == s_best.item_class_indices.size());
+        for (size_t i = 0; i < placements.size(); ++i)
+        {
+            const int item_class_idx = s_best.item_class_indices[i];
+            assert(item_class_idx >= 0 && item_class_idx < n_types);
+            assert(!id_queues[item_class_idx].empty());
+            placements[i].box_id = id_queues[item_class_idx].front();
+            id_queues[item_class_idx].pop();
+        }
+    }
+    else
+    {
+        std::unordered_map<int64_t, int> id_to_idx;
+        for (int i = 0; i < static_cast<int>(ctx.blocks.size()); ++i)
+        {
+            id_to_idx[ctx.blocks[i].id] = i;
+        }
+        for (const auto& pb : s_best.placements)
+        {
+            expand_block_placements(pb.block_idx, pb.anchor, ctx.blocks, id_to_idx, ctx.box_types,
+                                    id_queues, placements);
+        }
     }
 
     // 收集未装箱 ID
@@ -206,7 +225,7 @@ PackResult solve(const GlobalContext& ctx,
     result.success = unpacked.empty();
     result.placements = std::move(placements);
     result.unpacked_box_ids = std::move(unpacked);
-    result.used_volume = s_best_volume;
+    result.used_volume = ctx.item_classes.empty() ? s_best_volume : s_best.constraint_load.used_volume;
 
     auto elapsed = TimeChecker::elapsed();
     spdlog::debug("BSG-CLP done: {:.2f}s, volume_rate={:.4f}, packed={}, unpacked={}",

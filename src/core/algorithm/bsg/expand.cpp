@@ -4,6 +4,7 @@
 #include <cassert>
 #include <utility>
 
+#include "feasibility.hpp"
 #include "kpa.hpp"
 #include "space.hpp"
 #include "support.hpp"
@@ -126,17 +127,23 @@ std::vector<BSGState> expand(
                           return a.f_value > b.f_value;
                       });
 
-    // 为每个选中的块生成后继状态
-    for (int i = 0; i < take; ++i)
+    // 为评分最高的可行块生成后继状态。
+    for (size_t i = 0; i < candidates.size() && static_cast<int>(successors.size()) < take; ++i)
     {
         int bi = candidates[i].block_idx;
         const auto& b = ctx.blocks[bi];
 
-        BSGState succ = s; // copy
-
         // K5: 计算放置位置
         Position place_pos = placement_position(r, b, selection.anchor);
-        if (!is_supported(s, place_pos, b.osize, ctx))
+        if (ctx.item_classes.empty() && !is_supported(s, place_pos, b.osize, ctx))
+        {
+            continue;
+        }
+
+        BSGState succ = s; // copy
+        if (!ctx.item_classes.empty() &&
+            !can_place_block(s, bi, place_pos, ctx,
+                             succ.constraint_load, succ.item_class_indices))
         {
             continue;
         }

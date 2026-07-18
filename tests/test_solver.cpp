@@ -108,3 +108,53 @@ TEST_CASE("min_group_split", "[solver]")
         REQUIRE(res["result"]["containers"][1]["type_id"] == "small");
     }
 }
+
+TEST_CASE("bsg_enforces_project_hard_constraints", "[solver][bsg]")
+{
+    json input = {
+        {"algorithm", "bsg"},
+        {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 100}, {"y", 100}, {"z", 50}}}, {"max_weight", 10.0}, {"quantity_limit", nullptr}}}},
+        {"box_types", {{{"id", "half"}, {"size", {{"x", 50}, {"y", 100}, {"z", 50}}}, {"allowed_orientations", {"xyz"}}}}},
+        {"boxes", {
+                      {{"id", "later"}, {"box_type_id", "half"}, {"weight", 6.0}, {"platform", "B"}},
+                      {{"id", "earlier"}, {"box_type_id", "half"}, {"weight", 6.0}, {"platform", "A"}},
+                  }},
+        {"route", {"A", "B"}},
+        {"constraints", {{"time_limit", 5.0}, {"support_rate", 0.0}, {"platform_limit", 1}, {"tender_limit", nullptr}}},
+    };
+
+    auto result = run(input);
+    REQUIRE(result["status"] == "complete");
+    REQUIRE(result["summary"]["unpacked_box_count"] == 0);
+
+    for (const auto& container : result["result"]["containers"])
+    {
+        CHECK(container["used_weight"].get<double>() <= 10.0);
+        CHECK(container["platforms"].size() <= 1);
+
+        const auto& placements = container["placements"];
+        for (const auto& lhs : placements)
+        {
+            for (const auto& rhs : placements)
+            {
+                if (lhs["platform"] == rhs["platform"])
+                {
+                    continue;
+                }
+                const auto& lhs_position = lhs["position"];
+                const auto& lhs_size = lhs["size"];
+                const auto& rhs_position = rhs["position"];
+                const auto& rhs_size = rhs["size"];
+                bool yz_overlap =
+                    lhs_position["y"].get<int>() < rhs_position["y"].get<int>() + rhs_size["dy"].get<int>() &&
+                    rhs_position["y"].get<int>() < lhs_position["y"].get<int>() + lhs_size["dy"].get<int>() &&
+                    lhs_position["z"].get<int>() < rhs_position["z"].get<int>() + rhs_size["dz"].get<int>() &&
+                    rhs_position["z"].get<int>() < lhs_position["z"].get<int>() + lhs_size["dz"].get<int>();
+                if (yz_overlap && lhs["platform"] == "A" && rhs["platform"] == "B")
+                {
+                    CHECK(lhs_position["x"].get<int>() + lhs_size["dx"].get<int>() <= rhs_position["x"].get<int>());
+                }
+            }
+        }
+    }
+}

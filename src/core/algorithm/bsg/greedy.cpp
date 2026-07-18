@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 
+#include "feasibility.hpp"
 #include "kpa.hpp"
 #include "space.hpp"
 #include "support.hpp"
@@ -100,9 +101,18 @@ GreedyResult greedy_rollout(
             }
 
             Position place_pos = placement_position(r, b, selection.anchor);
-            if (!is_supported(cur, place_pos, b.osize, ctx))
+            if (ctx.item_classes.empty() && !is_supported(cur, place_pos, b.osize, ctx))
             {
                 continue;
+            }
+            if (!ctx.item_classes.empty())
+            {
+                ContainerLoad next_load;
+                std::vector<int> next_item_classes;
+                if (!can_place_block(cur, bi, place_pos, ctx, next_load, next_item_classes))
+                {
+                    continue;
+                }
             }
 
             int64_t fv = compute_f(cur, r, b, ctx);
@@ -121,6 +131,13 @@ GreedyResult greedy_rollout(
         // 放置
         const auto& b = ctx.blocks[best_bi];
         Position place_pos = placement_position(r, b, selection.anchor);
+
+        if (!ctx.item_classes.empty() &&
+            !can_place_block(cur, best_bi, place_pos, ctx,
+                             cur.constraint_load, cur.item_class_indices))
+        {
+            break;
+        }
 
         update_residual_space(cur.R, place_pos, b.osize);
 

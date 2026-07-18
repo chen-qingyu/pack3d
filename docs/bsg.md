@@ -141,11 +141,16 @@ $$
 
 ## 4. 约束和项目集成
 
-BSG 继承项目的容器调度，但其内部搜索重点是体积利用率。
+BSG 继承项目的容器调度，并在块放置时逐叶校验共享硬约束，与 GEP/GLC/RGS 保持一致。
 
 - 方向约束：由 `BoxType::allowed_orientations` 和块生成保证。
-- 支撑约束：`support_rate > 0` 时，放置前会递归展开既有复合块的顶层叶子箱，按项目通用规则检查可堆叠性、四角和支撑面积。
-- 重量、平台数量、路线和发标约束：BSG 不会像 GEP/GLC/RGS 那样在每次块放置时完整优化这些项目扩展约束。对包含这些约束的生产问题，应优先验证 BSG 输出是否符合目标场景，必要时选用其他算法。
+- 边界与重叠：在叶子箱展开后通过 `check_boundary` / `check_overlap` 校验。
+- 重量约束：逐箱累加并通过 `check_weight` 对照容器 `max_weight` 校验。
+- 支撑约束：`support_rate > 0` 时通过项目通用的 `check_support` 校验四角、面积和可堆叠性。
+- 平台数量限制：通过 `check_platform_limit` 校验。
+- 路线顺序约束：通过 `check_route_order` 按 Y/Z 重叠门控校验 X 轴通道。
+
+约束校验仅在 `PackerBase` 传入项目约束时启用。纯几何 BSG 单元测试（无约束上下文）仍走原有的 `is_supported` 路径，不受影响。
 
 BR 论文基准没有开启项目 `support_rate`，转换后的输入也保留原始容器尺寸、箱型数量和允许朝向。`data/convert_br.py` 将每个 BR 实例转换为数量限制为 1 的单容器输入。
 

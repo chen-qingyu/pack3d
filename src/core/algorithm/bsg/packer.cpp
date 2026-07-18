@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <set>
+#include <tuple>
 
 #include "../../tool.hpp"
 #include "../config.hpp"
@@ -17,30 +18,38 @@ ContainerLoad BsgPacker::pack_single(
     const ContainerType& ct,
     bool /*stop_when_complete*/)
 {
-    // 构建 BoxType 索引
+    // 按影响硬约束的属性划分库存类，避免搜索后再补平台和重量。
     std::vector<BoxType> box_types;
-    std::map<std::string, int> type_idx_map;
-    for (const auto& bt : problem_.box_types)
-    {
-        type_idx_map[bt.id] = static_cast<int>(box_types.size());
-        box_types.push_back(bt);
-    }
-    int n_types = static_cast<int>(box_types.size());
-
-    // 统计 per-type 数量和 ID 列表
-    std::vector<int> cur_counts(n_types, 0);
-    std::vector<std::vector<std::string>> cur_ids_by_type(n_types);
+    std::vector<bsg::ItemClass> item_classes;
+    std::map<std::tuple<std::string, std::string, double>, int> class_index;
     for (const auto& bx : items)
     {
-        auto it = type_idx_map.find(bx.box_type_id);
-        if (it == type_idx_map.end())
+        auto bt_it = box_type_map_.find(bx.box_type_id);
+        if (bt_it == box_type_map_.end())
         {
             continue;
         }
-        int ti = it->second;
-        cur_counts[ti]++;
-        cur_ids_by_type[ti].push_back(bx.id);
+        const double weight = bx.weight.value_or(0.0);
+        const auto key = std::make_tuple(bx.box_type_id, bx.platform, weight);
+        auto [it, inserted] = class_index.emplace(key, static_cast<int>(item_classes.size()));
+        if (inserted)
+        {
+            box_types.push_back(bt_it->second);
+            item_classes.push_back({bx.box_type_id, bx.platform, weight, {}});
+        }
+        item_classes[it->second].box_ids.push_back(bx.id);
     }
+
+    std::vector<int> cur_counts;
+    std::vector<std::vector<std::string>> cur_ids_by_type;
+    cur_counts.reserve(item_classes.size());
+    cur_ids_by_type.reserve(item_classes.size());
+    for (const auto& item_class : item_classes)
+    {
+        cur_counts.push_back(static_cast<int>(item_class.box_ids.size()));
+        cur_ids_by_type.push_back(item_class.box_ids);
+    }
+    int n_types = static_cast<int>(box_types.size());
 
     // 块生成
     double max_fr = (n_types < config::BSG_THRESHOLD_BOX_TYPES)
@@ -51,8 +60,14 @@ ContainerLoad BsgPacker::pack_single(
 
     bsg::GlobalContext ctx;
     ctx.container_size = ct.inner_size;
+    ctx.container_type = ct;
     ctx.support_rate = problem_.support_rate;
     ctx.box_types = std::move(box_types);
+    ctx.item_classes = std::move(item_classes);
+    ctx.box_type_map = box_type_map_;
+    ctx.platform_limit = problem_.platform_limit;
+    ctx.route = problem_.route;
+    ctx.has_weight_info = has_weight_info_;
     ctx.blocks = std::move(blocks);
 
     // 求解
@@ -64,7 +79,7 @@ ContainerLoad BsgPacker::pack_single(
     load.placements = std::move(pr.placements);
     load.used_volume = pr.used_volume;
 
-    // 补充追踪字段（BSG 不解平台/分组，从 box_map 回填）
+    // 回填不影响 BSG 搜索的分组元数据。
     for (auto& pl : load.placements)
     {
         auto bx_it = box_map_.find(pl.box_id);
