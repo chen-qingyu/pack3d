@@ -5,6 +5,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "constraints.hpp"
 #include "objectives.hpp"
 #include "packer_base.hpp"
 #include "tool.hpp"
@@ -19,7 +20,9 @@ void merge_platforms(std::vector<ContainerLoad>& all_loads,
                      ObjectiveVector& best_obj,
                      PackerBase& packer,
                      const std::vector<ContainerType>& container_types,
-                     const std::map<std::string, Box>& box_map)
+                     const std::map<std::string, BoxType>& box_type_map,
+                     const std::map<std::string, Box>& box_map,
+                     double support_rate)
 {
     std::map<std::string, std::vector<size_t>> plat_containers;
     for (size_t ci = 0; ci < all_loads.size(); ++ci)
@@ -129,6 +132,28 @@ void merge_platforms(std::vector<ContainerLoad>& all_loads,
             }
             sload.instance_id = ct.id + "_merged_plat";
             candidate.push_back(std::move(sload));
+
+            // 验证合并后剩余箱子支撑是否仍然满足约束
+            bool support_ok = true;
+            for (const auto& cl : candidate)
+            {
+                for (const auto& pl : cl.placements)
+                {
+                    if (!check_support(pl.position, pl.osize, cl, box_type_map, support_rate))
+                    {
+                        support_ok = false;
+                        break;
+                    }
+                }
+                if (!support_ok)
+                {
+                    break;
+                }
+            }
+            if (!support_ok)
+            {
+                continue;
+            }
 
             auto cand_obj = compute_objective(candidate);
             if (compare_objectives(cand_obj, best_obj) < 0)
@@ -265,7 +290,8 @@ void postprocess(std::vector<ContainerLoad>& all_loads,
 
     auto best_obj = compute_objective(all_loads);
 
-    merge_platforms(all_loads, best_obj, packer, container_types, box_map);
+    merge_platforms(all_loads, best_obj, packer, container_types, box_type_map, box_map,
+                    packer.support_rate());
 
     if (!TimeChecker::check() || all_loads.empty())
     {

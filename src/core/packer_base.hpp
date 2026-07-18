@@ -34,6 +34,11 @@ public:
 
     Solution pack();
 
+    double support_rate() const
+    {
+        return problem_.support_rate;
+    }
+
 protected:
     const Problem& problem_;
     const std::map<std::string, BoxType>& box_type_map_;
