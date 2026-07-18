@@ -110,7 +110,7 @@ TEST_CASE("路线约束：X 重叠但 Y 分隔允许", "[core][route]")
     RouteOrder route{{"A", "B"}};
     route.index_of = {{"A", 0}, {"B", 1}};
 
-    // 先放 A（深处）到 (0,0,0)
+    // 先放 A（近门）到 (0,0,0)
     load.placements.push_back({"", "", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}, "A"});
 
     // B 的 X 与 A 重叠，但 Y 完全分离 → 允许
@@ -133,7 +133,7 @@ TEST_CASE("路线约束：X 重叠但 Z 分隔允许", "[core][route]")
     REQUIRE(check_route_order(load, "B", {0, 0, 200}, {100, 100, 100}, route));
 }
 
-TEST_CASE("路线约束：YZ 重叠时先装平台必须在深处", "[core][route]")
+TEST_CASE("路线约束：YZ 重叠时先卸平台必须在近门处", "[core][route]")
 {
     ContainerLoad load;
     load.type_id = "t";
@@ -143,15 +143,16 @@ TEST_CASE("路线约束：YZ 重叠时先装平台必须在深处", "[core][rout
     RouteOrder route{{"A", "B"}};
     route.index_of = {{"A", 0}, {"B", 1}};
 
+    // B（后卸）在深处 (200,0,0)
     load.placements.push_back({"", "", "", {200, 0, 0}, Orientation::XYZ, {100, 100, 100}, "B"});
 
-    // A 在 YZ 上与 B 重叠，且 X 在 B 右侧 → 拒绝
-    REQUIRE_FALSE(check_route_order(load, "A", {250, 0, 0}, {100, 100, 100}, route));
-    // A 完全在 B 左侧 → 允许
-    REQUIRE(check_route_order(load, "A", {0, 0, 0}, {100, 100, 100}, route));
+    // A 在 YZ 上与 B 重叠，但 X 在 B 左侧（深处）→ 拒绝（A 应先卸，必须在近门处）
+    REQUIRE_FALSE(check_route_order(load, "A", {0, 0, 0}, {100, 100, 100}, route));
+    // A 完全在 B 右侧（近门）→ 允许
+    REQUIRE(check_route_order(load, "A", {300, 0, 0}, {100, 100, 100}, route));
 }
 
-TEST_CASE("路线约束：XY 重叠时后装平台不能压住先装平台", "[core][route]")
+TEST_CASE("路线约束：XY 重叠时后卸平台不能压住先卸平台", "[core][route]")
 {
     ContainerLoad load;
     load.type_id = "t";
@@ -161,13 +162,13 @@ TEST_CASE("路线约束：XY 重叠时后装平台不能压住先装平台", "[c
     RouteOrder route{{"A", "B"}};
     route.index_of = {{"A", 0}, {"B", 1}};
 
-    // A（先装）在 (0, 0, 100)，B（后装）在 (0, 0, 0)
+    // A（先卸）在 (0, 0, 100)，B（后卸）在 (0, 0, 0)
     // XY 重叠，B.z=0 ≤ A.z=100 → B 没压住 A → 允许
     load.placements.push_back({"", "", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 50}, "A"});
     REQUIRE(check_route_order(load, "B", {0, 0, 0}, {100, 100, 100}, route));
 }
 
-TEST_CASE("路线约束：后装平台压住先装平台被拒绝", "[core][route]")
+TEST_CASE("路线约束：后卸平台压住先卸平台被拒绝", "[core][route]")
 {
     ContainerLoad load;
     load.type_id = "t";
@@ -177,7 +178,7 @@ TEST_CASE("路线约束：后装平台压住先装平台被拒绝", "[core][rout
     RouteOrder route{{"A", "B"}};
     route.index_of = {{"A", 0}, {"B", 1}};
 
-    // A（先装）在 (0,0,0) 高 100，B（后装）在 (0,0,100) 直接叠在 A 上
+    // A（先卸）在 (0,0,0) 高 100，B（后卸）在 (0,0,100) 直接叠在 A 上
     load.placements.push_back({"", "", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}, "A"});
     // B 直接压在 A 上方 → 拒绝
     REQUIRE_FALSE(check_route_order(load, "B", {0, 0, 100}, {100, 100, 50}, route));

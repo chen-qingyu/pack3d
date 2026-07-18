@@ -225,31 +225,33 @@ bool check_route_order(const ContainerLoad& load,
 
         size_t other_idx = oit->second;
 
-        // YZ 重叠 → 先装平台必须在 X 深处（更左）
+        // YZ 重叠 → 先卸平台必须在近门处（X 更大）
         if (yz_overlap(pos, osize, pl.position, pl.osize))
         {
             if (my_idx < other_idx)
             {
-                if (pos.x + osize.dx > pl.position.x)
+                // candidate 是先卸平台 → 必须在 X 更大侧（近门）
+                if (pos.x < pl.position.x + pl.osize.dx)
                 {
                     return false;
                 }
             }
             else
             {
-                if (pos.x < pl.position.x + pl.osize.dx)
+                // candidate 是后卸平台 → 必须在 X 更小侧（深处）
+                if (pos.x + osize.dx > pl.position.x)
                 {
                     return false;
                 }
             }
         }
 
-        // XY 重叠 → 后装平台不能叠压在先装平台上方
+        // XY 重叠 → 后卸平台不能叠压在先卸平台上方
         if (xy_overlap(pos, osize, pl.position, pl.osize))
         {
             if (my_idx < other_idx)
             {
-                // candidate 是先装平台，已有的是后装平台；后装不能压在先装上
+                // candidate 是先卸平台，已存在的箱子是后卸平台；后卸不能压在先卸上
                 if (pl.position.z == pos.z + osize.dz)
                 {
                     return false;
@@ -257,7 +259,7 @@ bool check_route_order(const ContainerLoad& load,
             }
             else
             {
-                // candidate 是后装平台，已有的是先装平台；后装不能压在先装上
+                // candidate 是后卸平台，已存在的箱子是先卸平台；后卸不能压在先卸上
                 if (pos.z == pl.position.z + pl.osize.dz)
                 {
                     return false;

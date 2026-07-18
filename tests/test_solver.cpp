@@ -152,7 +152,8 @@ TEST_CASE("bsg_enforces_project_hard_constraints", "[solver][bsg]")
                     rhs_position["z"].get<int>() < lhs_position["z"].get<int>() + lhs_size["dz"].get<int>();
                 if (yz_overlap && lhs["platform"] == "A" && rhs["platform"] == "B")
                 {
-                    CHECK(lhs_position["x"].get<int>() + lhs_size["dx"].get<int>() <= rhs_position["x"].get<int>());
+                    // A 先卸 → 应在近门处（X 更大），即 A.x >= B.x + B.dx
+                    CHECK(lhs_position["x"].get<int>() >= rhs_position["x"].get<int>() + rhs_size["dx"].get<int>());
                 }
             }
         }
