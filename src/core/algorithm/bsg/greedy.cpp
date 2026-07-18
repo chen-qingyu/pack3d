@@ -101,11 +101,11 @@ GreedyResult greedy_rollout(
             }
 
             Position place_pos = placement_position(r, b, selection.anchor);
-            if (ctx.item_classes.empty() && !is_supported(cur, place_pos, b.osize, ctx))
+            if (!ctx.needs_leaf_validation() && !is_supported(cur, place_pos, b.osize, ctx))
             {
                 continue;
             }
-            if (!ctx.item_classes.empty())
+            if (ctx.needs_leaf_validation())
             {
                 ContainerLoad next_load;
                 std::vector<int> next_item_classes;
@@ -132,7 +132,7 @@ GreedyResult greedy_rollout(
         const auto& b = ctx.blocks[best_bi];
         Position place_pos = placement_position(r, b, selection.anchor);
 
-        if (!ctx.item_classes.empty() &&
+        if (ctx.needs_leaf_validation() &&
             !can_place_block(cur, best_bi, place_pos, ctx,
                              cur.constraint_load, cur.item_class_indices))
         {

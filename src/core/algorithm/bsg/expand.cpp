@@ -135,13 +135,13 @@ std::vector<BSGState> expand(
 
         // K5: 计算放置位置
         Position place_pos = placement_position(r, b, selection.anchor);
-        if (ctx.item_classes.empty() && !is_supported(s, place_pos, b.osize, ctx))
+        if (!ctx.needs_leaf_validation() && !is_supported(s, place_pos, b.osize, ctx))
         {
             continue;
         }
 
         BSGState succ = s; // copy
-        if (!ctx.item_classes.empty() &&
+        if (ctx.needs_leaf_validation() &&
             !can_place_block(s, bi, place_pos, ctx,
                              succ.constraint_load, succ.item_class_indices))
         {

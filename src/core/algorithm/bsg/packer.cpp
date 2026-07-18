@@ -70,6 +70,13 @@ ContainerLoad BsgPacker::pack_single(
     ctx.has_weight_info = has_weight_info_;
     ctx.blocks = std::move(blocks);
 
+    // 构建 block id → index 映射（feasibility 复用，避免每次 can_place_block 重建）
+    ctx.block_indices.reserve(ctx.blocks.size());
+    for (int i = 0; i < static_cast<int>(ctx.blocks.size()); ++i)
+    {
+        ctx.block_indices.emplace(ctx.blocks[i].id, i);
+    }
+
     // 求解
     bsg::PackResult pr = bsg::solve(ctx, cur_counts, cur_ids_by_type);
 

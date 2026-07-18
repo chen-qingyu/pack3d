@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "../../types.hpp"
@@ -176,9 +177,19 @@ struct GlobalContext
     // 全局块列表（GeneralBlockGeneration 产物）
     std::vector<GeneralBlock> blocks;
 
+    // block id → blocks 数组索引（packer 构建一次，feasibility 复用）
+    std::unordered_map<int64_t, int> block_indices;
+
     // 每箱的整数 ID（0..N-1），用于去相似 hash
     // box_ids[i] = global box id string, box_index_of[id] = 0..N-1
     std::vector<std::string> box_ids;
+
+    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线）。
+    /// 支撑由 is_supported 在块级处理，不在此列。
+    [[nodiscard]] bool needs_leaf_validation() const noexcept
+    {
+        return has_weight_info || platform_limit.has_value() || route.has_value();
+    }
 };
 
 // ============================================================

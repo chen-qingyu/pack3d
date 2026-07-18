@@ -110,7 +110,7 @@ PackResult solve(const GlobalContext& ctx,
         s0.available_blocks.push_back(i);
     }
     s0.used_volume = 0;
-    if (!ctx.item_classes.empty())
+    if (ctx.needs_leaf_validation())
     {
         s0.constraint_load.type = &ctx.container_type;
         s0.constraint_load.type_id = ctx.container_type.id;
@@ -176,7 +176,7 @@ PackResult solve(const GlobalContext& ctx,
     }
 
     std::vector<Placement> placements;
-    if (!ctx.item_classes.empty())
+    if (ctx.needs_leaf_validation())
     {
         placements = s_best.constraint_load.placements;
         assert(placements.size() == s_best.item_class_indices.size());
@@ -225,7 +225,7 @@ PackResult solve(const GlobalContext& ctx,
     result.success = unpacked.empty();
     result.placements = std::move(placements);
     result.unpacked_box_ids = std::move(unpacked);
-    result.used_volume = ctx.item_classes.empty() ? s_best_volume : s_best.constraint_load.used_volume;
+    result.used_volume = ctx.needs_leaf_validation() ? s_best.constraint_load.used_volume : s_best_volume;
 
     auto elapsed = TimeChecker::elapsed();
     spdlog::debug("BSG-CLP done: {:.2f}s, volume_rate={:.4f}, packed={}, unpacked={}",

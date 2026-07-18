@@ -81,20 +81,13 @@ bool can_place_block(
     ContainerLoad& next_load,
     std::vector<int>& next_item_classes) noexcept
 {
-    if (ctx.item_classes.empty() || block_idx < 0 || static_cast<size_t>(block_idx) >= ctx.blocks.size())
+    if (block_idx < 0 || static_cast<size_t>(block_idx) >= ctx.blocks.size())
     {
         return false;
     }
 
-    std::unordered_map<int64_t, int> block_indices;
-    block_indices.reserve(ctx.blocks.size());
-    for (size_t index = 0; index < ctx.blocks.size(); ++index)
-    {
-        block_indices.emplace(ctx.blocks[index].id, static_cast<int>(index));
-    }
-
     std::vector<LeafItem> leaves;
-    append_block_leaves(block_idx, position, ctx, block_indices, leaves);
+    append_block_leaves(block_idx, position, ctx, ctx.block_indices, leaves);
     std::sort(leaves.begin(), leaves.end(), [](const LeafItem& a, const LeafItem& b)
               {
         if (a.position.z != b.position.z)
