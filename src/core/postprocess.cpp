@@ -234,10 +234,11 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
         auto cand_obj = compute_objective(candidate);
         if (compare_objectives(cand_obj, best_obj) < 0)
         {
+            auto old_type_id = cl.type->id;
             all_loads = std::move(candidate);
             best_obj = cand_obj;
-            spdlog::info("Repacked container {} from {} to {}",
-                         cl.instance_id, cl.type->id, ct.id);
+            spdlog::info("Repacked container #{} from {} to {}",
+                         i + 1, old_type_id, ct.id);
         }
         break;
     }
