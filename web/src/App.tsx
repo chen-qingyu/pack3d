@@ -30,6 +30,11 @@ function App() {
   const [instanceName, setInstanceName] = useState('')
   const [runName, setRunName] = useState('')
   const [randomSeed, setRandomSeed] = useState('42')
+  const [algorithm, setAlgorithm] = useState<string | null>(null)
+  const [timeLimit, setTimeLimit] = useState<string | number>('')
+  const [supportRate, setSupportRate] = useState<string | number>('')
+  const [platformLimit, setPlatformLimit] = useState<string | number>('')
+  const [tenderLimit, setTenderLimit] = useState<string | number>('')
   const [search, setSearch] = useState('')
 
   const refreshInstances = useCallback(async () => {
@@ -95,13 +100,36 @@ function App() {
     } catch (reason) { setError(reason instanceof Error ? reason.message : '重命名失败') }
   }
 
+  const UI_OVERRIDE_KEYS = ['algorithm']
+  const UI_CONSTRAINT_KEYS = ['time_limit', 'support_rate', 'platform_limit', 'tender_limit']
+
+  const stripUiOverrides = (input: Record<string, unknown>) => {
+    for (const key of UI_OVERRIDE_KEYS) delete input[key]
+    const constraints = input.constraints as Record<string, unknown> | undefined
+    if (constraints) {
+      for (const key of UI_CONSTRAINT_KEYS) delete constraints[key]
+      if (Object.keys(constraints).length === 0) delete input.constraints
+    }
+    return input
+  }
+
   const openNewRun = async (instance: Instance, sourceRun?: Run) => {
     setSelectedInstance(instance)
     setRunName(instance.instance_name)
     setInputError('')
+    setAlgorithm(null)
+    setTimeLimit('')
+    setSupportRate('')
+    setPlatformLimit('')
+    setTenderLimit('')
     try {
       const previous = sourceRun || instance.runs?.find((run) => run.status === 'completed')
-      setInputText(previous ? JSON.stringify(await api.getInput(instance.instance_id, previous.run_id), null, 2) : initialInput)
+      if (previous) {
+        const raw = await api.getInput(instance.instance_id, previous.run_id)
+        setInputText(JSON.stringify(stripUiOverrides(raw), null, 2))
+      } else {
+        setInputText(initialInput)
+      }
     } catch { setInputText(initialInput) }
     setView('new-run')
   }
@@ -121,6 +149,52 @@ function App() {
     if (!selectedInstance) return
     const input = validateInput(inputText)
     if (!input) return
+
+    if (algorithm) {
+      if ('algorithm' in input) { setInputError('JSON 已指定 algorithm，不能同时通过界面覆盖。'); return }
+      input.algorithm = algorithm
+    }
+    if (timeLimit !== '' && timeLimit !== null) {
+      const secs = Number(timeLimit)
+      if (secs > 0) {
+        const constraints = (input.constraints || {}) as Record<string, unknown>
+        if ('time_limit' in constraints) { setInputError('JSON 已指定 constraints.time_limit，不能同时通过界面覆盖。'); return }
+        constraints.time_limit = secs
+        input.constraints = constraints
+      }
+    }
+
+    const constraintsInjection = (input.constraints || {}) as Record<string, unknown>
+    let needConstraints = false
+
+    if (supportRate !== '' && supportRate !== null) {
+      const val = Number(supportRate)
+      if (val > 0) {
+        if ('support_rate' in constraintsInjection) { setInputError('JSON 已指定 constraints.support_rate，不能同时通过界面覆盖。'); return }
+        constraintsInjection.support_rate = val
+        needConstraints = true
+      }
+    }
+    if (platformLimit !== '' && platformLimit !== null) {
+      const val = Number(platformLimit)
+      if (val >= 1) {
+        if ('platform_limit' in constraintsInjection) { setInputError('JSON 已指定 constraints.platform_limit，不能同时通过界面覆盖。'); return }
+        constraintsInjection.platform_limit = val
+        needConstraints = true
+      }
+    }
+    if (tenderLimit !== '' && tenderLimit !== null) {
+      const val = Number(tenderLimit)
+      if (val >= 1) {
+        if ('tender_limit' in constraintsInjection) { setInputError('JSON 已指定 constraints.tender_limit，不能同时通过界面覆盖。'); return }
+        constraintsInjection.tender_limit = val
+        needConstraints = true
+      }
+    }
+    if (needConstraints) {
+      input.constraints = constraintsInjection
+    }
+
     try {
       const created = await api.createRun(selectedInstance.instance_id, input, Number(randomSeed) || 42, runName.trim() || selectedInstance.instance_name)
       setActiveRun(created)
@@ -209,7 +283,7 @@ function App() {
       {view === 'offline' && <OfflineViewer fileName={offlineFileName} result={offlineResult} onFile={(file) => void loadOfflineFile(file)} />}
       {!selectedInstance && view !== 'offline' && <EmptyInstances onCreate={() => document.getElementById('instance-name')?.focus()} />}
       {selectedInstance && view === 'instances' && <InstanceOverview instance={selectedInstance} onNewRun={() => void openNewRun(selectedInstance)} onRename={() => void renameInstance()} onDelete={() => void deleteInstance(selectedInstance)} onOpenRun={(run) => void openRun(run)} onDeleteRun={(run) => void deleteRun(run)} />}
-      {selectedInstance && view === 'new-run' && <RunEditor inputText={inputText} setInputText={setInputText} inputError={inputError} runName={runName} setRunName={setRunName} randomSeed={randomSeed} setRandomSeed={setRandomSeed} onBack={() => setView('instances')} onRun={() => void createRun()} onFile={loadFile} onFormat={() => { const parsed = validateInput(inputText); if (parsed) setInputText(JSON.stringify(parsed, null, 2)) }} />}
+      {selectedInstance && view === 'new-run' && <RunEditor inputText={inputText} setInputText={setInputText} inputError={inputError} runName={runName} setRunName={setRunName} randomSeed={randomSeed} setRandomSeed={setRandomSeed} algorithm={algorithm} setAlgorithm={setAlgorithm} timeLimit={timeLimit} setTimeLimit={setTimeLimit} supportRate={supportRate} setSupportRate={setSupportRate} platformLimit={platformLimit} setPlatformLimit={setPlatformLimit} tenderLimit={tenderLimit} setTenderLimit={setTenderLimit} onBack={() => setView('instances')} onRun={() => void createRun()} onFile={loadFile} onFormat={() => { const parsed = validateInput(inputText); if (parsed) setInputText(JSON.stringify(parsed, null, 2)) }} />}
       {selectedInstance && view === 'run' && activeRun && <RunDetail run={activeRun} result={result} onBack={() => setView('instances')} onCancel={() => void cancelRun()} onDelete={() => void deleteRun(activeRun)} onNewRun={() => void openNewRun(selectedInstance, activeRun)} onRename={() => void renameRun()} />}
     </AppShell.Main>
   </AppShell>
