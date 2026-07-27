@@ -190,6 +190,8 @@ struct GlobalContext
     {
         return has_weight_info || platform_limit.has_value() || route.has_value();
     }
+
+    std::vector<Placement> existing_placements;
 };
 
 // ============================================================

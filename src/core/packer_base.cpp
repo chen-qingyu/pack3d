@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include "io.hpp"
 #include "objectives.hpp"
 #include "postprocess.hpp"
 #include "select_container.hpp"
@@ -24,6 +25,103 @@ Solution PackerBase::pack()
     std::map<std::string, int> container_usage;
     int instance_counter = 0;
 
+    // ---- 阶段 A: 预填充已有容器 ----
+    std::map<std::string, ContainerType> ct_map;
+    for (const auto& ct : problem_.container_types)
+    {
+        ct_map[ct.id] = ct;
+    }
+    std::map<std::string, BoxType> bt_map;
+    for (const auto& bt : problem_.box_types)
+    {
+        bt_map[bt.id] = bt;
+    }
+
+    for (const auto& ec : problem_.existing_containers)
+    {
+        std::vector<std::string> build_errors;
+        auto load = build_load_from_existing(ec, ct_map, bt_map, build_errors);
+        if (build_errors.empty())
+        {
+            if (load.instance_id.empty())
+            {
+                load.instance_id = ec.type_id + "_" + std::to_string(instance_counter);
+            }
+            container_usage[ec.type_id]++;
+            all_loads.push_back(std::move(load));
+        }
+    }
+    instance_counter = static_cast<int>(all_loads.size());
+
+    // ---- 阶段 B: 继续塞已有容器 ----
+    for (auto& cl : all_loads)
+    {
+        if (remaining_ids.empty() || !TimeChecker::check())
+        {
+            break;
+        }
+
+        std::vector<Box> remaining;
+        for (const auto& bx : problem_.boxes)
+        {
+            if (remaining_ids.count(bx.id))
+            {
+                remaining.push_back(bx);
+            }
+        }
+
+        auto ct_it = ct_map.find(cl.type_id);
+        if (ct_it == ct_map.end())
+        {
+            continue;
+        }
+
+        // 将已有 placement 传给 pack_single 继续塞
+        ContainerLoad extra = pack_single(remaining, ct_it->second, cl.placements);
+        if (extra.placements.size() <= cl.placements.size())
+        {
+            continue;
+        }
+
+        // 计算新增箱子 ID
+        std::set<std::string> packed;
+        {
+            std::set<std::string> existing_ids;
+            for (const auto& pl : cl.placements)
+            {
+                existing_ids.insert(pl.box_id);
+            }
+            for (const auto& pl : extra.placements)
+            {
+                if (!existing_ids.count(pl.box_id))
+                {
+                    packed.insert(pl.box_id);
+                }
+            }
+        }
+
+        if (packed.empty())
+        {
+            continue;
+        }
+
+        // extra 已含 existing + new 的累计值，直接覆盖
+        cl.placements = std::move(extra.placements);
+        cl.used_volume = extra.used_volume;
+        cl.total_weight = extra.total_weight;
+        cl.platforms = std::move(extra.platforms);
+        cl.groups = std::move(extra.groups);
+        for (const auto& id : packed)
+        {
+            remaining_ids.erase(id);
+        }
+
+        spdlog::info("Container \"{}\": added {}, now total {}, left {}",
+                     cl.instance_id, packed.size(),
+                     cl.placements.size(), remaining_ids.size());
+    }
+
+    // ---- 阶段 C: 开新容器 ----
     while (!remaining_ids.empty() && TimeChecker::check())
     {
         std::vector<Box> remaining;
@@ -42,7 +140,7 @@ Solution PackerBase::pack()
             break;
         }
 
-        ContainerLoad load = pack_single(remaining, *ct);
+        ContainerLoad load = pack_single(remaining, *ct, {});
         load.instance_id = ct->id + "_" + std::to_string(instance_counter++);
 
         std::set<std::string> packed;
@@ -82,8 +180,7 @@ Solution PackerBase::build_solution(
         packed += static_cast<int>(cl.placements.size());
     }
     sol.packed_box_count = packed;
-    int total = static_cast<int>(problem_.boxes.size());
-    sol.unpacked_box_count = total - packed;
+    sol.unpacked_box_count = static_cast<int>(remaining_ids.size());
 
     if (!TimeChecker::check())
     {
@@ -100,6 +197,7 @@ Solution PackerBase::build_solution(
 
     sol.objective = compute_objective(all_loads);
     sol.box_types = problem_.box_types;
+    sol.unpacked_boxes.assign(remaining_ids.begin(), remaining_ids.end());
 
     for (const auto& cl : all_loads)
     {

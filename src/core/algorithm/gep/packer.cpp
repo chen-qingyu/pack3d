@@ -10,6 +10,7 @@ namespace pack3d
 ContainerLoad GepPacker::pack_single(
     const std::vector<Box>& items,
     const ContainerType& ct,
+    const std::vector<Placement>& existing,
     bool /*stop_when_complete*/)
 {
     // 箱子按体积降序排序
@@ -26,6 +27,26 @@ ContainerLoad GepPacker::pack_single(
     load.type_id = ct.id;
     load.type = &ct;
 
+    // 预填充已有放置
+    for (const auto& pl : existing)
+    {
+        load.placements.push_back(pl);
+        load.used_volume += pl.osize.volume();
+        if (!pl.platform.empty())
+        {
+            load.platforms.insert(pl.platform);
+        }
+        if (!pl.group.empty())
+        {
+            load.groups.insert(pl.group);
+        }
+        auto bx_it = box_map_.find(pl.box_id);
+        if (bx_it != box_map_.end() && bx_it->second.weight.has_value())
+        {
+            load.total_weight += bx_it->second.weight.value();
+        }
+    }
+
     // 候选点列表（极点的 x,y,z，去重用 set）
     struct Ep
     {
@@ -41,6 +62,14 @@ ContainerLoad GepPacker::pack_single(
     };
     std::set<Ep> eps;
     eps.insert({0, 0, 0});
+
+    // 从已有放置生成初始 EP
+    for (const auto& pl : existing)
+    {
+        eps.insert({pl.position.x + pl.osize.dx, pl.position.y, pl.position.z});
+        eps.insert({pl.position.x, pl.position.y + pl.osize.dy, pl.position.z});
+        eps.insert({pl.position.x, pl.position.y, pl.position.z + pl.osize.dz});
+    }
 
     for (auto& box : sorted)
     {

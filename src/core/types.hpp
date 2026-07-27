@@ -135,6 +135,25 @@ enum class SolveStatus : uint8_t
     Partial,
 };
 
+// 已有容器中的放置（自包含，无需查表）
+struct ExistingPlacement
+{
+    std::string box_id;
+    std::string box_type_id;
+    Position position;
+    Orientation orientation = Orientation::XYZ;
+    std::optional<double> weight = std::nullopt;
+    std::string platform;
+    std::string group;
+};
+
+struct ExistingContainer
+{
+    std::string type_id;
+    std::string instance_id;
+    std::vector<ExistingPlacement> placements;
+};
+
 // 完整问题描述
 struct Problem
 {
@@ -151,6 +170,9 @@ struct Problem
 
     // 算法
     Algorithm algorithm = Algorithm::GEP;
+
+    // 已有的中间状态（每个容器已放置的箱子）
+    std::vector<ExistingContainer> existing_containers;
 };
 
 // 放置结果（内部 + 输出）
@@ -179,6 +201,8 @@ struct ContainerLoad
 
     int64_t used_volume = 0;
     double total_weight = 0.0;
+
+    bool locked = false; // 已有容器，后处理不可移动
 
     int32_t inner_x() const noexcept
     {

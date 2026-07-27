@@ -119,3 +119,45 @@ Schema 校验后，代码还会检查：
 - 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
 - 路线合法性：路线中无重复平台，箱子平台必须在路线中
 - 重量一致性：只要任一个箱子存在重量信息，则所有箱子和容器必须有重量信息
+
+## 中间状态 `existing_containers`（可选）
+
+从已有部分放置继续装箱。`boxes` 只列**待装箱子**，已放置箱子信息完全由 `existing_containers` 描述。
+
+```json
+{
+  "existing_containers": [
+    {
+      "type_id": "big",
+      "instance_id": "big_0",
+      "placements": [
+        {
+          "box_id": "b0",
+          "box_type_id": "box_l",
+          "position": { "x": 0, "y": 0, "z": 0 },
+          "orientation": "xyz",
+          "weight": 10.0,
+          "platform": "P1",
+          "group": "A"
+        }
+      ]
+    }
+  ]
+}
+```
+
+| 字段                       | 类型    | 必填 | 说明                          |
+| -------------------------- | ------- | ---- | ----------------------------- |
+| `type_id`                  | string  | 是   | 引用 container_types 中的 id  |
+| `instance_id`              | string  |      | 容器实例 ID，未指定则自动生成 |
+| `placements[].box_id`      | string  | 是   | 箱子标识                      |
+| `placements[].box_type_id` | string  | 是   | 引用 box_types 中的 id        |
+| `placements[].position`    | {x,y,z} | 是   | 放置位置（min corner）        |
+| `placements[].orientation` | string  | 是   | 朝向，同 box_types 朝向枚举   |
+| `placements[].weight`      | number  |      | 箱子重量                      |
+| `placements[].platform`    | string  |      | 平台 ID                       |
+| `placements[].group`       | string  |      | 分组 ID                       |
+
+已有容器中的箱子不会出现在 `boxes` 列表中。求解器会先尝试在已有容器中继续塞入剩余箱子（未满则继续），再开新容器。已有放置被锁定，后处理不会移动它们。
+
+预校验会额外检查已有放置的边界、重叠、重量、支撑率、平台限制和路线顺序。

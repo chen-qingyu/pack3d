@@ -38,7 +38,9 @@ public:
 
     /// Beam 搜索装载
     /// beam_width: 每层保留的部分方案数（GLC 论文取 6~16）
-    [[nodiscard]] PackResult pack_beam(const std::vector<Box>& boxes, int beam_width);
+    [[nodiscard]] PackResult pack_beam(const std::vector<Box>& boxes,
+                                       const std::vector<Placement>& existing,
+                                       int beam_width);
 
 private:
     struct LocalPackScore
@@ -48,6 +50,11 @@ private:
         int64_t used_volume = 0;
         int placed_count = 0;
     };
+
+    // 从已有放置重建 Space 栈
+    [[nodiscard]] static std::vector<Space> reconstruct_spaces(
+        const std::vector<Placement>& existing,
+        const Size& container_size);
 
     const ContainerType& container_;
     const std::map<std::string, BoxType>& box_type_map_;

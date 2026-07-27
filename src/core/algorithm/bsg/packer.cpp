@@ -16,6 +16,7 @@ namespace pack3d
 ContainerLoad BsgPacker::pack_single(
     const std::vector<Box>& items,
     const ContainerType& ct,
+    const std::vector<Placement>& existing,
     bool /*stop_when_complete*/)
 {
     // 按影响硬约束的属性划分库存类，避免搜索后再补平台和重量。
@@ -69,6 +70,7 @@ ContainerLoad BsgPacker::pack_single(
     ctx.route = problem_.route;
     ctx.has_weight_info = has_weight_info_;
     ctx.blocks = std::move(blocks);
+    ctx.existing_placements = existing;
 
     // 构建 block id → index 映射（feasibility 复用，避免每次 can_place_block 重建）
     ctx.block_indices.reserve(ctx.blocks.size());
@@ -83,12 +85,37 @@ ContainerLoad BsgPacker::pack_single(
     ContainerLoad load;
     load.type_id = ct.id;
     load.type = &ct;
-    load.placements = std::move(pr.placements);
+
+    // 已有放置：先于 solver 结果加入，使 BSG 与其他算法一致
+    for (const auto& pl : existing)
+    {
+        load.placements.push_back(pl);
+        if (!pl.platform.empty())
+        {
+            load.platforms.insert(pl.platform);
+        }
+        if (!pl.group.empty())
+        {
+            load.groups.insert(pl.group);
+        }
+        auto bx_it = box_map_.find(pl.box_id);
+        if (bx_it != box_map_.end() && bx_it->second.weight.has_value())
+        {
+            load.total_weight += bx_it->second.weight.value();
+        }
+    }
+
+    // solver 新放置
+    load.placements.insert(load.placements.end(),
+                           std::make_move_iterator(pr.placements.begin()),
+                           std::make_move_iterator(pr.placements.end()));
+    // pr.used_volume 含已有体积（solver 内部 s0.used_volume 预填），直接用
     load.used_volume = pr.used_volume;
 
-    // 回填不影响 BSG 搜索的分组元数据。
-    for (auto& pl : load.placements)
+    // 回填不影响 BSG 搜索的分组元数据（仅新放置需要）
+    for (size_t i = existing.size(); i < load.placements.size(); ++i)
     {
+        auto& pl = load.placements[i];
         auto bx_it = box_map_.find(pl.box_id);
         if (bx_it == box_map_.end())
         {

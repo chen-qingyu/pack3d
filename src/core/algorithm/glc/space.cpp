@@ -179,4 +179,119 @@ bool transfer_space(std::vector<Space>& stack) noexcept
     return true;
 }
 
+void carve_out_space(const Space& space,
+                     const Placement& pl,
+                     std::vector<Space>& stack) noexcept
+{
+    // 从 space 中挖掉 pl 占用的区域
+    // pl 完全包含在 space 内，但不在角落
+    // 生成 6 个方向的子空间，按体积降序入栈（小块在栈顶优先处理）
+
+    int32_t sx = space.pos.x, sy = space.pos.y, sz = space.pos.z;
+    int32_t slx = space.lx, sly = space.ly, slz = space.lz;
+    int32_t px = pl.position.x, py = pl.position.y, pz = pl.position.z;
+    int32_t plx = pl.osize.dx, ply = pl.osize.dy, plz = pl.osize.dz;
+
+    struct Candidate
+    {
+        Space sp;
+        int64_t vol;
+    };
+    std::vector<Candidate> cands;
+
+    // 上方 (Z+)
+    if (sz + slz > pz + plz)
+    {
+        Space s;
+        s.pos = {px, py, pz + plz};
+        s.lx = plx;
+        s.ly = ply;
+        s.lz = sz + slz - pz - plz;
+        s.id = next_space_id();
+        s.parent_id = space.id;
+        s.kind = SpaceKind::Z;
+        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
+    }
+
+    // 下方 (Z-)
+    if (pz > sz)
+    {
+        Space s;
+        s.pos = {sx, sy, sz};
+        s.lx = slx;
+        s.ly = sly;
+        s.lz = pz - sz;
+        s.id = next_space_id();
+        s.parent_id = space.id;
+        s.kind = SpaceKind::Z;
+        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
+    }
+
+    // 右方 (X+)
+    if (sx + slx > px + plx)
+    {
+        Space s;
+        s.pos = {px + plx, py, pz};
+        s.lx = sx + slx - px - plx;
+        s.ly = ply;
+        s.lz = plz;
+        s.id = next_space_id();
+        s.parent_id = space.id;
+        s.kind = SpaceKind::X;
+        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
+    }
+
+    // 左方 (X-)
+    if (px > sx)
+    {
+        Space s;
+        s.pos = {sx, py, pz};
+        s.lx = px - sx;
+        s.ly = ply;
+        s.lz = plz;
+        s.id = next_space_id();
+        s.parent_id = space.id;
+        s.kind = SpaceKind::X;
+        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
+    }
+
+    // 后方 (Y+)
+    if (sy + sly > py + ply)
+    {
+        Space s;
+        s.pos = {px, py + ply, pz};
+        s.lx = plx;
+        s.ly = sy + sly - py - ply;
+        s.lz = plz;
+        s.id = next_space_id();
+        s.parent_id = space.id;
+        s.kind = SpaceKind::Y;
+        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
+    }
+
+    // 前方 (Y-)
+    if (py > sy)
+    {
+        Space s;
+        s.pos = {px, sy, pz};
+        s.lx = plx;
+        s.ly = py - sy;
+        s.lz = plz;
+        s.id = next_space_id();
+        s.parent_id = space.id;
+        s.kind = SpaceKind::Y;
+        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
+    }
+
+    // 体积降序排列 → 小块先压栈（后弹出，优先处理）
+    std::sort(cands.begin(), cands.end(),
+              [](const Candidate& a, const Candidate& b) noexcept
+              { return a.vol < b.vol; });
+
+    for (auto& c : cands)
+    {
+        stack.push_back(std::move(c.sp));
+    }
+}
+
 } // namespace pack3d::glc

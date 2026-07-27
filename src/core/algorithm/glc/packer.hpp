@@ -20,12 +20,14 @@ public:
     ContainerLoad pack_single(
         const std::vector<Box>& items,
         const ContainerType& ct,
+        const std::vector<Placement>& existing,
         bool stop_when_complete = false) override;
 
 private:
     std::optional<glc::PackResult> pack_container(
         const ContainerType* ct,
-        const std::vector<const Box*>& boxes) const;
+        const std::vector<const Box*>& boxes,
+        const std::vector<Placement>& existing) const;
 };
 
 } // namespace pack3d

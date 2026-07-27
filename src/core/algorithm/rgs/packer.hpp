@@ -18,6 +18,7 @@ public:
     ContainerLoad pack_single(
         const std::vector<Box>& items,
         const ContainerType& ct,
+        const std::vector<Placement>& existing,
         bool stop_when_complete = false) override;
 };
 

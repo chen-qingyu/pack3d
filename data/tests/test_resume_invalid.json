@@ -1,0 +1,33 @@
+{
+  "container_types": [
+    { "id": "box", "inner_size": { "x": 10, "y": 10, "z": 10 } }
+  ],
+  "box_types": [
+    {
+      "id": "small",
+      "size": { "x": 5, "y": 5, "z": 5 },
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [],
+  "existing_containers": [
+    {
+      "type_id": "box",
+      "placements": [
+        {
+          "box_id": "b0",
+          "box_type_id": "small",
+          "position": { "x": 0, "y": 0, "z": 0 },
+          "orientation": "xyz"
+        },
+        {
+          "box_id": "b1",
+          "box_type_id": "small",
+          "position": { "x": 2, "y": 2, "z": 0 },
+          "orientation": "xyz"
+        }
+      ]
+    }
+  ],
+  "constraints": { "time_limit": 5 }
+}

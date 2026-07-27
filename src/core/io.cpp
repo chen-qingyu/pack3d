@@ -10,6 +10,7 @@
 #include <spdlog/spdlog.h>
 
 #include "algorithm/config.hpp"
+#include "constraints.hpp"
 #include "input_schema.h"
 
 namespace pack3d
@@ -101,6 +102,29 @@ void from_json(const json& j, Box& bx)
     bx.platform = j.value("platform", std::string());
 }
 
+void from_json(const json& j, ExistingPlacement& ep)
+{
+    j["box_id"].get_to(ep.box_id);
+    j["box_type_id"].get_to(ep.box_type_id);
+    j["position"]["x"].get_to(ep.position.x);
+    j["position"]["y"].get_to(ep.position.y);
+    j["position"]["z"].get_to(ep.position.z);
+    ep.orientation = orientation_from_string(j["orientation"].get<std::string>());
+    ep.weight = json_opt_double(j, "weight");
+    ep.platform = j.value("platform", std::string());
+    ep.group = j.value("group", std::string());
+}
+
+void from_json(const json& j, ExistingContainer& ec)
+{
+    j["type_id"].get_to(ec.type_id);
+    ec.instance_id = j.value("instance_id", std::string());
+    for (const auto& item : j["placements"])
+    {
+        ec.placements.push_back(item.get<ExistingPlacement>());
+    }
+}
+
 void from_json(const json& j, Problem& p)
 {
     for (const auto& item : j["container_types"])
@@ -141,6 +165,14 @@ void from_json(const json& j, Problem& p)
     if (j.contains("algorithm"))
     {
         p.algorithm = algorithm_from_string(j["algorithm"].get<std::string>());
+    }
+
+    if (j.contains("existing_containers"))
+    {
+        for (const auto& item : j["existing_containers"])
+        {
+            p.existing_containers.push_back(item.get<ExistingContainer>());
+        }
     }
 }
 
@@ -278,7 +310,167 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
     }
 
+    // 已有容器校验
+    if (!problem.existing_containers.empty())
+    {
+        std::map<std::string, ContainerType> ct_map;
+        for (const auto& ct : problem.container_types)
+        {
+            ct_map[ct.id] = ct;
+        }
+        std::map<std::string, BoxType> bt_map;
+        for (const auto& bt : problem.box_types)
+        {
+            bt_map[bt.id] = bt;
+        }
+
+        std::set<std::string> placed_ids;
+        std::map<std::string, int> ct_usage;
+
+        for (size_t ei = 0; ei < problem.existing_containers.size(); ++ei)
+        {
+            const auto& ec = problem.existing_containers[ei];
+            std::string prefix = "existing_containers[" + std::to_string(ei) + "]";
+
+            if (!ct_map.count(ec.type_id))
+            {
+                out.push_back(prefix + ": unknown container type_id '" + ec.type_id + "'");
+                continue;
+            }
+            ct_usage[ec.type_id]++;
+
+            std::vector<std::string> build_errors;
+            auto load = build_load_from_existing(ec, ct_map, bt_map, build_errors);
+            for (auto& e : build_errors)
+            {
+                out.push_back(prefix + ": " + e);
+            }
+            if (!build_errors.empty())
+            {
+                continue;
+            }
+
+            const auto& ct = ct_map[ec.type_id];
+
+            // 检查容器数量限制
+            if (ct.quantity_limit.has_value() && ct_usage[ec.type_id] > ct.quantity_limit.value())
+            {
+                out.push_back(prefix + ": exceeds quantity_limit for container type " + ec.type_id);
+            }
+
+            for (size_t pi = 0; pi < load.placements.size(); ++pi)
+            {
+                const auto& pl = load.placements[pi];
+                std::string pfx = prefix + ".placements[" + std::to_string(pi) + "]";
+
+                if (!placed_ids.insert(pl.box_id).second)
+                {
+                    out.push_back(pfx + ": duplicate box_id '" + pl.box_id + "'");
+                }
+
+                if (!check_boundary(ct, pl.position, pl.osize))
+                {
+                    out.push_back(pfx + " (" + pl.box_id + "): out of container boundary");
+                }
+
+                // 只检查与已校验放置的重叠
+                for (size_t pj = 0; pj < pi; ++pj)
+                {
+                    const auto& prev = load.placements[pj];
+                    if (check_overlap(pl.position, pl.osize, {prev}))
+                    {
+                        out.push_back(pfx + " (" + pl.box_id + "): overlaps with " + prev.box_id);
+                    }
+                }
+
+                if (!check_support(pl.position, pl.osize, load, bt_map, problem.support_rate))
+                {
+                    out.push_back(pfx + " (" + pl.box_id + "): insufficient support");
+                }
+
+                if (problem.platform_limit.has_value() && !pl.platform.empty())
+                {
+                    // 检查当前放置加入后的平台数
+                    auto test_load = load;
+                    if (!check_platform_limit(test_load, pl.platform, problem.platform_limit.value()))
+                    {
+                        out.push_back(pfx + " (" + pl.box_id + "): exceeds platform_limit");
+                    }
+                }
+
+                if (problem.route.has_value() && !pl.platform.empty())
+                {
+                    if (!check_route_order(load, pl.platform, pl.position, pl.osize, problem.route.value()))
+                    {
+                        out.push_back(pfx + " (" + pl.box_id + "): violates route order");
+                    }
+                }
+            }
+
+            // 校验重量
+            if (ct.max_weight.has_value() && load.total_weight > ct.max_weight.value() + 1e-9)
+            {
+                out.push_back(prefix + ": total weight " + std::to_string(load.total_weight) +
+                              " exceeds max_weight " + std::to_string(ct.max_weight.value()));
+            }
+        }
+    }
+
     return out;
+}
+
+ContainerLoad build_load_from_existing(
+    const ExistingContainer& ec,
+    const std::map<std::string, ContainerType>& ct_map,
+    const std::map<std::string, BoxType>& bt_map,
+    std::vector<std::string>& errors)
+{
+    ContainerLoad load;
+    auto ct_it = ct_map.find(ec.type_id);
+    if (ct_it == ct_map.end())
+    {
+        errors.push_back("existing container type_id '" + ec.type_id + "' not found in container_types");
+        return load;
+    }
+    load.type_id = ec.type_id;
+    load.type = &ct_it->second;
+    load.instance_id = ec.instance_id;
+    load.locked = true;
+
+    for (const auto& ep : ec.placements)
+    {
+        auto bt_it = bt_map.find(ep.box_type_id);
+        if (bt_it == bt_map.end())
+        {
+            errors.push_back("existing placement box_type_id '" + ep.box_type_id + "' not found");
+            continue;
+        }
+        Placement pl;
+        pl.box_id = ep.box_id;
+        pl.box_type_id = ep.box_type_id;
+        pl.position = ep.position;
+        pl.orientation = ep.orientation;
+        pl.osize = bt_it->second.size.orient(ep.orientation);
+        pl.platform = ep.platform;
+        pl.group = ep.group;
+
+        load.placements.push_back(pl);
+        load.used_volume += pl.osize.volume();
+        if (!ep.platform.empty())
+        {
+            load.platforms.insert(ep.platform);
+        }
+        if (!ep.group.empty())
+        {
+            load.groups.insert(ep.group);
+        }
+        if (ep.weight.has_value())
+        {
+            load.total_weight += ep.weight.value();
+        }
+    }
+
+    return load;
 }
 
 void to_json(json& j, const Solution& sol)

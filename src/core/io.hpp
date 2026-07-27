@@ -29,7 +29,16 @@ namespace pack3d
 void from_json(const json& j, ContainerType& ct);
 void from_json(const json& j, BoxType& bt);
 void from_json(const json& j, Box& bx);
+void from_json(const json& j, ExistingPlacement& ep);
+void from_json(const json& j, ExistingContainer& ec);
 void from_json(const json& j, Problem& p);
 void to_json(json& j, const Solution& sol);
+
+/// 从已有放置构建 ContainerLoad（校验用 + pack 预填充）
+[[nodiscard]] ContainerLoad build_load_from_existing(
+    const ExistingContainer& ec,
+    const std::map<std::string, ContainerType>& ct_map,
+    const std::map<std::string, BoxType>& bt_map,
+    std::vector<std::string>& errors);
 
 } // namespace pack3d

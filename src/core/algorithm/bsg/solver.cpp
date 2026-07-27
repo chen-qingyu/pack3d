@@ -13,6 +13,7 @@
 #include "beam.hpp"
 #include "block.hpp"
 #include "kpa.hpp"
+#include "space.hpp"
 
 namespace pack3d::bsg
 {
@@ -114,6 +115,30 @@ PackResult solve(const GlobalContext& ctx,
     {
         s0.constraint_load.type = &ctx.container_type;
         s0.constraint_load.type_id = ctx.container_type.id;
+    }
+
+    // 预填充已有放置
+    for (const auto& pl : ctx.existing_placements)
+    {
+        // 从残差空间 cover 中挖掉已有放置
+        update_residual_space(s0.R, pl.position, pl.osize);
+        s0.used_volume += pl.osize.volume();
+        if (ctx.needs_leaf_validation())
+        {
+            s0.constraint_load.placements.push_back(pl);
+            if (!pl.platform.empty())
+            {
+                s0.constraint_load.platforms.insert(pl.platform);
+            }
+            if (!pl.group.empty())
+            {
+                s0.constraint_load.groups.insert(pl.group);
+            }
+        }
+    }
+    if (ctx.needs_leaf_validation())
+    {
+        s0.constraint_load.used_volume = s0.used_volume;
     }
 
     int w = 1;

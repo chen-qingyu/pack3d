@@ -353,7 +353,77 @@ const SimpleBlock* Heuristic::pick_best_block(
     return best;
 }
 
-PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
+std::vector<Space> Heuristic::reconstruct_spaces(
+    const std::vector<Placement>& existing,
+    const Size& container_size)
+{
+    std::vector<Space> stack;
+    stack.push_back({{0, 0, 0}, container_size.x, container_size.y, container_size.z});
+
+    // 按 z asc, y asc, x asc 排序，接近 GLC 自然放置顺序
+    auto sorted = existing;
+    std::sort(sorted.begin(), sorted.end(),
+              [](const Placement& a, const Placement& b)
+              {
+                  if (a.position.z != b.position.z)
+                      return a.position.z < b.position.z;
+                  if (a.position.y != b.position.y)
+                      return a.position.y < b.position.y;
+                  return a.position.x < b.position.x;
+              });
+
+    for (const auto& pl : sorted)
+    {
+        bool found = false;
+
+        // 尝试匹配 Space 角落（从栈顶找，栈顶优先处理）
+        for (int i = static_cast<int>(stack.size()) - 1; i >= 0; --i)
+        {
+            const auto& sp = stack[static_cast<size_t>(i)];
+            if (sp.pos.x == pl.position.x &&
+                sp.pos.y == pl.position.y &&
+                sp.pos.z == pl.position.z &&
+                sp.lx >= pl.osize.dx && sp.ly >= pl.osize.dy && sp.lz >= pl.osize.dz)
+            {
+                auto space = sp;
+                stack.erase(stack.begin() + i);
+                split_space(space, pl.osize, stack);
+                found = true;
+                break;
+            }
+        }
+
+        if (found)
+        {
+            continue;
+        }
+
+        // 兜底：不在任何 Space 角落 → 6 向切割
+        for (int i = static_cast<int>(stack.size()) - 1; i >= 0; --i)
+        {
+            const auto& sp = stack[static_cast<size_t>(i)];
+            if (pl.position.x >= sp.pos.x &&
+                pl.position.y >= sp.pos.y &&
+                pl.position.z >= sp.pos.z &&
+                pl.position.x + pl.osize.dx <= sp.pos.x + sp.lx &&
+                pl.position.y + pl.osize.dy <= sp.pos.y + sp.ly &&
+                pl.position.z + pl.osize.dz <= sp.pos.z + sp.lz)
+            {
+                auto space = sp;
+                stack.erase(stack.begin() + i);
+                carve_out_space(space, pl, stack);
+                found = true;
+                break;
+            }
+        }
+    }
+
+    return stack;
+}
+
+PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
+                                const std::vector<Placement>& existing,
+                                int width)
 {
     // 库存按 box_type_id 聚合（热路径用）
     std::map<std::string, std::vector<double>> all_available;
@@ -411,8 +481,36 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes, int width)
     state.type_id = container_.id;
 
     auto available = all_available;
+
+    // 预填充已有放置
+    for (const auto& pl : existing)
+    {
+        state.placements.push_back(pl);
+        state.used_volume += pl.osize.volume();
+        if (!pl.platform.empty())
+        {
+            state.platforms.insert(pl.platform);
+        }
+        if (!pl.group.empty())
+        {
+            state.groups.insert(pl.group);
+        }
+        auto bx_it = box_map_.find(pl.box_id);
+        if (bx_it != box_map_.end() && bx_it->second.weight.has_value())
+        {
+            state.total_weight += bx_it->second.weight.value();
+        }
+    }
+
     std::vector<Space> stack;
-    stack.push_back({{0, 0, 0}, container_.inner_size.x, container_.inner_size.y, container_.inner_size.z});
+    if (existing.empty())
+    {
+        stack.push_back({{0, 0, 0}, container_.inner_size.x, container_.inner_size.y, container_.inner_size.z});
+    }
+    else
+    {
+        stack = reconstruct_spaces(existing, container_.inner_size);
+    }
 
     while (!stack.empty() && !available.empty())
     {

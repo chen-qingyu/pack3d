@@ -27,6 +27,10 @@ void merge_platforms(std::vector<ContainerLoad>& all_loads,
     std::map<std::string, std::vector<size_t>> plat_containers;
     for (size_t ci = 0; ci < all_loads.size(); ++ci)
     {
+        if (all_loads[ci].locked)
+        {
+            continue;
+        }
         for (const auto& pl : all_loads[ci].placements)
         {
             if (!pl.platform.empty())
@@ -89,7 +93,7 @@ void merge_platforms(std::vector<ContainerLoad>& all_loads,
             {
                 continue;
             }
-            ContainerLoad sload = packer.pack_single(items, ct, true);
+            ContainerLoad sload = packer.pack_single(items, ct, {}, true);
             if (sload.placements.size() != items.size())
             {
                 continue;
@@ -176,7 +180,7 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
 {
     size_t i = all_loads.size() - 1;
     const auto& cl = all_loads[i];
-    if (cl.placements.empty())
+    if (cl.placements.empty() || cl.locked)
     {
         return;
     }
@@ -242,7 +246,7 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
             continue;
         }
 
-        ContainerLoad new_load = packer.pack_single(items, ct, true);
+        ContainerLoad new_load = packer.pack_single(items, ct, {}, true);
         if (new_load.placements.size() != items.size())
         {
             continue;
