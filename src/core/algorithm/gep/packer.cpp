@@ -135,6 +135,7 @@ ContainerLoad GepPacker::pack_single(
                 pl.osize = os;
                 pl.platform = box.platform;
                 pl.group = box.group;
+                pl.weight = box.weight;
 
                 load.placements.push_back(pl);
                 load.used_volume += os.volume();

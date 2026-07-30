@@ -634,6 +634,11 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
             if (idx < ids.size())
             {
                 pl.box_id = ids[idx++];
+                auto bx_it = box_map_.find(pl.box_id);
+                if (bx_it != box_map_.end())
+                {
+                    pl.weight = bx_it->second.weight;
+                }
             }
         }
     }

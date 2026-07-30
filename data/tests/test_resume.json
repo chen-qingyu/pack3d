@@ -16,7 +16,6 @@
   "existing_containers": [
     {
       "type_id": "box",
-      "instance_id": "box_0",
       "placements": [
         {
           "box_id": "b0",

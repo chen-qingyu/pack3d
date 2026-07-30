@@ -136,6 +136,7 @@ ContainerLoad BsgPacker::pack_single(
         {
             load.total_weight += bx.weight.value();
         }
+        pl.weight = bx.weight;
     }
 
     return load;

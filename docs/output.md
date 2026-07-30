@@ -68,6 +68,7 @@ JSON，顶层四个字段：
           "position": { "x": 0, "y": 0, "z": 0 },
           "size": { "dx": 50, "dy": 50, "dz": 50 },
           "orientation": "xyz",
+          "weight": 10.0,
           "platform": "P1",
           "group": "A"
         }
@@ -96,6 +97,7 @@ placement 字段说明：
 | `position`    | 放置位置（min corner）`{x, y, z}` |
 | `size`        | 朝向后的实际尺寸 `{dx, dy, dz}`   |
 | `orientation` | 朝向（`xyz`/`xzy`/...）           |
+| `weight`      | 箱子重量，未设置时为 null         |
 | `platform`    | 平台 ID，未设置时为 null          |
 | `group`       | 分组 ID，未设置时为 null          |
 

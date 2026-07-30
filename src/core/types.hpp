@@ -145,12 +145,12 @@ struct ExistingPlacement
     std::optional<double> weight = std::nullopt;
     std::string platform;
     std::string group;
+    std::optional<OrientedSize> size = std::nullopt;
 };
 
 struct ExistingContainer
 {
     std::string type_id;
-    std::string instance_id;
     std::vector<ExistingPlacement> placements;
 };
 
@@ -186,6 +186,7 @@ struct Placement
     OrientedSize osize;   // 朝向后的实际尺寸
     std::string platform; // 空字符串表示未设置，输出时转为 null
     std::string group;    // 空字符串表示未设置，输出时转为 null
+    std::optional<double> weight = std::nullopt;
 };
 
 // 容器装载（可变求解状态）

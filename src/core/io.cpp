@@ -113,12 +113,19 @@ void from_json(const json& j, ExistingPlacement& ep)
     ep.weight = json_opt_double(j, "weight");
     ep.platform = j.value("platform", std::string());
     ep.group = j.value("group", std::string());
+    if (j.contains("size"))
+    {
+        OrientedSize sz;
+        j["size"]["dx"].get_to(sz.dx);
+        j["size"]["dy"].get_to(sz.dy);
+        j["size"]["dz"].get_to(sz.dz);
+        ep.size = sz;
+    }
 }
 
 void from_json(const json& j, ExistingContainer& ec)
 {
     j["type_id"].get_to(ec.type_id);
-    ec.instance_id = j.value("instance_id", std::string());
     for (const auto& item : j["placements"])
     {
         ec.placements.push_back(item.get<ExistingPlacement>());
@@ -434,7 +441,6 @@ ContainerLoad build_load_from_existing(
     }
     load.type_id = ec.type_id;
     load.type = &ct_it->second;
-    load.instance_id = ec.instance_id;
     load.locked = true;
 
     for (const auto& ep : ec.placements)
@@ -453,6 +459,22 @@ ContainerLoad build_load_from_existing(
         pl.osize = bt_it->second.size.orient(ep.orientation);
         pl.platform = ep.platform;
         pl.group = ep.group;
+        pl.weight = ep.weight;
+
+        // size 字段如果提供，必须与 type+朝向推导一致
+        if (ep.size.has_value())
+        {
+            const auto& sz = ep.size.value();
+            if (sz.dx != pl.osize.dx || sz.dy != pl.osize.dy || sz.dz != pl.osize.dz)
+            {
+                errors.push_back("existing placement size mismatch for box '" + ep.box_id +
+                                 "': expected " + std::to_string(pl.osize.dx) + "x" +
+                                 std::to_string(pl.osize.dy) + "x" + std::to_string(pl.osize.dz) +
+                                 ", got " + std::to_string(sz.dx) + "x" +
+                                 std::to_string(sz.dy) + "x" + std::to_string(sz.dz));
+                continue;
+            }
+        }
 
         load.placements.push_back(pl);
         load.used_volume += pl.osize.volume();
@@ -528,6 +550,7 @@ void to_json(json& j, const Solution& sol)
                 pj["size"]["dz"] = pl.osize.dz;
                 pj["platform"] = pl.platform.empty() ? json(nullptr) : json(pl.platform);
                 pj["group"] = pl.group.empty() ? json(nullptr) : json(pl.group);
+                pj["weight"] = opt_json(pl.weight);
                 placements_json.push_back(std::move(pj));
             }
         }

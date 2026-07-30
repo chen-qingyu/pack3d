@@ -129,12 +129,12 @@ Schema 校验后，代码还会检查：
   "existing_containers": [
     {
       "type_id": "big",
-      "instance_id": "big_0",
       "placements": [
         {
           "box_id": "b0",
           "box_type_id": "box_l",
           "position": { "x": 0, "y": 0, "z": 0 },
+          "size": { "dx": 100, "dy": 50, "dz": 40 },
           "orientation": "xyz",
           "weight": 10.0,
           "platform": "P1",
@@ -146,17 +146,17 @@ Schema 校验后，代码还会检查：
 }
 ```
 
-| 字段                       | 类型    | 必填 | 说明                          |
-| -------------------------- | ------- | ---- | ----------------------------- |
-| `type_id`                  | string  | 是   | 引用 container_types 中的 id  |
-| `instance_id`              | string  |      | 容器实例 ID，未指定则自动生成 |
-| `placements[].box_id`      | string  | 是   | 箱子标识                      |
-| `placements[].box_type_id` | string  | 是   | 引用 box_types 中的 id        |
-| `placements[].position`    | {x,y,z} | 是   | 放置位置（min corner）        |
-| `placements[].orientation` | string  | 是   | 朝向，同 box_types 朝向枚举   |
-| `placements[].weight`      | number  |      | 箱子重量                      |
-| `placements[].platform`    | string  |      | 平台 ID                       |
-| `placements[].group`       | string  |      | 分组 ID                       |
+| 字段                       | 类型       | 必填 | 说明                                           |
+| -------------------------- | ---------- | ---- | ---------------------------------------------- |
+| `type_id`                  | string     | 是   | 引用 container_types 中的 id                   |
+| `placements[].box_id`      | string     | 是   | 箱子标识                                       |
+| `placements[].box_type_id` | string     | 是   | 引用 box_types 中的 id                         |
+| `placements[].position`    | {x,y,z}    | 是   | 放置位置（min corner）                         |
+| `placements[].orientation` | string     | 是   | 朝向，同 box_types 朝向枚举                    |
+| `placements[].size`        | {dx,dy,dz} |      | 朝向后的实际尺寸（可从 type+朝向推导，可省略） |
+| `placements[].weight`      | number     |      | 箱子重量，未设置时为 null                      |
+| `placements[].platform`    | string     |      | 平台 ID，未设置时为 null                       |
+| `placements[].group`       | string     |      | 分组 ID，未设置时为 null                       |
 
 已有容器中的箱子不会出现在 `boxes` 列表中。求解器会先尝试在已有容器中继续塞入剩余箱子（未满则继续），再开新容器。已有放置被锁定，后处理不会移动它们。
 
