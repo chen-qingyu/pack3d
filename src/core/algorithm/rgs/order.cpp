@@ -81,7 +81,6 @@ std::set<int32_t> set_intersection(const std::set<int32_t>& a, const std::set<in
 struct IdenticalGroup
 {
     std::string box_type_id;
-    bool stackable = true;
     std::set<int32_t> z_heights;
     std::vector<const Box*> boxes;
     int64_t total_volume = 0;
@@ -90,7 +89,6 @@ struct IdenticalGroup
 
 struct SimilarGroup
 {
-    bool stackable = true;
     std::set<int32_t> z_heights; // 组内所有箱型可达高度的交集（论文 Sh,ϑ 的 h）
     std::vector<IdenticalGroup> identicals;
     int64_t total_volume = 0;
@@ -131,7 +129,6 @@ std::vector<OrderEntry> build_ordered_list(
         if (ig.boxes.empty())
         {
             ig.box_type_id = bx.box_type_id;
-            ig.stackable = bt.stackable;
             ig.z_heights = reachable_z_heights(bt);
             ig.max_volume = box_volume(bt);
         }
@@ -147,7 +144,7 @@ std::vector<OrderEntry> build_ordered_list(
         bool merged = false;
         for (auto& sg : sgs)
         {
-            if (sg.stackable == ig.stackable && sets_intersect(sg.z_heights, ig.z_heights))
+            if (sets_intersect(sg.z_heights, ig.z_heights))
             {
                 // 交集 = 两个组共同可达的高度
                 sg.z_heights = set_intersection(sg.z_heights, ig.z_heights);
@@ -161,7 +158,6 @@ std::vector<OrderEntry> build_ordered_list(
         if (!merged)
         {
             SimilarGroup sg;
-            sg.stackable = ig.stackable;
             sg.z_heights = ig.z_heights; // 初始 = 第一个 identical group 的 z_heights
             sg.total_volume = ig.total_volume;
             sg.max_volume = ig.max_volume;
@@ -176,22 +172,10 @@ std::vector<OrderEntry> build_ordered_list(
         switch (criterion)
         {
             case SortCriterion::StackabilityCumulatedVolume:
-                if (a.stackable != b.stackable)
-                {
-                    return a.stackable > b.stackable;
-                }
-                return a.total_volume > b.total_volume;
-
-            case SortCriterion::StackabilityHighestVolume:
-                if (a.stackable != b.stackable)
-                {
-                    return a.stackable > b.stackable;
-                }
-                return a.max_volume > b.max_volume;
-
             case SortCriterion::CumulatedVolume:
                 return a.total_volume > b.total_volume;
 
+            case SortCriterion::StackabilityHighestVolume:
             case SortCriterion::HighestVolume:
                 return a.max_volume > b.max_volume;
 
@@ -238,7 +222,6 @@ std::vector<OrderEntry> build_ordered_list(
 
     // ---- step 5: flatten to OrderEntry list ----
     std::vector<OrderEntry> ordered;
-    size_t stackable_end = 0; // stackable 分界点（用于 Shaw 分隔）
 
     for (const auto& sg : sgs)
     {
@@ -255,12 +238,6 @@ std::vector<OrderEntry> build_ordered_list(
             {
                 ordered.push_back({bx->id, bt.allowed_orientations});
             }
-        }
-
-        // 标记 stackable 段的结束位置
-        if (sg.stackable)
-        {
-            stackable_end = ordered.size();
         }
     }
 
@@ -307,30 +284,7 @@ std::vector<OrderEntry> build_ordered_list(
             return shuffled;
         };
 
-        bool separate_stackable =
-            criterion == SortCriterion::StackabilityCumulatedVolume ||
-            criterion == SortCriterion::StackabilityHighestVolume;
-
-        if (separate_stackable && stackable_end > 0 && stackable_end < ordered.size())
-        {
-            // §4.2.2: stackability 优先策略下，可堆叠/不可堆叠子序列分别随机化
-            std::vector<OrderEntry> stackable(
-                ordered.begin(),
-                ordered.begin() + static_cast<ptrdiff_t>(stackable_end));
-            std::vector<OrderEntry> non_stackable(
-                ordered.begin() + static_cast<ptrdiff_t>(stackable_end),
-                ordered.end());
-
-            ordered = shaw(stackable);
-            auto ns = shaw(non_stackable);
-            ordered.insert(ordered.end(),
-                           std::make_move_iterator(ns.begin()),
-                           std::make_move_iterator(ns.end()));
-        }
-        else
-        {
-            ordered = shaw(ordered);
-        }
+        ordered = shaw(ordered);
     }
 
     return ordered;

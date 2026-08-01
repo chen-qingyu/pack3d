@@ -290,8 +290,12 @@ ContainerLoad（共享）
 `Placement` 新增 `OrientedSize osize` 字段，放置时预计算朝向后的实际尺寸。消除了 `check_overlap`、`check_support` 中反复的 `box_type_map.at().size.orient()` 调用。
 
 - `check_overlap` 签名简化为 `(pos, osize, existing)`，不再需要 `box_type_map` 参数。
-- `check_support` 中支撑矩形和四角检测均使用 `pl.osize`，仅保留 `box_type_map` 用于读取 `stackable`。
+- `check_support` 中支撑矩形和四角检测均使用 `pl.osize`，不再需要 `box_type_map` 参数。
 
-### BoxType.stackable
+### 承重约束（max_stack / max_load）
 
-新增 `bool stackable` 字段，默认 `true`。`check_support` 检测到下方物品 `stackable == false` 时直接拒绝放置。
+`BoxType` 新增 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的 optional 向量，标量输入广播到全部朝向），任一箱型有非空值即启用对应约束（presence-based）。
+
+- `Placement` 新增内部字段 `stack_level` / `supported_load`（不序列化到输出），由 `constraints.cpp` 的 `check_stack_constraints`（只读预检）、`apply_stack_state`（放置后副作用）、`recompute_stack_state`（任意顺序重建 + 校验，用于 resume / 后处理合并 / 预校验）维护。
+- 三个承重约束（`support_rate` / `max_stack` / `max_load`）相互独立、可同时开启。`support_rate = 0` 时允许悬空放置，悬空箱不计入堆叠柱，可能绕过 `max_stack` / `max_load`。
+- BSG 因通块可能带 z 间隙（先放悬空箱再放下方箱），逐叶增量检查会漏判，`can_place_block` 在放置叶子后整体 `recompute_stack_state` 校验；GEP / GLC / RGS 自底向上放置，使用增量预检 + 提交后 `apply_stack_state`。

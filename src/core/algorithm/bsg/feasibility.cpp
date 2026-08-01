@@ -118,7 +118,7 @@ bool can_place_block(
         {
             return false;
         }
-        if (!check_support(leaf.position, leaf.osize, next_load, ctx.box_type_map, ctx.support_rate))
+        if (!check_support(leaf.position, leaf.osize, next_load, ctx.support_rate))
         {
             return false;
         }
@@ -133,7 +133,14 @@ bool can_place_block(
             return false;
         }
 
-        next_load.placements.push_back({"", item.box_type_id, "", leaf.position, leaf.orientation, leaf.osize, item.platform, ""});
+        Placement pl;
+        pl.box_type_id = item.box_type_id;
+        pl.position = leaf.position;
+        pl.orientation = leaf.orientation;
+        pl.osize = leaf.osize;
+        pl.platform = item.platform;
+        pl.weight = item.weight;
+        next_load.placements.push_back(std::move(pl));
         next_load.used_volume += leaf.osize.volume();
         next_load.total_weight += item.weight;
         if (!item.platform.empty())
@@ -141,6 +148,18 @@ bool can_place_block(
             next_load.platforms.insert(item.platform);
         }
         next_item_classes.push_back(leaf.item_class_idx);
+    }
+
+    // 堆码层数/单箱承重：整体重建并校验。
+    // 通块可能带 z 间隙（先放悬空箱再放下方箱），逐叶增量检查会漏判，必须整体重算。
+    if (ctx.has_max_stack || ctx.has_max_load)
+    {
+        std::vector<std::string> stack_errs;
+        recompute_stack_state(next_load, ctx.box_type_map, &stack_errs);
+        if (!stack_errs.empty())
+        {
+            return false;
+        }
     }
     return true;
 }

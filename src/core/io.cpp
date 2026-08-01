@@ -70,6 +70,36 @@ std::optional<double> json_opt_double(const json& j, const char* key)
     return it->get<double>();
 }
 
+// 解析 标量 或 数组 为与 allowed_orientations 对齐的 optional 向量。
+// 标量广播到全部朝向；数组按原样存储（长度对齐在 pre_validate 校验）。
+template <typename T>
+void parse_optional_vector(const json& j, const char* key,
+                           std::vector<std::optional<T>>& out,
+                           size_t align_size)
+{
+    auto it = j.find(key);
+    if (it == j.end() || it->is_null())
+    {
+        return;
+    }
+    if (it->is_array())
+    {
+        out.resize(it->size());
+        for (size_t i = 0; i < it->size(); ++i)
+        {
+            if (!(*it)[i].is_null())
+            {
+                out[i] = (*it)[i].get<T>();
+            }
+        }
+    }
+    else
+    {
+        T v = it->get<T>();
+        out.assign(align_size, std::optional<T>(v));
+    }
+}
+
 void from_json(const json& j, ContainerType& ct)
 {
     j["id"].get_to(ct.id);
@@ -90,7 +120,8 @@ void from_json(const json& j, BoxType& bt)
     {
         bt.allowed_orientations.push_back(orientation_from_string(o_str.get<std::string>()));
     }
-    bt.stackable = j.value("stackable", true);
+    parse_optional_vector<int>(j, "max_stack", bt.max_stack, bt.allowed_orientations.size());
+    parse_optional_vector<double>(j, "max_load", bt.max_load, bt.allowed_orientations.size());
 }
 
 void from_json(const json& j, Box& bx)
@@ -141,6 +172,24 @@ void from_json(const json& j, Problem& p)
     for (const auto& item : j["box_types"])
     {
         p.box_types.push_back(item.get<BoxType>());
+    }
+    // 承重约束启用标志（presence-based）
+    for (const auto& bt : p.box_types)
+    {
+        for (const auto& v : bt.max_stack)
+        {
+            if (v.has_value())
+            {
+                p.has_max_stack = true;
+            }
+        }
+        for (const auto& v : bt.max_load)
+        {
+            if (v.has_value())
+            {
+                p.has_max_load = true;
+            }
+        }
     }
     for (const auto& item : j["boxes"])
     {
@@ -295,6 +344,43 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
     }
 
+    // 承重约束：max_stack/max_load 数组长度与 allowed_orientations 对齐
+    bool any_max_stack = false;
+    bool any_max_load = false;
+    for (const auto& bt : problem.box_types)
+    {
+        for (const auto& v : bt.max_stack)
+        {
+            if (v.has_value())
+            {
+                any_max_stack = true;
+            }
+        }
+        for (const auto& v : bt.max_load)
+        {
+            if (v.has_value())
+            {
+                any_max_load = true;
+            }
+        }
+        if (!bt.max_stack.empty() && bt.max_stack.size() != bt.allowed_orientations.size())
+        {
+            out.push_back("box_type " + bt.id + ": max_stack array length " +
+                          std::to_string(bt.max_stack.size()) + " != allowed_orientations length " +
+                          std::to_string(bt.allowed_orientations.size()));
+        }
+        if (!bt.max_load.empty() && bt.max_load.size() != bt.allowed_orientations.size())
+        {
+            out.push_back("box_type " + bt.id + ": max_load array length " +
+                          std::to_string(bt.max_load.size()) + " != allowed_orientations length " +
+                          std::to_string(bt.allowed_orientations.size()));
+        }
+    }
+    if (any_max_load && !all_boxes_have_weight)
+    {
+        out.push_back("inconsistent weight: max_load requires all boxes to have weight");
+    }
+
     if (problem.route.has_value())
     {
         const auto& route = problem.route.value();
@@ -359,6 +445,17 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
 
             const auto& ct = ct_map[ec.type_id];
 
+            // 堆码层数 / 单箱承重校验（重建堆叠状态并检查）
+            if (any_max_stack || any_max_load)
+            {
+                std::vector<std::string> stack_errs;
+                recompute_stack_state(load, bt_map, &stack_errs);
+                for (const auto& e : stack_errs)
+                {
+                    out.push_back(prefix + ": " + e);
+                }
+            }
+
             // 检查容器数量限制
             if (ct.quantity_limit.has_value() && ct_usage[ec.type_id] > ct.quantity_limit.value())
             {
@@ -390,7 +487,7 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                     }
                 }
 
-                if (!check_support(pl.position, pl.osize, load, bt_map, problem.support_rate))
+                if (!check_support(pl.position, pl.osize, load, problem.support_rate))
                 {
                     out.push_back(pfx + " (" + pl.box_id + "): insufficient support");
                 }
@@ -492,6 +589,9 @@ ContainerLoad build_load_from_existing(
         }
     }
 
+    // 重建堆叠状态（z 排序），使后续装箱/校验可基于正确状态
+    recompute_stack_state(load, bt_map, nullptr);
+
     return load;
 }
 
@@ -575,6 +675,24 @@ void to_json(json& j, const Solution& sol)
             orients.push_back(orientation_to_string(o));
         }
         bj["allowed_orientations"] = std::move(orients);
+        if (!bt.max_stack.empty())
+        {
+            json ms = json::array();
+            for (const auto& v : bt.max_stack)
+            {
+                ms.push_back(v.has_value() ? json(v.value()) : json(nullptr));
+            }
+            bj["max_stack"] = std::move(ms);
+        }
+        if (!bt.max_load.empty())
+        {
+            json ml = json::array();
+            for (const auto& v : bt.max_load)
+            {
+                ml.push_back(v.has_value() ? json(v.value()) : json(nullptr));
+            }
+            bj["max_load"] = std::move(ml);
+        }
         box_types_json.push_back(std::move(bj));
     }
     result["box_types"] = std::move(box_types_json);

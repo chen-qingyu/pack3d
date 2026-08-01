@@ -58,6 +58,26 @@
               "type": "string",
               "enum": ["xyz", "xzy", "yxz", "yzx", "zxy", "zyx"]
             }
+          },
+          "max_stack": {
+            "description": "堆码层数上限：标量（全部朝向）或数组（与 allowed_orientations 对齐）；null=不限",
+            "oneOf": [
+              { "type": "integer", "minimum": 1 },
+              {
+                "type": "array",
+                "items": { "type": ["integer", "null"], "minimum": 1 }
+              }
+            ]
+          },
+          "max_load": {
+            "description": "单箱上方可承受总重量上限：标量（全部朝向）或数组（与 allowed_orientations 对齐）；null=不限",
+            "oneOf": [
+              { "type": "number", "minimum": 0 },
+              {
+                "type": "array",
+                "items": { "type": ["number", "null"], "minimum": 0 }
+              }
+            ]
           }
         }
       }

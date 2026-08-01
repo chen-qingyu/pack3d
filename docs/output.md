@@ -79,7 +79,9 @@ JSON，顶层四个字段：
     {
       "id": "big_box",
       "size": { "x": 50, "y": 50, "z": 50 },
-      "allowed_orientations": ["xyz"]
+      "allowed_orientations": ["xyz"],
+      "max_stack": [3],
+      "max_load": [200.0]
     }
   ],
   "unpacked_boxes": ["b30", "b31"]
@@ -87,6 +89,8 @@ JSON，顶层四个字段：
 ```
 
 容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置平台/分组时 `platform`/`group` 为 null）。
+
+`result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的数组，未配置则省略）。
 
 placement 字段说明：
 

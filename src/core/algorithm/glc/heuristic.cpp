@@ -152,7 +152,24 @@ bool Heuristic::check_block_feasible(
                     return false;
                 }
 
-                if (!check_support(pos, single, sim, box_type_map_, problem_.support_rate))
+                if (!check_support(pos, single, sim, problem_.support_rate))
+                {
+                    return false;
+                }
+
+                // 承重按该箱型+平台+分组的平均重量近似（与容器总重一致的口径）
+                double box_weight = 0.0;
+                if (has_weight_info_ && problem_.has_max_load)
+                {
+                    auto wit = type_avg_weight_.find(
+                        block.box_type_id + "\t" + block.platform + "\t" + block.group);
+                    if (wit != type_avg_weight_.end())
+                    {
+                        box_weight = wit->second;
+                    }
+                }
+                if ((problem_.has_max_stack || problem_.has_max_load) &&
+                    !check_stack_constraints(pos, single, box_weight, sim, box_type_map_))
                 {
                     return false;
                 }
@@ -174,7 +191,15 @@ bool Heuristic::check_block_feasible(
                 pl.osize = single;
                 pl.platform = block.platform;
                 pl.group = block.group;
+                if (has_weight_info_ && problem_.has_max_load)
+                {
+                    pl.weight = box_weight;
+                }
                 sim.placements.push_back(std::move(pl));
+                if (problem_.has_max_stack || problem_.has_max_load)
+                {
+                    apply_stack_state(pos, single, box_weight, sim);
+                }
             }
         }
     }
@@ -202,6 +227,17 @@ void Heuristic::place_block(
         available.erase(block.box_type_id);
     }
 
+    double box_weight = 0.0;
+    if (has_weight_info_ && problem_.has_max_load)
+    {
+        auto wit = type_avg_weight_.find(
+            block.box_type_id + "\t" + block.platform + "\t" + block.group);
+        if (wit != type_avg_weight_.end())
+        {
+            box_weight = wit->second;
+        }
+    }
+
     int placed = 0;
     for (int iz = 0; iz < block.nz; ++iz)
     {
@@ -222,8 +258,16 @@ void Heuristic::place_block(
                 pl.osize = single;
                 pl.platform = block.platform;
                 pl.group = block.group;
+                if (has_weight_info_ && problem_.has_max_load)
+                {
+                    pl.weight = box_weight;
+                }
 
                 state.placements.push_back(std::move(pl));
+                if (problem_.has_max_stack || problem_.has_max_load)
+                {
+                    apply_stack_state(pos, single, box_weight, state);
+                }
                 state.used_volume += single.volume();
 
                 if (!block.platform.empty())

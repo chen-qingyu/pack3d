@@ -1,3 +1,4 @@
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
 #include "core/constraints.hpp"
@@ -59,10 +60,8 @@ TEST_CASE("check_support 在地板上总是通过", "[core]")
     ContainerType ct{{}, {1000, 1000, 1000}};
     load.type = &ct;
 
-    std::map<std::string, BoxType> btm;
-
-    REQUIRE(check_support({0, 0, 0}, {100, 100, 100}, load, btm, 1.0));
-    REQUIRE(check_support({0, 0, 0}, {100, 100, 100}, load, btm, 0.0));
+    REQUIRE(check_support({0, 0, 0}, {100, 100, 100}, load, 1.0));
+    REQUIRE(check_support({0, 0, 0}, {100, 100, 100}, load, 0.0));
 }
 
 TEST_CASE("check_support 部分支撑", "[core]")
@@ -72,17 +71,14 @@ TEST_CASE("check_support 部分支撑", "[core]")
     ContainerType ct{{}, {1000, 1000, 1000}, 10000.0};
     load.type = &ct;
 
-    BoxType bt{"bt1", {100, 100, 100}, {Orientation::XYZ}};
-    std::map<std::string, BoxType> btm = {{"bt1", bt}};
-
     load.placements.push_back({"", "bt1", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
     load.used_volume = 100 * 100 * 100;
     load.total_weight = 100.0;
 
-    REQUIRE(check_support({0, 0, 100}, {100, 100, 100}, load, btm, 0.0));
-    REQUIRE(check_support({0, 0, 100}, {100, 100, 100}, load, btm, 1.0));
-    REQUIRE(check_support({0, 0, 100}, {200, 100, 100}, load, btm, 0.5));
-    REQUIRE_FALSE(check_support({0, 0, 100}, {200, 100, 100}, load, btm, 0.6));
+    REQUIRE(check_support({0, 0, 100}, {100, 100, 100}, load, 0.0));
+    REQUIRE(check_support({0, 0, 100}, {100, 100, 100}, load, 1.0));
+    REQUIRE(check_support({0, 0, 100}, {200, 100, 100}, load, 0.5));
+    REQUIRE_FALSE(check_support({0, 0, 100}, {200, 100, 100}, load, 0.6));
 }
 
 TEST_CASE("平台数量限制约束", "[core]")
@@ -199,4 +195,185 @@ TEST_CASE("ObjectiveVector 字典序比较", "[core]")
 
     ObjectiveVector higher_rate{2, 3, 0.9, 5};
     REQUIRE(higher_rate.is_better_than(a));
+}
+
+namespace
+{
+BoxType make_stack_bt(const std::string& id, std::optional<int> max_stack,
+                      std::optional<double> max_load = std::nullopt)
+{
+    BoxType bt;
+    bt.id = id;
+    bt.size = {100, 100, 100};
+    bt.allowed_orientations = {Orientation::XYZ};
+    if (max_stack.has_value())
+    {
+        bt.max_stack = {max_stack.value()};
+    }
+    if (max_load.has_value())
+    {
+        bt.max_load = {max_load.value()};
+    }
+    return bt;
+}
+
+ContainerLoad make_stack_load()
+{
+    static ContainerType ct{{}, {1000, 1000, 1000}};
+    ContainerLoad load;
+    load.type_id = "t";
+    load.type = &ct;
+    return load;
+}
+} // namespace
+
+TEST_CASE("max_stack: 同型柱限层", "[core][stack]")
+{
+    auto bt = make_stack_bt("bt", 2);
+    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    auto load = make_stack_load();
+
+    load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load);
+    REQUIRE(load.placements.back().stack_level == 1);
+
+    // 第二层 level 2 <= max_stack 2
+    REQUIRE(check_stack_constraints({0, 0, 100}, {100, 100, 100}, 0.0, load, btm));
+    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 100}, {100, 100, 100}, 0.0, load);
+    REQUIRE(load.placements.back().stack_level == 2);
+
+    // 第三层 level 3 > max_stack 2 → 拒绝
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 200}, {100, 100, 100}, 0.0, load, btm));
+}
+
+TEST_CASE("max_stack: 异构最弱箱限制", "[core][stack]")
+{
+    auto strong = make_stack_bt("strong", 5);
+    auto weak = make_stack_bt("weak", 2);
+    std::map<std::string, BoxType> btm = {{"strong", strong}, {"weak", weak}};
+    auto load = make_stack_load();
+
+    load.placements.push_back({"", "strong", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load);
+    // 中层 weak 放在 strong 上：level 2 <= strong.max_stack 5
+    REQUIRE(check_stack_constraints({0, 0, 100}, {100, 100, 100}, 0.0, load, btm));
+    load.placements.push_back({"", "weak", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 100}, {100, 100, 100}, 0.0, load);
+    REQUIRE(load.placements.back().stack_level == 2);
+    // 顶层放在 weak 上：level 3 > weak.max_stack 2 → 拒绝（weak 是最弱箱）
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 200}, {100, 100, 100}, 0.0, load, btm));
+}
+
+TEST_CASE("max_load: 面积加权累计承重", "[core][stack]")
+{
+    auto bt = make_stack_bt("bt", std::nullopt, 100.0);
+    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    auto load = make_stack_load();
+
+    // 底座 200x200
+    load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {200, 200, 100}});
+    apply_stack_state({0, 0, 0}, {200, 200, 100}, 0.0, load);
+    // box2 200x100 完全在底座上：承重 100
+    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
+    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
+    apply_stack_state({0, 0, 100}, {200, 100, 100}, 100.0, load);
+    REQUIRE(load.placements[0].supported_load == Catch::Approx(100.0));
+    // box3 200x100 并排（y=100）：底座累计 200 > max_load 100 → 拒绝
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
+}
+
+TEST_CASE("max_load: 悬空半面积仍 100% 承重", "[core][stack]")
+{
+    auto bt = make_stack_bt("bt", std::nullopt, 100.0);
+    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    auto load = make_stack_load();
+
+    // 底座 100x100
+    load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load);
+    // 上箱 200x100，一半在底座上、一半悬空 → 承重仍为 100%
+    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
+    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
+    apply_stack_state({0, 0, 100}, {200, 100, 100}, 100.0, load);
+    REQUIRE(load.placements[0].supported_load == Catch::Approx(100.0));
+    // 底座 max_load 100 已满载 → 再来一个 100kg 拒绝
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
+}
+
+TEST_CASE("max_load: 两支撑各 50%", "[core][stack]")
+{
+    auto bt = make_stack_bt("bt", std::nullopt, 40.0);
+    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    auto load = make_stack_load();
+
+    load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load);
+    load.placements.push_back({"", "bt", "", {100, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({100, 0, 0}, {100, 100, 100}, 0.0, load);
+
+    // 上箱 200x100 各占 50% → 各 50kg > max_load 40 → 拒绝
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
+
+    // 面积加权拆分：50/50
+    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
+    apply_stack_state({0, 0, 100}, {200, 100, 100}, 100.0, load);
+    REQUIRE(load.placements[0].supported_load == Catch::Approx(50.0));
+    REQUIRE(load.placements[1].supported_load == Catch::Approx(50.0));
+}
+
+TEST_CASE("recompute_stack_state: 乱序重建", "[core][stack]")
+{
+    auto bt = make_stack_bt("bt", 3, 200.0);
+    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    auto load = make_stack_load();
+
+    // 乱序 push：顶层 b3、底层 b1、中层 b2，各重 50
+    load.placements.push_back({"b3", "bt", "", {0, 0, 200}, Orientation::XYZ, {100, 100, 100}, "", "", 50.0});
+    load.placements.push_back({"b1", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}, "", "", 50.0});
+    load.placements.push_back({"b2", "bt", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}, "", "", 50.0});
+
+    std::vector<std::string> errs;
+    recompute_stack_state(load, btm, &errs);
+    REQUIRE(errs.empty());
+
+    auto find_level = [&](const std::string& id)
+    {
+        for (const auto& pl : load.placements)
+        {
+            if (pl.box_id == id)
+            {
+                return std::make_pair(pl.stack_level, pl.supported_load);
+            }
+        }
+        return std::make_pair(0, 0.0);
+    };
+    REQUIRE(find_level("b1") == std::make_pair(1, 50.0));
+    REQUIRE(find_level("b2") == std::make_pair(2, 50.0));
+    REQUIRE(find_level("b3") == std::make_pair(3, 0.0));
+}
+
+TEST_CASE("recompute_stack_state: 检测违例", "[core][stack]")
+{
+    // b1 max_stack=1（不可堆叠），b2 压在其上 → 违例
+    auto b1 = make_stack_bt("b1", 1);
+    auto b2 = make_stack_bt("b2", 5);
+    std::map<std::string, BoxType> btm = {{"b1", b1}, {"b2", b2}};
+    auto load = make_stack_load();
+
+    load.placements.push_back({"b2", "b2", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}});
+    load.placements.push_back({"b1", "b1", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+
+    std::vector<std::string> errs;
+    recompute_stack_state(load, btm, &errs);
+    REQUIRE_FALSE(errs.empty());
+    bool found = false;
+    for (const auto& e : errs)
+    {
+        if (e.find("max_stack") != std::string::npos && e.find("b2") != std::string::npos)
+        {
+            found = true;
+        }
+    }
+    REQUIRE(found);
 }

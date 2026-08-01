@@ -166,6 +166,10 @@ struct GlobalContext
     // 最小底面支撑率；0 表示不启用支撑约束
     double support_rate = 0.0;
 
+    // 承重约束启用标志
+    bool has_max_stack = false;
+    bool has_max_load = false;
+
     // 箱子类型（索引即 type_idx）
     std::vector<BoxType> box_types;
     std::vector<ItemClass> item_classes;
@@ -184,11 +188,12 @@ struct GlobalContext
     // box_ids[i] = global box id string, box_index_of[id] = 0..N-1
     std::vector<std::string> box_ids;
 
-    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线）。
+    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重）。
     /// 支撑由 is_supported 在块级处理，不在此列。
     [[nodiscard]] bool needs_leaf_validation() const noexcept
     {
-        return has_weight_info || platform_limit.has_value() || route.has_value();
+        return has_weight_info || platform_limit.has_value() || route.has_value() ||
+               has_max_stack || has_max_load;
     }
 
     std::vector<Placement> existing_placements;

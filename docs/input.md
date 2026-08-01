@@ -34,15 +34,26 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 {
   "id": "box_l",
   "size": { "x": 100, "y": 50, "z": 30 },
-  "allowed_orientations": ["xyz", "xzy"]
+  "allowed_orientations": ["xyz", "xzy"],
+  "max_stack": 5,
+  "max_load": [200.0, 150.0]
 }
 ```
 
-| 字段                   | 类型            | 必填 | 说明                 |
-| ---------------------- | --------------- | ---- | -------------------- |
-| `id`                   | string          | 是   | 唯一标识             |
-| `size`                 | {x,y,z: int>=1} | 是   | 原始尺寸             |
-| `allowed_orientations` | string[]        | 是   | 允许朝向，枚举值见下 |
+| 字段                   | 类型                     | 必填 | 说明                        |
+| ---------------------- | ------------------------ | ---- | --------------------------- |
+| `id`                   | string                   | 是   | 唯一标识                    |
+| `size`                 | {x,y,z: int>=1}          | 是   | 原始尺寸                    |
+| `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下        |
+| `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限     |
+| `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限 |
+
+`max_stack` / `max_load` 为**承重约束**（详见 `docs/constraints.md` 1.8 / 1.9）：
+
+- 标量：应用到全部朝向。
+- 数组：长度必须等于 `allowed_orientations` 长度，按朝向分别取值（如平放堆 3 层、立放只能堆 2 层）。
+- 任一箱型有非空值即启用对应约束（presence-based）；两者与 `support_rate` 相互独立，可同时开启。
+- `max_load` 启用时要求所有箱子带重量。
 
 朝向枚举，表示原始尺寸的 x/y/z 分别映射到容器坐标轴的 X/Y/Z：
 
@@ -102,6 +113,8 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | `support_rate`   | number 0-1 | 0    | 底面支撑率阈值，0=跳过 |
 | `platform_limit` | int>=1     | null | 单容器最大平台数       |
 | `tender_limit`   | int>=1     | null | 单组最多分散容器数     |
+
+堆码层数 `max_stack` 与单箱承重 `max_load` 不在此处配置，而是**箱型字段**（见上节），有值即启用。
 
 ## 路线 `route`（可选）
 

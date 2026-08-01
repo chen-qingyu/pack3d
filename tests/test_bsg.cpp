@@ -121,18 +121,23 @@ TEST_CASE("residual space: uses overlapping cover", "[bsg][space]")
     CHECK(spaces[1].overlaps(spaces[2]));
 }
 
-TEST_CASE("expand: enforces support constraint", "[bsg][support]")
+TEST_CASE("expand: enforces max_stack constraint", "[bsg][support]")
 {
     GlobalContext ctx;
     ctx.container_size = {100, 100, 100};
+    ctx.container_type.id = "truck";
+    ctx.container_type.inner_size = {100, 100, 100};
     ctx.support_rate = 1.0;
+    ctx.has_max_stack = true; // 走逐叶校验路径
 
     BoxType box_type;
     box_type.id = "base";
     box_type.size = {100, 100, 50};
     box_type.allowed_orientations = {Orientation::XYZ};
-    box_type.stackable = false;
+    box_type.max_stack = {1}; // 不可堆叠
     ctx.box_types = {box_type};
+    ctx.box_type_map = {{"base", box_type}};
+    ctx.item_classes = {{"base", "", 0.0, {"b1"}}};
     ctx.blocks = generate_blocks(ctx.container_size, ctx.box_types, {2}, 1.0, 10000);
 
     int block_index = -1;
@@ -153,11 +158,15 @@ TEST_CASE("expand: enforces support constraint", "[bsg][support]")
     state.remaining_counts = {1};
     state.available_blocks = {block_index};
     state.placements = {{block_index, {0, 0, 0}}};
+    state.constraint_load.type = &ctx.container_type;
+    state.constraint_load.placements.push_back(
+        {"", "base", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 50}});
     run_kpa(state, ctx);
 
     CHECK(expand(state, 1, ctx).empty());
 
-    ctx.box_types[0].stackable = true;
+    ctx.box_types[0].max_stack[0] = 3;
+    ctx.box_type_map.at("base").max_stack[0] = 3;
     CHECK(expand(state, 1, ctx).size() == 1);
 }
 

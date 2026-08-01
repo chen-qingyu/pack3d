@@ -34,15 +34,12 @@ namespace pack3d::rgs
     const ContainerLoad& load,
     const EpContext& ctx,
     const std::map<std::string, BoxType>& box_type_map,
-    double support_rate,
-    const std::optional<RouteOrder>& route,
-    const std::optional<int>& platform_limit) noexcept;
+    const Problem& problem) noexcept;
 
 // Alg3: 从新放置的箱子生成新 EP（论文 §4.4.1）
 [[nodiscard]] std::vector<Position> gen_new_ep(
     const Position& pos,
     const OrientedSize& osize,
-    bool stackable,
     const ContainerLoad& load,
     const ContainerType& ctype) noexcept;
 
@@ -60,6 +57,7 @@ void commit_placement(
     const Box& box,
     const BoxType& box_type,
     Orientation orient,
-    const Position& ep) noexcept;
+    const Position& ep,
+    const Problem& problem) noexcept;
 
 } // namespace pack3d::rgs

@@ -6,19 +6,20 @@
 
 ## 1. 代码地图
 
-| 文件                                 | 责任                                                      |
-| ------------------------------------ | --------------------------------------------------------- |
-| `src/core/algorithm/bsg/packer.cpp`  | 从项目 `Problem` 构造单容器 BSG 上下文并调用求解器。      |
-| `src/core/algorithm/bsg/solver.cpp`  | 外层 double search effort，展开最终复合块。               |
-| `src/core/algorithm/bsg/beam.cpp`    | 单次 beam search、贪心评估、相似状态过滤。                |
-| `src/core/algorithm/bsg/expand.cpp`  | 根据一个部分解生成候选后继。                              |
-| `src/core/algorithm/bsg/greedy.cpp`  | 对部分解贪心完成，用于 beam 状态评分。                    |
-| `src/core/algorithm/bsg/block.cpp`   | 简单块和通用块生成、复合块合并树。                        |
-| `src/core/algorithm/bsg/space.cpp`   | overlapping cover 剩余空间、anchor 选择、非极大空间删除。 |
-| `src/core/algorithm/bsg/kpa.cpp`     | 三轴 KPA 与块评分 $f(b,r)$。                              |
-| `src/core/algorithm/bsg/support.cpp` | `support_rate > 0` 时的支撑约束。                         |
-| `src/core/algorithm/bsg/types.hpp`   | `BSGState`、`GeneralBlock`、`Cuboid` 和 `GlobalContext`。 |
-| `tests/test_bsg.cpp`                 | BSG 单元与回归测试。                                      |
+| 文件                                     | 责任                                                                                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/core/algorithm/bsg/packer.cpp`      | 从项目 `Problem` 构造单容器 BSG 上下文并调用求解器。                                                   |
+| `src/core/algorithm/bsg/solver.cpp`      | 外层 double search effort，展开最终复合块。                                                            |
+| `src/core/algorithm/bsg/beam.cpp`        | 单次 beam search、贪心评估、相似状态过滤。                                                             |
+| `src/core/algorithm/bsg/expand.cpp`      | 根据一个部分解生成候选后继。                                                                           |
+| `src/core/algorithm/bsg/greedy.cpp`      | 对部分解贪心完成，用于 beam 状态评分。                                                                 |
+| `src/core/algorithm/bsg/block.cpp`       | 简单块和通用块生成、复合块合并树。                                                                     |
+| `src/core/algorithm/bsg/space.cpp`       | overlapping cover 剩余空间、anchor 选择、非极大空间删除。                                              |
+| `src/core/algorithm/bsg/kpa.cpp`         | 三轴 KPA 与块评分 $f(b,r)$。                                                                           |
+| `src/core/algorithm/bsg/support.cpp`     | `support_rate > 0` 时的支撑约束（快路径）。                                                            |
+| `src/core/algorithm/bsg/feasibility.cpp` | 逐叶硬约束校验 `can_place_block`；`max_stack` / `max_load` 在放置后整体 `recompute_stack_state` 校验。 |
+| `src/core/algorithm/bsg/types.hpp`       | `BSGState`、`GeneralBlock`、`Cuboid` 和 `GlobalContext`。                                              |
+| `tests/test_bsg.cpp`                     | BSG 单元与回归测试。                                                                                   |
 
 ## 2. 问题和状态
 

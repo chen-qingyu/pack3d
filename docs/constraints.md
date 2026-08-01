@@ -44,6 +44,36 @@
 
 这是启发式判断而非严格证明，用于快速检测明显不可行的分支。
 
+### 1.8 堆码层数约束（max_stack，箱型字段）
+
+任一箱型声明了 `max_stack`（非空）即启用。可配置为标量（全部朝向）或数组（与 `allowed_orientations` 对齐）。
+
+层号模型：每个已放置箱记录 `stack_level`（所在堆柱层号，地板层 = 1）。放置新箱 B 时：
+
+- `B.stack_level = max(直接支撑箱.stack_level) + 1`（无支撑 → 1）。
+- 对**每个直接支撑箱 S**，要求 `B.stack_level ≤ S.max_stack_for(S.orientation)`。
+
+直接支撑箱 = 底面贴合（`S.top == B.bottom`）且投影相交（面积 > 0）。异构柱高受"最弱箱"限制；"限堆 N 层"= 柱含自身 N 层；同层并排不增层。
+
+> 注意：`max_stack` 只约束有直接支撑关系的箱子。当 `support_rate = 0` 时求解器允许悬空放置，悬空箱不计入任何柱，可能绕过堆码限制；如需物理合理的堆叠，应同时开启 `support_rate`。
+
+### 1.9 单箱承重上限约束（max_load，箱型字段）
+
+任一箱型声明了 `max_load`（非空）即启用。可配置为标量（全部朝向）或数组（与 `allowed_orientations` 对齐）。启用时要求**所有箱子都带重量**。
+
+面积加权分摊（分母 = 受支撑面积，悬空不计）：
+
+$$\text{增量}(S) = w \times \frac{A_S}{\sum_i A_i}$$
+
+放置新箱 B（重 w）时，对**每个直接支撑箱 S**：
+
+- 若 S 在该朝向上声明了 `max_load`，要求 `S.supported_load + 增量(S) ≤ S.max_load_for(S.orientation)`。
+- 放置成功后：每个直接支撑箱 `S.supported_load += 增量(S)`；B 自身 `supported_load = 0`。
+
+只累加**直接**放置在 S 顶面的箱子（不沿柱递归累计）。单支撑半面积 + 半悬空 → 100% 重量给该支撑；两支撑各半（无悬空）→ 各 50%。
+
+> 与 `max_stack` 相同，`max_load` 只约束有直接支撑的箱子；`support_rate = 0` 时悬空箱不产生承重，可能绕过限制。
+
 ## 2. 时间限制
 
 `time_limit` 为软限制。超过时限后求解器停止搜索，返回当前最优结果：

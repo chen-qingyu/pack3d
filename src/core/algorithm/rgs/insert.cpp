@@ -179,7 +179,6 @@ std::vector<Position> projection(
 std::vector<Position> gen_new_ep(
     const Position& pos,
     const OrientedSize& osize,
-    bool stackable,
     const ContainerLoad& load,
     const ContainerType& ctype) noexcept
 {
@@ -188,11 +187,6 @@ std::vector<Position> gen_new_ep(
     // Alg3: 对每个投影方向 j
     for (int j = 0; j < 3; ++j)
     {
-        if (!stackable && j == 2)
-        {
-            continue;
-        }
-
         for (int d2 = 0; d2 < 3; ++d2)
         {
             if (d2 == j)
@@ -212,11 +206,8 @@ std::vector<Position> gen_new_ep(
         }
     }
 
-    // Alg3 line 15: top-center point
-    if (stackable)
-    {
-        new_eps.push_back({pos.x, pos.y, pos.z + osize.dz});
-    }
+    // Alg3 line 15: top-center point（能否堆叠由承重/支撑约束在 can_place 判定）
+    new_eps.push_back({pos.x, pos.y, pos.z + osize.dz});
 
     return new_eps;
 }
@@ -229,9 +220,7 @@ bool can_place(
     const ContainerLoad& load,
     const EpContext& ctx,
     const std::map<std::string, BoxType>& box_type_map,
-    double support_rate,
-    const std::optional<RouteOrder>& route,
-    const std::optional<int>& platform_limit) noexcept
+    const Problem& problem) noexcept
 {
     auto osize = box_type.size.orient(orient);
 
@@ -246,9 +235,17 @@ bool can_place(
         return false;
     }
 
-    if (!check_support(ep, osize, load, box_type_map, support_rate))
+    if (!check_support(ep, osize, load, problem.support_rate))
     {
         return false;
+    }
+
+    if (problem.has_max_stack || problem.has_max_load)
+    {
+        if (!check_stack_constraints(ep, osize, box.weight.value_or(0.0), load, box_type_map))
+        {
+            return false;
+        }
     }
 
     if (box.weight.has_value())
@@ -259,17 +256,17 @@ bool can_place(
         }
     }
 
-    if (platform_limit.has_value() && platform_limit.value() > 0)
+    if (problem.platform_limit.has_value() && problem.platform_limit.value() > 0)
     {
-        if (!check_platform_limit(load, box.platform, platform_limit.value()))
+        if (!check_platform_limit(load, box.platform, problem.platform_limit.value()))
         {
             return false;
         }
     }
 
-    if (route.has_value())
+    if (problem.route.has_value())
     {
-        if (!check_route_order(load, box.platform, ep, osize, route.value()))
+        if (!check_route_order(load, box.platform, ep, osize, problem.route.value()))
         {
             return false;
         }
@@ -284,7 +281,8 @@ void commit_placement(
     const Box& box,
     const BoxType& box_type,
     Orientation orient,
-    const Position& ep) noexcept
+    const Position& ep,
+    const Problem& problem) noexcept
 {
     auto osize = box_type.size.orient(orient);
 
@@ -302,6 +300,11 @@ void commit_placement(
     size_t idx = load.placements.size();
     load.placements.push_back(std::move(pl));
 
+    if (problem.has_max_stack || problem.has_max_load)
+    {
+        apply_stack_state(ep, osize, box.weight.value_or(0.0), load);
+    }
+
     load.used_volume += osize.volume();
     if (box.weight.has_value())
     {
@@ -316,13 +319,9 @@ void commit_placement(
         load.groups.insert(box.group);
     }
 
-    if (!box.platform.empty())
-    {
-    }
-
     grid_register(ctx, load.placements, idx);
 
-    auto new_eps = gen_new_ep(ep, osize, box_type.stackable, load, *load.type);
+    auto new_eps = gen_new_ep(ep, osize, load, *load.type);
     for (auto& nep : new_eps)
     {
         if (nep.x < 0 || nep.y < 0 || nep.z < 0)
@@ -390,10 +389,9 @@ std::vector<std::string> insertion_heuristic(
         {
             for (auto orient : entry.orients)
             {
-                if (can_place(box, bt, orient, ep, out_load, out_ctx, box_type_map,
-                              problem.support_rate, problem.route, problem.platform_limit))
+                if (can_place(box, bt, orient, ep, out_load, out_ctx, box_type_map, problem))
                 {
-                    commit_placement(out_load, out_ctx, box, bt, orient, ep);
+                    commit_placement(out_load, out_ctx, box, bt, orient, ep, problem);
                     loaded_ids.insert(box.id);
                     loaded_order.push_back(box.id);
                     placed = true;

@@ -40,6 +40,16 @@ public:
         return problem_.support_rate;
     }
 
+    bool has_max_stack() const
+    {
+        return problem_.has_max_stack;
+    }
+
+    bool has_max_load() const
+    {
+        return problem_.has_max_load;
+    }
+
 protected:
     const Problem& problem_;
     const std::map<std::string, BoxType>& box_type_map_;

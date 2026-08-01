@@ -97,7 +97,35 @@ struct BoxType
     std::string id;
     Size size;
     std::vector<Orientation> allowed_orientations;
-    bool stackable = true;
+    // 与 allowed_orientations 对齐：每朝向的堆码层数 / 单箱上方承重上限；nullopt=该朝向不限
+    std::vector<std::optional<int>> max_stack;
+    std::vector<std::optional<double>> max_load;
+
+    /// 按朝向查堆码层数上限（无此朝向或未配置则返回 nullopt）
+    [[nodiscard]] std::optional<int> max_stack_for(Orientation o) const noexcept
+    {
+        for (size_t i = 0; i < allowed_orientations.size() && i < max_stack.size(); ++i)
+        {
+            if (allowed_orientations[i] == o)
+            {
+                return max_stack[i];
+            }
+        }
+        return std::nullopt;
+    }
+
+    /// 按朝向查单箱上方承重上限
+    [[nodiscard]] std::optional<double> max_load_for(Orientation o) const noexcept
+    {
+        for (size_t i = 0; i < allowed_orientations.size() && i < max_load.size(); ++i)
+        {
+            if (allowed_orientations[i] == o)
+            {
+                return max_load[i];
+            }
+        }
+        return std::nullopt;
+    }
 };
 
 struct Box
@@ -167,6 +195,9 @@ struct Problem
     std::optional<int> platform_limit;
     std::optional<int> tender_limit;
     std::optional<RouteOrder> route;
+    // 承重约束启用标志（presence-based，解析时计算）
+    bool has_max_stack = false; // 任一箱型声明了 max_stack
+    bool has_max_load = false;  // 任一箱型声明了 max_load
 
     // 算法
     Algorithm algorithm = Algorithm::GEP;
@@ -187,6 +218,10 @@ struct Placement
     std::string platform; // 空字符串表示未设置，输出时转为 null
     std::string group;    // 空字符串表示未设置，输出时转为 null
     std::optional<double> weight = std::nullopt;
+
+    // 堆叠状态（内部字段，不序列化到输出）
+    double supported_load = 0.0; // 其上直接承重累计（仅 max_load 约束使用）
+    int stack_level = 1;         // 所在堆柱层号，地板层=1（仅 max_stack 约束使用）
 };
 
 // 容器装载（可变求解状态）

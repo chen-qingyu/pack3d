@@ -58,7 +58,9 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                             PackerBase& packer,
                             const std::map<std::string, BoxType>& box_type_map,
                             const std::map<std::string, Box>& box_map,
-                            double support_rate)
+                            double support_rate,
+                            bool has_max_stack,
+                            bool has_max_load)
 {
     std::map<std::string, std::set<size_t>> plat_containers;
     std::set<std::string> locked_platforms;
@@ -186,13 +188,13 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                     }
                 }
 
-                // 移除底层箱子后，剩余箱子的支撑可能被破坏，整体复检
+                // 移除底层箱子后，剩余箱子的支撑/堆码/承重可能被破坏，整体复检
                 bool support_ok = true;
-                for (const auto& cl : candidate)
+                for (auto& cl : candidate)
                 {
                     for (const auto& pl : cl.placements)
                     {
-                        if (!check_support(pl.position, pl.osize, cl, box_type_map, support_rate))
+                        if (!check_support(pl.position, pl.osize, cl, support_rate))
                         {
                             support_ok = false;
                             break;
@@ -201,6 +203,16 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                     if (!support_ok)
                     {
                         break;
+                    }
+                    if (has_max_stack || has_max_load)
+                    {
+                        std::vector<std::string> stack_errs;
+                        recompute_stack_state(cl, box_type_map, &stack_errs);
+                        if (!stack_errs.empty())
+                        {
+                            support_ok = false;
+                            break;
+                        }
                     }
                 }
                 if (!support_ok)
@@ -346,7 +358,8 @@ void postprocess(std::vector<ContainerLoad>& all_loads,
     auto best_obj = compute_objective(all_loads);
 
     reduce_platform_splits(all_loads, best_obj, packer, box_type_map, box_map,
-                           packer.support_rate());
+                           packer.support_rate(), packer.has_max_stack(),
+                           packer.has_max_load());
 
     if (!TimeChecker::check() || all_loads.empty())
     {

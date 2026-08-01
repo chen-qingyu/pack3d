@@ -18,7 +18,6 @@ struct SupportState
     int64_t supported_area = 0;
     int corner_mask = 0;
     bool directly_supported = false;
-    bool stackable = true;
 };
 
 int find_block_index(const std::vector<GeneralBlock>& blocks, int64_t id) noexcept
@@ -35,7 +34,6 @@ int find_block_index(const std::vector<GeneralBlock>& blocks, int64_t id) noexce
 
 void add_support(const Position& position,
                  const OrientedSize& size,
-                 bool stackable,
                  SupportState& state) noexcept
 {
     if (position.z + size.dz != state.target_z)
@@ -53,11 +51,6 @@ void add_support(const Position& position,
     }
 
     state.directly_supported = true;
-    if (!stackable)
-    {
-        state.stackable = false;
-        return;
-    }
 
     if (state.x_min >= position.x && state.x_min < position.x + size.dx)
     {
@@ -92,7 +85,6 @@ void add_block_support(const GeneralBlock& block,
     if (block.merge_axis == GeneralBlock::MergeAxis::None)
     {
         OrientedSize box_size = ctx.box_types[block.type_idx].size.orient(block.orientation);
-        bool stackable = ctx.box_types[block.type_idx].stackable;
         for (int z = 0; z < block.nz; ++z)
         {
             for (int y = 0; y < block.ny; ++y)
@@ -104,7 +96,7 @@ void add_block_support(const GeneralBlock& block,
                         position.y + y * box_size.dy,
                         position.z + z * box_size.dz,
                     };
-                    add_support(box_position, box_size, stackable, state);
+                    add_support(box_position, box_size, state);
                 }
             }
         }
@@ -115,7 +107,6 @@ void add_block_support(const GeneralBlock& block,
     int right_index = find_block_index(ctx.blocks, block.source_right_id);
     if (left_index < 0 || right_index < 0)
     {
-        state.stackable = false;
         return;
     }
 
@@ -133,7 +124,6 @@ void add_block_support(const GeneralBlock& block,
             right_position.z += left.osize.dz;
             break;
         default:
-            state.stackable = false;
             return;
     }
 
@@ -173,10 +163,6 @@ bool is_supported(const BSGState& state,
             return false;
         }
         add_block_support(ctx.blocks[placed.block_idx], placed.anchor, ctx, support);
-        if (!support.stackable)
-        {
-            return false;
-        }
     }
 
     if (!support.directly_supported)

@@ -63,6 +63,8 @@ ContainerLoad BsgPacker::pack_single(
     ctx.container_size = ct.inner_size;
     ctx.container_type = ct;
     ctx.support_rate = problem_.support_rate;
+    ctx.has_max_stack = problem_.has_max_stack;
+    ctx.has_max_load = problem_.has_max_load;
     ctx.box_types = std::move(box_types);
     ctx.item_classes = std::move(item_classes);
     ctx.box_type_map = box_type_map_;

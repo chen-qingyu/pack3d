@@ -59,7 +59,6 @@ bool check_weight(const ContainerLoad& load,
 
 bool check_support(const Position& pos, const OrientedSize& osize,
                    const ContainerLoad& load,
-                   const std::map<std::string, BoxType>& box_type_map,
                    double support_rate) noexcept
 {
     if (support_rate <= 0.0 || pos.z == 0)
@@ -84,8 +83,6 @@ bool check_support(const Position& pos, const OrientedSize& osize,
 
     for (const auto& pl : load.placements)
     {
-        auto& bt = box_type_map.at(pl.box_type_id);
-
         int32_t support_top = pl.position.z + pl.osize.dz;
         if (support_top != pos.z)
         {
@@ -100,12 +97,6 @@ bool check_support(const Position& pos, const OrientedSize& osize,
         if (ox1 >= ox2 || oy1 >= oy2)
         {
             continue;
-        }
-
-        // 非可堆叠箱子上方不能放置
-        if (!bt.stackable)
-        {
-            return false;
         }
 
         directly_supported = true;
@@ -148,6 +139,219 @@ bool check_support(const Position& pos, const OrientedSize& osize,
 
     double ratio = static_cast<double>(supported_area) / static_cast<double>(total_area);
     return ratio + 1e-9 >= support_rate;
+}
+
+namespace
+{
+
+// 直接支撑箱信息：底面贴合（顶面 == 候选底面 z）且投影相交（面积 > 0）
+// supports 为 placement 下标，避免指针悬空
+struct SupportInfo
+{
+    std::vector<size_t> supports;
+    std::vector<int64_t> areas; // 与 supports 对齐的重叠面积
+    int64_t total_area = 0;     // 所有直接支撑箱重叠面积之和（悬空部分不计）
+    int max_level = 0;          // 直接支撑箱的最大 stack_level
+};
+
+SupportInfo collect_supports(const Position& pos, const OrientedSize& osize,
+                             const std::vector<Placement>& placements) noexcept
+{
+    SupportInfo info;
+    int32_t bx1 = pos.x;
+    int32_t bx2 = pos.x + osize.dx;
+    int32_t by1 = pos.y;
+    int32_t by2 = pos.y + osize.dy;
+
+    for (size_t i = 0; i < placements.size(); ++i)
+    {
+        const auto& pl = placements[i];
+        if (pl.position.z + pl.osize.dz != pos.z)
+        {
+            continue;
+        }
+        int32_t ox1 = std::max(bx1, pl.position.x);
+        int32_t ox2 = std::min(bx2, pl.position.x + pl.osize.dx);
+        int32_t oy1 = std::max(by1, pl.position.y);
+        int32_t oy2 = std::min(by2, pl.position.y + pl.osize.dy);
+        if (ox1 >= ox2 || oy1 >= oy2)
+        {
+            continue;
+        }
+        int64_t area = static_cast<int64_t>(ox2 - ox1) * (oy2 - oy1);
+        info.supports.push_back(i);
+        info.areas.push_back(area);
+        info.total_area += area;
+        if (pl.stack_level > info.max_level)
+        {
+            info.max_level = pl.stack_level;
+        }
+    }
+    return info;
+}
+
+// 按面积加权分摊重量：increment = weight * area / total_supported_area
+double load_increment(double weight, int64_t area, int64_t total_area) noexcept
+{
+    if (total_area <= 0)
+    {
+        return 0.0;
+    }
+    return weight * static_cast<double>(area) / static_cast<double>(total_area);
+}
+
+} // namespace
+
+bool check_stack_constraints(
+    const Position& pos, const OrientedSize& osize, double weight,
+    const ContainerLoad& load,
+    const std::map<std::string, BoxType>& box_type_map) noexcept
+{
+    SupportInfo info = collect_supports(pos, osize, load.placements);
+    int level = info.supports.empty() ? 1 : info.max_level + 1;
+
+    for (size_t i = 0; i < info.supports.size(); ++i)
+    {
+        const auto& S = load.placements[info.supports[i]];
+        const auto& bt = box_type_map.at(S.box_type_id);
+
+        // 堆码层数：新箱层号不得超过每个直接支撑箱在该朝向的 max_stack
+        auto ms = bt.max_stack_for(S.orientation);
+        if (ms.has_value() && level > ms.value())
+        {
+            return false;
+        }
+
+        // 单箱承重：支撑箱已承重 + 面积加权增量 <= max_load
+        auto ml = bt.max_load_for(S.orientation);
+        if (ml.has_value())
+        {
+            double inc = load_increment(weight, info.areas[i], info.total_area);
+            if (S.supported_load + inc > ml.value() + 1e-9)
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+void apply_stack_state(const Position& pos, const OrientedSize& osize, double weight,
+                       ContainerLoad& load) noexcept
+{
+    if (load.placements.empty())
+    {
+        return;
+    }
+    Placement& pl = load.placements.back();
+
+    // 新箱顶面在 pos.z + dz，不会被 collect_supports 识别为支撑，可安全全量扫描
+    SupportInfo info = collect_supports(pos, osize, load.placements);
+    pl.stack_level = info.supports.empty() ? 1 : info.max_level + 1;
+    pl.supported_load = 0.0;
+    for (size_t i = 0; i < info.supports.size(); ++i)
+    {
+        load.placements[info.supports[i]].supported_load +=
+            load_increment(weight, info.areas[i], info.total_area);
+    }
+}
+
+void recompute_stack_state(ContainerLoad& load,
+                           const std::map<std::string, BoxType>& box_type_map,
+                           std::vector<std::string>* errors) noexcept
+{
+    const size_t n = load.placements.size();
+
+    // z 升序排列的原始下标，保证支撑箱先于其上方箱处理
+    std::vector<size_t> order(n);
+    for (size_t i = 0; i < n; ++i)
+    {
+        order[i] = i;
+    }
+    std::sort(order.begin(), order.end(), [&](size_t a, size_t b)
+              {
+        const auto& pa = load.placements[a];
+        const auto& pb = load.placements[b];
+        if (pa.position.z != pb.position.z)
+        {
+            return pa.position.z < pb.position.z;
+        }
+        if (pa.position.y != pb.position.y)
+        {
+            return pa.position.y < pb.position.y;
+        }
+        return pa.position.x < pb.position.x; });
+
+    // 原始下标 -> z 序位置
+    std::vector<size_t> rank(n);
+    for (size_t k = 0; k < n; ++k)
+    {
+        rank[order[k]] = k;
+    }
+
+    for (auto& pl : load.placements)
+    {
+        pl.stack_level = 1;
+        pl.supported_load = 0.0;
+    }
+
+    for (size_t k = 0; k < n; ++k)
+    {
+        auto& pl = load.placements[order[k]];
+        const double weight = pl.weight.value_or(0.0);
+
+        SupportInfo info = collect_supports(pl.position, pl.osize, load.placements);
+
+        // 仅统计已处理（rank 更小）的支撑
+        std::vector<size_t> active;
+        int64_t total_area = 0;
+        int max_level = 0;
+        for (size_t s = 0; s < info.supports.size(); ++s)
+        {
+            size_t sidx = info.supports[s];
+            if (rank[sidx] >= k)
+            {
+                continue;
+            }
+            active.push_back(s);
+            total_area += info.areas[s];
+            if (load.placements[sidx].stack_level + 1 > max_level)
+            {
+                max_level = load.placements[sidx].stack_level + 1;
+            }
+        }
+
+        pl.stack_level = (max_level == 0) ? 1 : max_level;
+
+        for (size_t s : active)
+        {
+            size_t sidx = info.supports[s];
+            double inc = load_increment(weight, info.areas[s], total_area);
+            load.placements[sidx].supported_load += inc;
+
+            if (errors)
+            {
+                const auto& S = load.placements[sidx];
+                const auto& bt = box_type_map.at(S.box_type_id);
+
+                auto ms = bt.max_stack_for(S.orientation);
+                if (ms.has_value() && pl.stack_level > ms.value())
+                {
+                    errors->push_back("stack " + std::to_string(pl.stack_level) +
+                                      " > max_stack " + std::to_string(ms.value()) +
+                                      " for box " + pl.box_id);
+                }
+
+                auto ml = bt.max_load_for(S.orientation);
+                if (ml.has_value() && S.supported_load > ml.value() + 1e-9)
+                {
+                    errors->push_back("load " + std::to_string(S.supported_load) +
+                                      " > max_load " + std::to_string(ml.value()) +
+                                      " for box " + S.box_id);
+                }
+            }
+        }
+    }
 }
 
 bool check_platform_limit(const ContainerLoad& load,

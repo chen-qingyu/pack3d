@@ -179,3 +179,87 @@ TEST_CASE("bsg_enforces_project_hard_constraints", "[solver][bsg]")
         }
     }
 }
+
+// 3 个 100 立方体，限堆 2 层 + support_rate=1（禁止悬空）→ 第 3 个无法堆叠 → 需要第 2 个容器
+TEST_CASE("max_stack 限制堆码层数", "[solver][stack]")
+{
+    json input = {
+        {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 100}, {"y", 100}, {"z", 300}}}}}},
+        {"box_types", {{{"id", "cube"}, {"size", {{"x", 100}, {"y", 100}, {"z", 100}}}, {"allowed_orientations", {"xyz"}}, {"max_stack", 2}}}},
+        {"boxes", {
+                      {{"id", "b1"}, {"box_type_id", "cube"}},
+                      {{"id", "b2"}, {"box_type_id", "cube"}},
+                      {{"id", "b3"}, {"box_type_id", "cube"}},
+                  }},
+        {"constraints", {{"support_rate", 1.0}}},
+    };
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        input["algorithm"] = algo;
+        auto res = run(input);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["unpacked_box_count"] == 0);
+        REQUIRE(res["summary"]["container_count"] == 2);
+        for (const auto& c : res["result"]["containers"])
+        {
+            REQUIRE(c["placements"].size() <= 2);
+        }
+    }
+}
+
+// max_load=40 < 单箱重量 50，support_rate=1（禁止悬空）：
+// 每根柱最多 1 箱（任何叠放都会让支撑箱承重 50 > 40）→ 3 个箱子必须分到 3 个容器
+TEST_CASE("max_load 限制单箱承重", "[solver][stack]")
+{
+    json input = {
+        {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 100}, {"y", 100}, {"z", 300}}}, {"max_weight", 1000.0}}}},
+        {"box_types", {{{"id", "cube"}, {"size", {{"x", 100}, {"y", 100}, {"z", 100}}}, {"allowed_orientations", {"xyz"}}, {"max_load", 40.0}}}},
+        {"boxes", {
+                      {{"id", "b1"}, {"box_type_id", "cube"}, {"weight", 50.0}},
+                      {{"id", "b2"}, {"box_type_id", "cube"}, {"weight", 50.0}},
+                      {{"id", "b3"}, {"box_type_id", "cube"}, {"weight", 50.0}},
+                  }},
+        {"constraints", {{"support_rate", 1.0}}},
+    };
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        input["algorithm"] = algo;
+        auto res = run(input);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["unpacked_box_count"] == 0);
+        REQUIRE(res["summary"]["container_count"] == 3);
+    }
+}
+
+// 按朝向数组：仅 xzy（立放）能装入容器；max_stack=[2,1] 时立放限 1 层 → 需 2 容器
+TEST_CASE("max_stack 按朝向数组", "[solver][stack]")
+{
+    auto make_input = [](int second_orient_limit) -> json
+    {
+        return {
+            {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 200}, {"y", 50}, {"z", 220}}}}}},
+            {"box_types", {{{"id", "box"}, {"size", {{"x", 200}, {"y", 100}, {"z", 50}}}, {"allowed_orientations", {"xyz", "xzy"}}, {"max_stack", {2, second_orient_limit}}}}},
+            {"boxes", {
+                          {{"id", "b1"}, {"box_type_id", "box"}},
+                          {{"id", "b2"}, {"box_type_id", "box"}},
+                      }},
+        };
+    };
+
+    // 立放（xzy）限 1 层 → b2 无法叠 → 2 容器
+    {
+        auto input = make_input(1);
+        input["algorithm"] = "gep";
+        auto res = run(input);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["container_count"] == 2);
+    }
+    // 立放限 2 层 → 可叠 → 1 容器
+    {
+        auto input = make_input(2);
+        input["algorithm"] = "gep";
+        auto res = run(input);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["container_count"] == 1);
+    }
+}

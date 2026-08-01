@@ -101,7 +101,15 @@ ContainerLoad GepPacker::pack_single(
                 }
 
                 // 支撑率检查
-                if (!check_support(pos, os, load, box_type_map_, problem_.support_rate))
+                if (!check_support(pos, os, load, problem_.support_rate))
+                {
+                    continue;
+                }
+
+                // 堆码层数 / 单箱承重检查
+                if ((problem_.has_max_stack || problem_.has_max_load) &&
+                    !check_stack_constraints(pos, os, box.weight.value_or(0.0), load,
+                                             box_type_map_))
                 {
                     continue;
                 }
@@ -138,6 +146,10 @@ ContainerLoad GepPacker::pack_single(
                 pl.weight = box.weight;
 
                 load.placements.push_back(pl);
+                if (problem_.has_max_stack || problem_.has_max_load)
+                {
+                    apply_stack_state(pos, os, box.weight.value_or(0.0), load);
+                }
                 load.used_volume += os.volume();
                 if (has_weight_info_)
                 {
