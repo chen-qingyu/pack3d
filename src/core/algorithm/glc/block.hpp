@@ -12,6 +12,7 @@ namespace pack3d::glc
 struct SimpleBlock
 {
     std::string box_type_id;
+    std::string key; // (box_type_id, platform, group) 组合键，生成时预计算
     Orientation orientation = Orientation::XYZ;
     int nx = 0, ny = 0, nz = 0;
     int box_count = 0;    // nx * ny * nz

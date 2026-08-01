@@ -65,12 +65,6 @@ private:
     BlockGenerator block_gen_;
     std::map<std::string, double> type_avg_weight_;
 
-    /// 该块将消耗的 box_count 个精确单箱重量，按放置顺序（iz,iy,ix）排列，
-    /// 与 place_block 从 available 末尾 pop 的顺序一致。
-    [[nodiscard]] std::vector<double> block_weights(
-        const SimpleBlock& block,
-        const std::map<std::string, std::vector<double>>& available) const noexcept;
-
     /// dx 维度索引：(block.dx, index into all_blocks)，按 dx 升序排列。
     /// filter_viable_blocks 利用此索引避免 O(B) 全量扫描，仅检查 dx ≤ space.lx 的块。
     std::vector<std::pair<int32_t, size_t>> dx_index_;

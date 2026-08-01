@@ -102,6 +102,9 @@ bool can_place_block(
 
     next_load = state.constraint_load;
     next_item_classes = state.item_class_indices;
+    // 全支撑（support_rate>=1）下不存在"下方留空隙、后放下方箱"的乱序放置，可跳过检测
+    const bool need_recompute_check = ctx.support_rate < 1.0;
+    bool need_recompute = false;
     for (const auto& leaf : leaves)
     {
         if (leaf.item_class_idx < 0 || static_cast<size_t>(leaf.item_class_idx) >= ctx.item_classes.size())
@@ -122,6 +125,12 @@ bool can_place_block(
         {
             return false;
         }
+        if ((ctx.has_max_stack || ctx.has_max_load) &&
+            !check_stack_constraints(leaf.position, leaf.osize, item.weight,
+                                     next_load, ctx.box_type_map))
+        {
+            return false;
+        }
         if (ctx.platform_limit.has_value() &&
             !check_platform_limit(next_load, item.platform, ctx.platform_limit.value()))
         {
@@ -136,6 +145,10 @@ bool can_place_block(
         next_load.placements.push_back({"", item.box_type_id, "", leaf.position,
                                         leaf.orientation, leaf.osize, item.platform, ""});
         next_load.placements.back().weight = item.weight;
+        if (ctx.has_max_stack || ctx.has_max_load)
+        {
+            apply_stack_state(leaf.position, leaf.osize, item.weight, next_load);
+        }
         next_load.used_volume += leaf.osize.volume();
         next_load.total_weight += item.weight;
         if (!item.platform.empty())
@@ -143,11 +156,29 @@ bool can_place_block(
             next_load.platforms.insert(item.platform);
         }
         next_item_classes.push_back(leaf.item_class_idx);
+
+        // 乱序放置检测：本叶上方已有箱子（其底面 == 本叶顶面且投影相交）→ 需整体重算
+        if (!need_recompute && need_recompute_check)
+        {
+            const int32_t top = leaf.position.z + leaf.osize.dz;
+            for (const auto& ep : next_load.placements)
+            {
+                if (ep.position.z == top &&
+                    ep.position.x < leaf.position.x + leaf.osize.dx &&
+                    leaf.position.x < ep.position.x + ep.osize.dx &&
+                    ep.position.y < leaf.position.y + leaf.osize.dy &&
+                    leaf.position.y < ep.position.y + ep.osize.dy)
+                {
+                    need_recompute = true;
+                    break;
+                }
+            }
+        }
     }
 
-    // 堆码层数/单箱承重：整体重建并校验。
-    // 通块可能带 z 间隙（先放悬空箱再放下方箱），逐叶增量检查会漏判，必须整体重算。
-    if (ctx.has_max_stack || ctx.has_max_load)
+    // 仅乱序放置（悬空箱先放、下方箱后放）时整体重建并校验；
+    // 正常自底向上堆叠时增量状态已正确，跳过重算。
+    if (need_recompute)
     {
         std::vector<std::string> stack_errs;
         recompute_stack_state(next_load, ctx.box_type_map, &stack_errs);

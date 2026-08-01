@@ -58,6 +58,7 @@ std::vector<SimpleBlock> BlockGenerator::generate_for_type(
 
                     SimpleBlock block;
                     block.box_type_id = box_type_id;
+                    block.key = box_type_id + "\t" + platform + "\t" + group;
                     block.orientation = orient;
                     block.nx = nx;
                     block.ny = ny;
