@@ -178,17 +178,11 @@ void from_json(const json& j, Problem& p)
     {
         for (const auto& v : bt.max_stack)
         {
-            if (v.has_value())
-            {
-                p.has_max_stack = true;
-            }
+            p.has_max_stack |= v.has_value();
         }
         for (const auto& v : bt.max_load)
         {
-            if (v.has_value())
-            {
-                p.has_max_load = true;
-            }
+            p.has_max_load |= v.has_value();
         }
     }
     for (const auto& item : j["boxes"])
@@ -351,17 +345,11 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     {
         for (const auto& v : bt.max_stack)
         {
-            if (v.has_value())
-            {
-                any_max_stack = true;
-            }
+            any_max_stack |= v.has_value();
         }
         for (const auto& v : bt.max_load)
         {
-            if (v.has_value())
-            {
-                any_max_load = true;
-            }
+            any_max_load |= v.has_value();
         }
         if (!bt.max_stack.empty() && bt.max_stack.size() != bt.allowed_orientations.size())
         {

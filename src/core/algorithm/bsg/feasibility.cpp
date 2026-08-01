@@ -133,14 +133,9 @@ bool can_place_block(
             return false;
         }
 
-        Placement pl;
-        pl.box_type_id = item.box_type_id;
-        pl.position = leaf.position;
-        pl.orientation = leaf.orientation;
-        pl.osize = leaf.osize;
-        pl.platform = item.platform;
-        pl.weight = item.weight;
-        next_load.placements.push_back(std::move(pl));
+        next_load.placements.push_back({"", item.box_type_id, "", leaf.position,
+                                        leaf.orientation, leaf.osize, item.platform, ""});
+        next_load.placements.back().weight = item.weight;
         next_load.used_volume += leaf.osize.volume();
         next_load.total_weight += item.weight;
         if (!item.platform.empty())

@@ -65,6 +65,9 @@ private:
     BlockGenerator block_gen_;
     std::map<std::string, double> type_avg_weight_;
 
+    /// 单箱近似重量（该箱型+平台+分组平均，与容器总重一致的口径）；未启用 max_load 或无重量信息则 0
+    [[nodiscard]] double avg_weight(const SimpleBlock& block) const noexcept;
+
     /// dx 维度索引：(block.dx, index into all_blocks)，按 dx 升序排列。
     /// filter_viable_blocks 利用此索引避免 O(B) 全量扫描，仅检查 dx ≤ space.lx 的块。
     std::vector<std::pair<int32_t, size_t>> dx_index_;

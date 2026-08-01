@@ -282,13 +282,6 @@ void recompute_stack_state(ContainerLoad& load,
         }
         return pa.position.x < pb.position.x; });
 
-    // 原始下标 -> z 序位置
-    std::vector<size_t> rank(n);
-    for (size_t k = 0; k < n; ++k)
-    {
-        rank[order[k]] = k;
-    }
-
     for (auto& pl : load.placements)
     {
         pl.stack_level = 1;
@@ -300,44 +293,23 @@ void recompute_stack_state(ContainerLoad& load,
         auto& pl = load.placements[order[k]];
         const double weight = pl.weight.value_or(0.0);
 
+        // 直接支撑箱顶面 == 本箱底面 z，其 z 严格更小，z 序中必已处理
         SupportInfo info = collect_supports(pl.position, pl.osize, load.placements);
-
-        // 仅统计已处理（rank 更小）的支撑
-        std::vector<size_t> active;
-        int64_t total_area = 0;
         int max_level = 0;
         for (size_t s = 0; s < info.supports.size(); ++s)
         {
-            size_t sidx = info.supports[s];
-            if (rank[sidx] >= k)
-            {
-                continue;
-            }
-            active.push_back(s);
-            total_area += info.areas[s];
-            if (load.placements[sidx].stack_level + 1 > max_level)
-            {
-                max_level = load.placements[sidx].stack_level + 1;
-            }
-        }
-
-        pl.stack_level = (max_level == 0) ? 1 : max_level;
-
-        for (size_t s : active)
-        {
-            size_t sidx = info.supports[s];
-            double inc = load_increment(weight, info.areas[s], total_area);
-            load.placements[sidx].supported_load += inc;
+            auto& S = load.placements[info.supports[s]];
+            S.supported_load += load_increment(weight, info.areas[s], info.total_area);
+            max_level = std::max(max_level, S.stack_level + 1);
 
             if (errors)
             {
-                const auto& S = load.placements[sidx];
                 const auto& bt = box_type_map.at(S.box_type_id);
 
                 auto ms = bt.max_stack_for(S.orientation);
-                if (ms.has_value() && pl.stack_level > ms.value())
+                if (ms.has_value() && max_level > ms.value())
                 {
-                    errors->push_back("stack " + std::to_string(pl.stack_level) +
+                    errors->push_back("stack " + std::to_string(max_level) +
                                       " > max_stack " + std::to_string(ms.value()) +
                                       " for box " + pl.box_id);
                 }
@@ -351,6 +323,7 @@ void recompute_stack_state(ContainerLoad& load,
                 }
             }
         }
+        pl.stack_level = (max_level == 0) ? 1 : max_level;
     }
 }
 

@@ -43,6 +43,17 @@ Heuristic::Heuristic(
     }
 }
 
+double Heuristic::avg_weight(const SimpleBlock& block) const noexcept
+{
+    if (!has_weight_info_ || !problem_.has_max_load)
+    {
+        return 0.0;
+    }
+    auto it = type_avg_weight_.find(
+        block.box_type_id + "\t" + block.platform + "\t" + block.group);
+    return (it != type_avg_weight_.end()) ? it->second : 0.0;
+}
+
 std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
     const std::vector<SimpleBlock>& all_blocks,
     const Space& space,
@@ -157,17 +168,8 @@ bool Heuristic::check_block_feasible(
                     return false;
                 }
 
-                // 承重按该箱型+平台+分组的平均重量近似（与容器总重一致的口径）
-                double box_weight = 0.0;
-                if (has_weight_info_ && problem_.has_max_load)
-                {
-                    auto wit = type_avg_weight_.find(
-                        block.box_type_id + "\t" + block.platform + "\t" + block.group);
-                    if (wit != type_avg_weight_.end())
-                    {
-                        box_weight = wit->second;
-                    }
-                }
+                // 承重按该箱型+平台+分组的平均重量近似
+                double box_weight = avg_weight(block);
                 if ((problem_.has_max_stack || problem_.has_max_load) &&
                     !check_stack_constraints(pos, single, box_weight, sim, box_type_map_))
                 {
@@ -227,16 +229,7 @@ void Heuristic::place_block(
         available.erase(block.box_type_id);
     }
 
-    double box_weight = 0.0;
-    if (has_weight_info_ && problem_.has_max_load)
-    {
-        auto wit = type_avg_weight_.find(
-            block.box_type_id + "\t" + block.platform + "\t" + block.group);
-        if (wit != type_avg_weight_.end())
-        {
-            box_weight = wit->second;
-        }
-    }
+    double box_weight = avg_weight(block);
 
     int placed = 0;
     for (int iz = 0; iz < block.nz; ++iz)
