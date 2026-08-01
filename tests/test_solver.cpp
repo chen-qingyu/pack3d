@@ -1,6 +1,7 @@
 #include <fstream>
 #include <sstream>
 
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <spdlog/spdlog.h>
 
@@ -228,6 +229,41 @@ TEST_CASE("max_load 限制单箱承重", "[solver][stack]")
         REQUIRE(res["status"] == "complete");
         REQUIRE(res["summary"]["unpacked_box_count"] == 0);
         REQUIRE(res["summary"]["container_count"] == 3);
+    }
+}
+
+// 非均匀重量下，max_load 用精确重量：容器 used_weight 必须等于各放置重量之和。
+// 回归：GLC 之前按平均重量 + 队尾消耗，输出回填按队首，两者对非均匀重量会不一致。
+TEST_CASE("max_load 非均匀重量保持重量一致性", "[solver][stack]")
+{
+    json input = {
+        {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 300}, {"y", 100}, {"z", 220}}}, {"max_weight", 1000.0}}}},
+        {"box_types", {
+                          {{"id", "base"}, {"size", {{"x", 300}, {"y", 100}, {"z", 100}}}, {"allowed_orientations", {"xyz"}}, {"max_load", 70.0}},
+                          {{"id", "top"}, {"size", {{"x", 150}, {"y", 100}, {"z", 100}}}, {"allowed_orientations", {"xyz"}}},
+                      }},
+        {"boxes", {
+                      {{"id", "base1"}, {"box_type_id", "base"}, {"weight", 10.0}},
+                      {{"id", "t1"}, {"box_type_id", "top"}, {"weight", 50.0}},
+                      {{"id", "t2"}, {"box_type_id", "top"}, {"weight", 100.0}},
+                      {{"id", "t3"}, {"box_type_id", "top"}, {"weight", 50.0}},
+                  }},
+        {"constraints", {{"support_rate", 1.0}}},
+    };
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        input["algorithm"] = algo;
+        auto res = run(input);
+        REQUIRE(res["status"] == "complete");
+        for (const auto& c : res["result"]["containers"])
+        {
+            double sum = 0.0;
+            for (const auto& pl : c["placements"])
+            {
+                sum += pl["weight"].get<double>();
+            }
+            REQUIRE(c["used_weight"].get<double>() == Catch::Approx(sum));
+        }
     }
 }
 

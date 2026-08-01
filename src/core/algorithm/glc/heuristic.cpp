@@ -43,15 +43,24 @@ Heuristic::Heuristic(
     }
 }
 
-double Heuristic::avg_weight(const SimpleBlock& block) const noexcept
+std::vector<double> Heuristic::block_weights(
+    const SimpleBlock& block,
+    const std::map<std::string, std::vector<double>>& available) const noexcept
 {
-    if (!has_weight_info_ || !problem_.has_max_load)
-    {
-        return 0.0;
-    }
-    auto it = type_avg_weight_.find(
+    std::vector<double> out;
+    auto it = available.find(
         block.box_type_id + "\t" + block.platform + "\t" + block.group);
-    return (it != type_avg_weight_.end()) ? it->second : 0.0;
+    if (it == available.end())
+    {
+        return out;
+    }
+    // 与 place_block 消耗、末尾回填一致的顺序：从队首取 box_count 件
+    const auto& w = it->second;
+    for (int i = 0; i < block.box_count && static_cast<size_t>(i) < w.size(); ++i)
+    {
+        out.push_back(w[static_cast<size_t>(i)]);
+    }
+    return out;
 }
 
 std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
@@ -80,8 +89,9 @@ std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
             continue;
         }
 
-        // 库存检查
-        auto avail_it = available.find(block.box_type_id);
+        // 库存检查（按 type+platform+group 精确计数）
+        auto avail_it = available.find(
+            block.box_type_id + "\t" + block.platform + "\t" + block.group);
         if (avail_it == available.end() ||
             avail_it->second.size() < static_cast<size_t>(block.box_count))
         {
@@ -89,7 +99,7 @@ std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
         }
 
         // 约束检查
-        if (!check_block_feasible(block, space, state))
+        if (!check_block_feasible(block, space, state, available))
         {
             continue;
         }
@@ -103,7 +113,8 @@ std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
 bool Heuristic::check_block_feasible(
     const SimpleBlock& block,
     const Space& space,
-    const ContainerLoad& state) const
+    const ContainerLoad& state,
+    const std::map<std::string, std::vector<double>>& available) const
 {
     auto single = box_type_map_.at(block.box_type_id).size.orient(block.orientation);
 
@@ -141,6 +152,10 @@ bool Heuristic::check_block_feasible(
         sim.platforms.insert(block.platform);
     }
 
+    // 该块消耗的精确单箱重量（与 place_block 的 pop 顺序一致）
+    std::vector<double> weights = block_weights(block, available);
+
+    int cell = 0;
     for (int iz = 0; iz < block.nz; ++iz)
     {
         for (int iy = 0; iy < block.ny; ++iy)
@@ -168,8 +183,8 @@ bool Heuristic::check_block_feasible(
                     return false;
                 }
 
-                // 承重按该箱型+平台+分组的平均重量近似
-                double box_weight = avg_weight(block);
+                double box_weight = (cell < static_cast<int>(weights.size())) ? weights[cell] : 0.0;
+                ++cell;
                 if ((problem_.has_max_stack || problem_.has_max_load) &&
                     !check_stack_constraints(pos, single, box_weight, sim, box_type_map_))
                 {
@@ -217,21 +232,23 @@ void Heuristic::place_block(
 {
     auto single = box_type_map_.at(block.box_type_id).size.orient(block.orientation);
 
-    auto& weights = available[block.box_type_id];
+    // 该块消耗的精确单箱重量（队首 box_count 件，与 block_weights / 末尾回填一致）
+    std::vector<double> weights = block_weights(block, available);
     double weight_sum = 0.0;
-    for (int i = 0; i < block.box_count; ++i)
+    for (double w : weights)
     {
-        weight_sum += weights.back();
-        weights.pop_back();
+        weight_sum += w;
     }
-    if (weights.empty())
+    std::string key = block.box_type_id + "\t" + block.platform + "\t" + block.group;
+    auto& avail = available[key];
+    avail.erase(avail.begin(), avail.begin() + static_cast<ptrdiff_t>(weights.size()));
+    if (avail.empty())
     {
-        available.erase(block.box_type_id);
+        available.erase(key);
     }
-
-    double box_weight = avg_weight(block);
 
     int placed = 0;
+    int cell = 0;
     for (int iz = 0; iz < block.nz; ++iz)
     {
         for (int iy = 0; iy < block.ny; ++iy)
@@ -242,6 +259,9 @@ void Heuristic::place_block(
                 pos.x = space.pos.x + ix * single.dx;
                 pos.y = space.pos.y + iy * single.dy;
                 pos.z = space.pos.z + iz * single.dz;
+
+                double box_weight = (cell < static_cast<int>(weights.size())) ? weights[cell] : 0.0;
+                ++cell;
 
                 Placement pl;
                 pl.box_id = std::string("__block_") + std::to_string(placed++);
@@ -462,11 +482,11 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
                                 const std::vector<Placement>& existing,
                                 int width)
 {
-    // 库存按 box_type_id 聚合（热路径用）
+    // 库存按 (type, platform, group) 聚合（与块/回填分组一致，热路径用），重量为精确单箱重量
     std::map<std::string, std::vector<double>> all_available;
     for (const auto& bx : boxes)
     {
-        all_available[bx.box_type_id].push_back(
+        all_available[bx.box_type_id + "\t" + bx.platform + "\t" + bx.group].push_back(
             bx.weight.has_value() ? bx.weight.value() : 0.0);
     }
 
