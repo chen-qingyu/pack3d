@@ -203,16 +203,22 @@ PackResult solve(const GlobalContext& ctx,
     std::vector<Placement> placements;
     if (ctx.needs_leaf_validation())
     {
-        placements = s_best.constraint_load.placements;
-        assert(placements.size() == s_best.item_class_indices.size());
-        for (size_t i = 0; i < placements.size(); ++i)
+        // constraint_load.placements 含已有放置；item_class_indices 只记录新叶子。
+        // 已有放置由调用方 pack_single 单独加入，这里只输出并绑定新放置的 box_id。
+        const size_t n_existing = ctx.existing_placements.size();
+        std::vector<Placement> new_placements(
+            s_best.constraint_load.placements.begin() + n_existing,
+            s_best.constraint_load.placements.end());
+        assert(new_placements.size() == s_best.item_class_indices.size());
+        for (size_t i = 0; i < new_placements.size(); ++i)
         {
             const int item_class_idx = s_best.item_class_indices[i];
             assert(item_class_idx >= 0 && item_class_idx < n_types);
             assert(!id_queues[item_class_idx].empty());
-            placements[i].box_id = id_queues[item_class_idx].front();
+            new_placements[i].box_id = id_queues[item_class_idx].front();
             id_queues[item_class_idx].pop();
         }
+        placements = std::move(new_placements);
     }
     else
     {
