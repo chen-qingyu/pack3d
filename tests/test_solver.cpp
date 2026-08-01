@@ -74,6 +74,26 @@ TEST_CASE("min_platform_split", "[solver]")
     }
 }
 
+// test_platform_merge.json — 前车[p1,p2]装满、尾车[p2,p3]未满
+// 后处理必须在不新增容器的情况下把分散的 p2 并入尾车，使 platform_split = 0
+TEST_CASE("platform_merge_no_new_container", "[solver]")
+{
+    auto base = load_data("data/tests/test_platform_merge.json");
+
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        base["algorithm"] = algo;
+        auto res = run(base);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["unpacked_box_count"] == 0);
+        REQUIRE(res["summary"]["platform_split"] == 0);
+        for (const auto& c : res["result"]["containers"])
+        {
+            REQUIRE(c["platforms"].size() <= 2);
+        }
+    }
+}
+
 // test_volume_first.json — 3 个同型小箱，无平台/分组
 // 固定目标: min_container_count 优先 → 1 个大容器
 TEST_CASE("max_volume_rate", "[solver]")

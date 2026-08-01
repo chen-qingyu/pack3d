@@ -1,0 +1,42 @@
+{
+  "container_types": [
+    {
+      "id": "truck",
+      "inner_size": { "x": 100, "y": 50, "z": 100 },
+      "max_weight": 50000.0,
+      "quantity_limit": null
+    }
+  ],
+  "box_types": [
+    {
+      "id": "p1_box",
+      "size": { "x": 50, "y": 50, "z": 50 },
+      "allowed_orientations": ["xyz"]
+    },
+    {
+      "id": "p2_box",
+      "size": { "x": 25, "y": 50, "z": 50 },
+      "allowed_orientations": ["xyz"]
+    },
+    {
+      "id": "p3_box",
+      "size": { "x": 10, "y": 50, "z": 50 },
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [
+    { "id": "p1a", "box_type_id": "p1_box", "weight": 10.0, "platform": "p1" },
+    { "id": "p1b", "box_type_id": "p1_box", "weight": 10.0, "platform": "p1" },
+    { "id": "p1c", "box_type_id": "p1_box", "weight": 10.0, "platform": "p1" },
+    { "id": "p2a", "box_type_id": "p2_box", "weight": 5.0, "platform": "p2" },
+    { "id": "p2b", "box_type_id": "p2_box", "weight": 5.0, "platform": "p2" },
+    { "id": "p2c", "box_type_id": "p2_box", "weight": 5.0, "platform": "p2" },
+    { "id": "p2d", "box_type_id": "p2_box", "weight": 5.0, "platform": "p2" },
+    { "id": "p2e", "box_type_id": "p2_box", "weight": 5.0, "platform": "p2" },
+    { "id": "p2f", "box_type_id": "p2_box", "weight": 5.0, "platform": "p2" },
+    { "id": "p3a", "box_type_id": "p3_box", "weight": 2.0, "platform": "p3" },
+    { "id": "p3b", "box_type_id": "p3_box", "weight": 2.0, "platform": "p3" },
+    { "id": "p3c", "box_type_id": "p3_box", "weight": 2.0, "platform": "p3" },
+    { "id": "p3d", "box_type_id": "p3_box", "weight": 2.0, "platform": "p3" }
+  ]
+}
