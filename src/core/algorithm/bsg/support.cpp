@@ -16,7 +16,6 @@ struct SupportState
     int32_t y_max = 0;
     int32_t target_z = 0;
     int64_t supported_area = 0;
-    int corner_mask = 0;
     bool directly_supported = false;
 };
 
@@ -51,29 +50,6 @@ void add_support(const Position& position,
     }
 
     state.directly_supported = true;
-
-    if (state.x_min >= position.x && state.x_min < position.x + size.dx)
-    {
-        if (state.y_min >= position.y && state.y_min < position.y + size.dy)
-        {
-            state.corner_mask |= 1;
-        }
-        if (state.y_max > position.y && state.y_max <= position.y + size.dy)
-        {
-            state.corner_mask |= 2;
-        }
-    }
-    if (state.x_max > position.x && state.x_max <= position.x + size.dx)
-    {
-        if (state.y_min >= position.y && state.y_min < position.y + size.dy)
-        {
-            state.corner_mask |= 4;
-        }
-        if (state.y_max > position.y && state.y_max <= position.y + size.dy)
-        {
-            state.corner_mask |= 8;
-        }
-    }
     state.supported_area += static_cast<int64_t>(ox_max - ox_min) * (oy_max - oy_min);
 }
 
@@ -168,10 +144,6 @@ bool is_supported(const BSGState& state,
     if (!support.directly_supported)
     {
         return false;
-    }
-    if (support.corner_mask == 15)
-    {
-        return true;
     }
 
     double ratio = static_cast<double>(support.supported_area) / static_cast<double>(total_area);
