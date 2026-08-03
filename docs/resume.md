@@ -101,10 +101,7 @@ GLC 的核心难点：已有放置可能不在任何 Space 的角落位置，无
 
 **已有放置处理**：
 
-`prefill_load_and_ep()` 同时预填充两个上下文：
-
-1. **ContainerLoad**：placements、volume、weight、platforms、groups。
-2. **EpContext（极点集）**：从每个已有放置的三面生成极点，外加原点 `(0,0,0)`。
+共享的 `prefill_load()` 预填充 `ContainerLoad`（placements、volume、weight、platforms、groups），`prefill_ep()` 预填充 `EpContext`（从每个已有放置的三面生成极点，外加原点 `(0,0,0)`）。
 
 每轮迭代中，`insertion_heuristic` 在已有极点和已有放置的基础上增量搜索。与 GEP 类似，极点机制的增量特性使续装实现简单直接。
 
