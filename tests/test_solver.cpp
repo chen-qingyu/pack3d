@@ -38,6 +38,49 @@ TEST_CASE("fixed_default_objectives", "[solver]")
     }
 }
 
+// run() 对任何非法输入都返回 status=invalid 的 JSON，而不是抛异常/崩溃
+TEST_CASE("run 对畸形输入返回 invalid", "[solver]")
+{
+    spdlog::set_level(spdlog::level::off);
+
+    // 合法基础结构（与 bsg_enforces_project_hard_constraints 相同的 initializer 风格）
+    const auto make_base = []
+    {
+        json j;
+        j["container_types"] = {{{"id", "t"}, {"inner_size", {{"x", 1}, {"y", 1}, {"z", 1}}}}};
+        j["box_types"] = {{{"id", "b"},
+                           {"size", {{"x", 1}, {"y", 1}, {"z", 1}}},
+                           {"allowed_orientations", {"xyz"}}}};
+        return j;
+    };
+
+    std::vector<json> bad_inputs;
+    bad_inputs.push_back(json::object()); // 缺必需字段
+    bad_inputs.push_back({{"container_types", json::array()},
+                          {"box_types", json::array()},
+                          {"boxes", json::array()}}); // minItems 违反
+
+    auto dup = make_base();
+    dup["boxes"] = {{{"id", "x"}, {"box_type_id", "b"}},
+                    {{"id", "x"}, {"box_type_id", "b"}}}; // 重复 box id
+    bad_inputs.push_back(dup);
+
+    auto unknown = make_base();
+    unknown["boxes"] = {{{"id", "x"}, {"box_type_id", "nope"}}}; // 未知箱型
+    bad_inputs.push_back(unknown);
+
+    auto no_weight_meta = make_base();
+    no_weight_meta["boxes"] = {{{"id", "x"}, {"box_type_id", "b"}, {"weight", 5.0}}}; // 有重量但容器无 max_weight
+    bad_inputs.push_back(no_weight_meta);
+
+    for (const auto& input : bad_inputs)
+    {
+        const auto res = run(input);
+        REQUIRE(res.contains("status"));
+        REQUIRE(res["status"] == "invalid");
+    }
+}
+
 // test_min_container.json — 2 个同型小箱，无平台/分组
 // 固定目标: min_container_count 优先 → 1 个大容器
 TEST_CASE("min_container_count", "[solver]")
