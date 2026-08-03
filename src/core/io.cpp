@@ -35,10 +35,10 @@ std::string orientation_to_string(Orientation o) noexcept
     return enum_to_lower(o);
 }
 
-Orientation orientation_from_string(const std::string& s) noexcept
+Orientation orientation_from_string(const std::string& s)
 {
-    auto val = magic_enum::enum_cast<Orientation>(s, magic_enum::case_insensitive);
-    return val.value_or(Orientation::XYZ);
+    // schema 已严格枚举约束；非法值直接抛异常，由 run() 兜底返回 invalid
+    return magic_enum::enum_cast<Orientation>(s, magic_enum::case_insensitive).value();
 }
 
 // 有值则序列化，无值则输出 null
@@ -231,10 +231,10 @@ std::string algorithm_to_string(Algorithm a) noexcept
     return enum_to_lower(a);
 }
 
-Algorithm algorithm_from_string(const std::string& s) noexcept
+Algorithm algorithm_from_string(const std::string& s)
 {
-    auto val = magic_enum::enum_cast<Algorithm>(s, magic_enum::case_insensitive);
-    return val.value_or(Algorithm::GEP);
+    // schema 已严格枚举约束；非法值直接抛异常，由 run() 兜底返回 invalid
+    return magic_enum::enum_cast<Algorithm>(s, magic_enum::case_insensitive).value();
 }
 
 std::string status_to_string(SolveStatus s) noexcept

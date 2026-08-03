@@ -22,7 +22,7 @@ namespace pack3d
 
 // enum 字符串转换
 [[nodiscard]] std::string algorithm_to_string(Algorithm a) noexcept;
-[[nodiscard]] Algorithm algorithm_from_string(const std::string& s) noexcept;
+[[nodiscard]] Algorithm algorithm_from_string(const std::string& s);
 [[nodiscard]] std::string status_to_string(SolveStatus s) noexcept;
 
 // nlohmann/json ADL 序列化/反序列化
