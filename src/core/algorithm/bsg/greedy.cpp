@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <set>
 
 #include "feasibility.hpp"
 #include "kpa.hpp"
@@ -10,6 +11,23 @@
 
 namespace pack3d::bsg
 {
+
+int count_remaining_platforms(const BSGState& state, const GlobalContext& ctx)
+{
+    if (ctx.item_classes.empty())
+    {
+        return 0;
+    }
+    std::set<std::string> platforms;
+    for (size_t ti = 0; ti < state.remaining_counts.size() && ti < ctx.item_classes.size(); ++ti)
+    {
+        if (state.remaining_counts[ti] > 0 && !ctx.item_classes[ti].platform.empty())
+        {
+            platforms.insert(ctx.item_classes[ti].platform);
+        }
+    }
+    return static_cast<int>(platforms.size());
+}
 
 int64_t max_remaining_volume(const BSGState& state, const GlobalContext& ctx)
 {
@@ -181,7 +199,8 @@ GreedyResult greedy_rollout(
         // 不重算 KPA：论文 "once per state"，初始 KPA 复用至 greedy 结束
     }
 
-    return {cur.used_volume, std::move(packed_counts), std::move(cur)};
+    int remaining_platforms = count_remaining_platforms(cur, ctx);
+    return {cur.used_volume, remaining_platforms, std::move(packed_counts), std::move(cur)};
 }
 
 } // namespace pack3d::bsg

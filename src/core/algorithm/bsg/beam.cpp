@@ -100,6 +100,7 @@ int64_t beam_search(
         struct Slot
         {
             int64_t score = 0;
+            int rem_platforms = 0;
             size_t idx = 0;
             bool keep = true;
         };
@@ -116,7 +117,7 @@ int64_t beam_search(
 
             auto gr = greedy_rollout(S_prime[i], s_best_volume, ctx);
             int64_t score = gr.total_volume;
-            Slot slot{score, i, true};
+            Slot slot{score, gr.remaining_platform_count, i, true};
 
             // 去相似：相同 packed_counts 只保留 used_volume 更小的
             uint64_t h = hash_counts(gr.packed_counts);
@@ -143,10 +144,15 @@ int64_t beam_search(
 
             slots.push_back(slot);
 
-            // 更新全局最优
+            // 更新全局最优：体积优先；平台场景并列体积时选剩余平台更少的（对齐字典序目标）
             if (score > s_best_volume)
             {
                 s_best_volume = score;
+                s_best = std::move(gr.final_state);
+            }
+            else if (score == s_best_volume && s_best_volume > 0 &&
+                     gr.remaining_platform_count < count_remaining_platforms(s_best, ctx))
+            {
                 s_best = std::move(gr.final_state);
             }
         }
@@ -179,6 +185,10 @@ int64_t beam_search(
                                   {
                                       return a.score > b.score;
                                   }
+                                  if (a.rem_platforms != b.rem_platforms)
+                                  {
+                                      return a.rem_platforms < b.rem_platforms;
+                                  }
                                   return a.idx < b.idx;
                               });
             S.clear();
@@ -199,6 +209,10 @@ int64_t beam_search(
                                   if (a.score != b.score)
                                   {
                                       return a.score > b.score;
+                                  }
+                                  if (a.rem_platforms != b.rem_platforms)
+                                  {
+                                      return a.rem_platforms < b.rem_platforms;
                                   }
                                   return a.idx < b.idx;
                               });
