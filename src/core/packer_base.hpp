@@ -59,7 +59,12 @@ protected:
 private:
     Solution build_solution(
         const std::vector<ContainerLoad>& all_loads,
-        const std::set<std::string>& remaining_ids);
+        const std::vector<Box>& remaining);
 };
+
+/// 用已有放置预填充 load 的 placements 与聚合字段（used_volume/platforms/groups/total_weight）
+void prefill_load(ContainerLoad& load,
+                  const std::vector<Placement>& existing,
+                  const std::map<std::string, Box>& box_map);
 
 } // namespace pack3d

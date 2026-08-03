@@ -28,24 +28,7 @@ ContainerLoad GepPacker::pack_single(
     load.type = &ct;
 
     // 预填充已有放置
-    for (const auto& pl : existing)
-    {
-        load.placements.push_back(pl);
-        load.used_volume += pl.osize.volume();
-        if (!pl.platform.empty())
-        {
-            load.platforms.insert(pl.platform);
-        }
-        if (!pl.group.empty())
-        {
-            load.groups.insert(pl.group);
-        }
-        auto bx_it = box_map_.find(pl.box_id);
-        if (bx_it != box_map_.end() && bx_it->second.weight.has_value())
-        {
-            load.total_weight += bx_it->second.weight.value();
-        }
-    }
+    prefill_load(load, existing, box_map_);
 
     // 候选点列表（极点的 x,y,z，去重用 set）
     struct Ep

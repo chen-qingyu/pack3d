@@ -7,6 +7,7 @@
 
 #include "../../constraints.hpp"
 #include "../../objectives.hpp"
+#include "../../packer_base.hpp"
 #include "../../tool.hpp"
 #include "../config.hpp"
 #include "block.hpp"
@@ -523,24 +524,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
     auto available = all_available;
 
     // 预填充已有放置
-    for (const auto& pl : existing)
-    {
-        state.placements.push_back(pl);
-        state.used_volume += pl.osize.volume();
-        if (!pl.platform.empty())
-        {
-            state.platforms.insert(pl.platform);
-        }
-        if (!pl.group.empty())
-        {
-            state.groups.insert(pl.group);
-        }
-        auto bx_it = box_map_.find(pl.box_id);
-        if (bx_it != box_map_.end() && bx_it->second.weight.has_value())
-        {
-            state.total_weight += bx_it->second.weight.value();
-        }
-    }
+    prefill_load(state, existing, box_map_);
 
     std::vector<Space> stack;
     if (existing.empty())

@@ -394,10 +394,10 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     // 已有容器校验
     if (!problem.existing_containers.empty())
     {
-        std::map<std::string, ContainerType> ct_map;
+        std::map<std::string, const ContainerType*> ct_map;
         for (const auto& ct : problem.container_types)
         {
-            ct_map[ct.id] = ct;
+            ct_map[ct.id] = &ct;
         }
         std::map<std::string, BoxType> bt_map;
         for (const auto& bt : problem.box_types)
@@ -431,7 +431,7 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                 continue;
             }
 
-            const auto& ct = ct_map[ec.type_id];
+            const auto& ct = *ct_map[ec.type_id];
 
             // 堆码层数 / 单箱承重校验（重建堆叠状态并检查）
             if (any_max_stack || any_max_load)
@@ -513,7 +513,7 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
 
 ContainerLoad build_load_from_existing(
     const ExistingContainer& ec,
-    const std::map<std::string, ContainerType>& ct_map,
+    const std::map<std::string, const ContainerType*>& ct_map,
     const std::map<std::string, BoxType>& bt_map,
     std::vector<std::string>& errors)
 {
@@ -525,7 +525,7 @@ ContainerLoad build_load_from_existing(
         return load;
     }
     load.type_id = ec.type_id;
-    load.type = &ct_it->second;
+    load.type = ct_it->second;
     load.locked = true;
 
     for (const auto& ep : ec.placements)

@@ -11,25 +11,46 @@
 namespace pack3d
 {
 
+void prefill_load(ContainerLoad& load,
+                  const std::vector<Placement>& existing,
+                  const std::map<std::string, Box>& box_map)
+{
+    for (const auto& pl : existing)
+    {
+        load.placements.push_back(pl);
+        load.used_volume += pl.osize.volume();
+        if (!pl.platform.empty())
+        {
+            load.platforms.insert(pl.platform);
+        }
+        if (!pl.group.empty())
+        {
+            load.groups.insert(pl.group);
+        }
+        auto bx_it = box_map.find(pl.box_id);
+        if (bx_it != box_map.end() && bx_it->second.weight.has_value())
+        {
+            load.total_weight += bx_it->second.weight.value();
+        }
+    }
+}
+
 Solution PackerBase::pack()
 {
     TimeChecker::init(problem_.time_limit);
 
     std::vector<ContainerLoad> all_loads;
-    std::set<std::string> remaining_ids;
-    for (const auto& bx : problem_.boxes)
-    {
-        remaining_ids.insert(bx.id);
-    }
+    std::vector<Box> remaining(problem_.boxes); // 未装箱集合，随装载推进原地剔除
 
     std::map<std::string, int> container_usage;
     int instance_counter = 0;
 
     // ---- 阶段 A: 预填充已有容器 ----
-    std::map<std::string, ContainerType> ct_map;
+    // ct_map 只索引不拷贝，type 指针统一指向 problem_.container_types（生命周期覆盖整个求解过程）
+    std::map<std::string, const ContainerType*> ct_map;
     for (const auto& ct : problem_.container_types)
     {
-        ct_map[ct.id] = ct;
+        ct_map[ct.id] = &ct;
     }
     std::map<std::string, BoxType> bt_map;
     for (const auto& bt : problem_.box_types)
@@ -56,18 +77,9 @@ Solution PackerBase::pack()
     // ---- 阶段 B: 继续塞已有容器 ----
     for (auto& cl : all_loads)
     {
-        if (remaining_ids.empty() || !TimeChecker::check())
+        if (remaining.empty() || !TimeChecker::check())
         {
             break;
-        }
-
-        std::vector<Box> remaining;
-        for (const auto& bx : problem_.boxes)
-        {
-            if (remaining_ids.count(bx.id))
-            {
-                remaining.push_back(bx);
-            }
         }
 
         auto ct_it = ct_map.find(cl.type_id);
@@ -77,7 +89,7 @@ Solution PackerBase::pack()
         }
 
         // 将已有 placement 传给 pack_single 继续塞
-        ContainerLoad extra = pack_single(remaining, ct_it->second, cl.placements);
+        ContainerLoad extra = pack_single(remaining, *ct_it->second, cl.placements);
         if (extra.placements.size() <= cl.placements.size())
         {
             continue;
@@ -111,28 +123,17 @@ Solution PackerBase::pack()
         cl.total_weight = extra.total_weight;
         cl.platforms = std::move(extra.platforms);
         cl.groups = std::move(extra.groups);
-        for (const auto& id : packed)
-        {
-            remaining_ids.erase(id);
-        }
+        std::erase_if(remaining, [&](const Box& b)
+                      { return packed.count(b.id) != 0; });
 
         spdlog::info("Container \"{}\": added {}, now total {}, left {}",
                      cl.instance_id, packed.size(),
-                     cl.placements.size(), remaining_ids.size());
+                     cl.placements.size(), remaining.size());
     }
 
     // ---- 阶段 C: 开新容器 ----
-    while (!remaining_ids.empty() && TimeChecker::check())
+    while (!remaining.empty() && TimeChecker::check())
     {
-        std::vector<Box> remaining;
-        for (const auto& bx : problem_.boxes)
-        {
-            if (remaining_ids.count(bx.id))
-            {
-                remaining.push_back(bx);
-            }
-        }
-
         const ContainerType* ct = select_largest_fitting(
             problem_.container_types, container_usage, remaining, box_type_map_);
         if (!ct)
@@ -148,28 +149,26 @@ Solution PackerBase::pack()
         {
             packed.insert(pl.box_id);
         }
-        for (const auto& id : packed)
-        {
-            remaining_ids.erase(id);
-        }
+        std::erase_if(remaining, [&](const Box& b)
+                      { return packed.count(b.id) != 0; });
 
         container_usage[ct->id]++;
 
         spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.4f}",
                      all_loads.size() + 1, ct->id, load.placements.size(),
-                     remaining_ids.size(), load.volume_rate());
+                     remaining.size(), load.volume_rate());
 
         all_loads.push_back(std::move(load));
     }
 
     postprocess(all_loads, *this, problem_.container_types, box_type_map_, box_map_);
 
-    return build_solution(all_loads, remaining_ids);
+    return build_solution(all_loads, remaining);
 }
 
 Solution PackerBase::build_solution(
     const std::vector<ContainerLoad>& all_loads,
-    const std::set<std::string>& remaining_ids)
+    const std::vector<Box>& remaining)
 {
     Solution sol;
     sol.elapsed_second = TimeChecker::elapsed();
@@ -180,7 +179,7 @@ Solution PackerBase::build_solution(
         packed += static_cast<int>(cl.placements.size());
     }
     sol.packed_box_count = packed;
-    sol.unpacked_box_count = static_cast<int>(remaining_ids.size());
+    sol.unpacked_box_count = static_cast<int>(remaining.size());
 
     if (!TimeChecker::check())
     {
@@ -197,7 +196,11 @@ Solution PackerBase::build_solution(
 
     sol.objective = compute_objective(all_loads);
     sol.box_types = problem_.box_types;
-    sol.unpacked_boxes.assign(remaining_ids.begin(), remaining_ids.end());
+    sol.unpacked_boxes.reserve(remaining.size());
+    for (const auto& bx : remaining)
+    {
+        sol.unpacked_boxes.push_back(bx.id);
+    }
 
     for (const auto& cl : all_loads)
     {

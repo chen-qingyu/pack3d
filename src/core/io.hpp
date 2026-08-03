@@ -37,7 +37,7 @@ void to_json(json& j, const Solution& sol);
 /// 从已有放置构建 ContainerLoad（校验用 + pack 预填充）
 [[nodiscard]] ContainerLoad build_load_from_existing(
     const ExistingContainer& ec,
-    const std::map<std::string, ContainerType>& ct_map,
+    const std::map<std::string, const ContainerType*>& ct_map,
     const std::map<std::string, BoxType>& bt_map,
     std::vector<std::string>& errors);
 

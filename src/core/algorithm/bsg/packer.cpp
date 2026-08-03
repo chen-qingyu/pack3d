@@ -88,24 +88,8 @@ ContainerLoad BsgPacker::pack_single(
     load.type_id = ct.id;
     load.type = &ct;
 
-    // 已有放置：先于 solver 结果加入，使 BSG 与其他算法一致
-    for (const auto& pl : existing)
-    {
-        load.placements.push_back(pl);
-        if (!pl.platform.empty())
-        {
-            load.platforms.insert(pl.platform);
-        }
-        if (!pl.group.empty())
-        {
-            load.groups.insert(pl.group);
-        }
-        auto bx_it = box_map_.find(pl.box_id);
-        if (bx_it != box_map_.end() && bx_it->second.weight.has_value())
-        {
-            load.total_weight += bx_it->second.weight.value();
-        }
-    }
+    // 已有放置：先于 solver 结果加入，使 BSG 与其他算法一致（used_volume 随后由 solver 值覆盖）
+    prefill_load(load, existing, box_map_);
 
     // solver 新放置
     load.placements.insert(load.placements.end(),
