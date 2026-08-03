@@ -3,6 +3,7 @@
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <spdlog/fmt/ranges.h>
 #include <spdlog/spdlog.h>
 
 #include "core/app.hpp"
@@ -128,6 +129,17 @@ TEST_CASE("platform_merge_no_new_container", "[solver]")
     {
         base["algorithm"] = algo;
         auto res = run(base);
+
+        // 失败诊断：算法 + 摘要 + 各容器平台分布（INFO 仅在断言失败时输出）
+        INFO("algo=" << algo);
+        INFO("summary=" << res["summary"].dump());
+        std::string plat_desc;
+        for (const auto& c : res["result"]["containers"])
+        {
+            plat_desc += c["type_id"].get<std::string>() + fmt::format(":[{}]", c["platforms"].get<std::vector<std::string>>());
+        }
+        INFO("containers=" << plat_desc);
+
         REQUIRE(res["status"] == "complete");
         REQUIRE(res["summary"]["unpacked_box_count"] == 0);
         REQUIRE(res["summary"]["platform_split"] == 0);
