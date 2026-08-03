@@ -175,7 +175,11 @@ int64_t beam_search(
             std::partial_sort(slots.begin(), slots.begin() + take, slots.end(),
                               [](const Slot& a, const Slot& b) noexcept
                               {
-                                  return a.score > b.score;
+                                  if (a.score != b.score)
+                                  {
+                                      return a.score > b.score;
+                                  }
+                                  return a.idx < b.idx;
                               });
             S.clear();
             for (int i = 0; i < take; ++i)
@@ -192,7 +196,11 @@ int64_t beam_search(
             std::partial_sort(kept.begin(), kept.begin() + take, kept.end(),
                               [](const Slot& a, const Slot& b) noexcept
                               {
-                                  return a.score > b.score;
+                                  if (a.score != b.score)
+                                  {
+                                      return a.score > b.score;
+                                  }
+                                  return a.idx < b.idx;
                               });
             S.clear();
             for (int i = 0; i < take; ++i)

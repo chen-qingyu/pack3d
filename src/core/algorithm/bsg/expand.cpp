@@ -118,14 +118,18 @@ std::vector<BSGState> expand(
         return successors;
     }
 
-    // 按 f 降序，取 top-w
+    // 按 f 降序，取 top-w；并列按 block_idx 升序，保证跨平台确定性
     int take = std::min(w, static_cast<int>(candidates.size()));
     std::partial_sort(candidates.begin(),
                       candidates.begin() + take,
                       candidates.end(),
                       [](const Candidate& a, const Candidate& b) noexcept
                       {
-                          return a.f_value > b.f_value;
+                          if (a.f_value != b.f_value)
+                          {
+                              return a.f_value > b.f_value;
+                          }
+                          return a.block_idx < b.block_idx;
                       });
 
     // 为评分最高的可行块生成后继状态。

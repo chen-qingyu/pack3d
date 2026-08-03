@@ -370,11 +370,16 @@ std::vector<GeneralBlock> generate_blocks(
     }
 
 done:
-    // 按体积降序排列（方便后续候选选取）
+    // 按体积降序排列（方便后续候选选取）；并列按 id 升序，保证跨平台确定性
+    // （std::sort 不稳定，MSVC 与 libstdc++ 对相等元素的顺序可能不同）
     std::sort(blocks.begin(), blocks.end(),
               [](const GeneralBlock& a, const GeneralBlock& b) noexcept
               {
-                  return a.volume() > b.volume();
+                  if (a.volume() != b.volume())
+                  {
+                      return a.volume() > b.volume();
+                  }
+                  return a.id < b.id;
               });
     return blocks;
 }
