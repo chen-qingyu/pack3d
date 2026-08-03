@@ -1,8 +1,24 @@
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import pack3d
+
+
+# 与 C++ CLI 一致：JSON 已显式指定该节点时，CLI 参数报错退出
+# path 为 JSON 路径（如 "constraints", "time_limit"）；value 为 None 表示未传，跳过
+def try_set(input_data, cli_arg, value, *path):
+    if value is None:
+        return True
+    node = input_data
+    for key in path[:-1]:
+        node = node.setdefault(key, {})
+    if path[-1] in node:
+        print(f"Error: CLI '{cli_arg}' not allowed when JSON '{'/'.join(path)}' is specified.")
+        return False
+    node[path[-1]] = value
+    return True
 
 
 if __name__ == "__main__":
@@ -26,28 +42,38 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t",
         "--time-limit",
-        default=120.0,
         type=float,
         help="Time limit in seconds.",
     )
     parser.add_argument(
         "-s",
         "--support-rate",
-        default=0.0,
         type=float,
         help="Support rate (0~1).",
+    )
+    parser.add_argument(
+        "--platform-limit",
+        type=int,
+        help="Platform limit.",
+    )
+    parser.add_argument(
+        "--tender-limit",
+        type=int,
+        help="Tender limit.",
     )
     args = parser.parse_args()
 
     with open(args.file, encoding="utf-8") as f:
         input_data = json.load(f)
 
-    if args.algorithm:
-        input_data["algorithm"] = args.algorithm
-    if args.time_limit is not None:
-        input_data.setdefault("constraints", {})["time_limit"] = args.time_limit
-    if args.support_rate != 0.0:
-        input_data.setdefault("constraints", {})["support_rate"] = args.support_rate
+    ok = True
+    ok &= try_set(input_data, "-a", args.algorithm, "algorithm")
+    ok &= try_set(input_data, "-t", args.time_limit, "constraints", "time_limit")
+    ok &= try_set(input_data, "-s", args.support_rate, "constraints", "support_rate")
+    ok &= try_set(input_data, "--platform-limit", args.platform_limit, "constraints", "platform_limit")
+    ok &= try_set(input_data, "--tender-limit", args.tender_limit, "constraints", "tender_limit")
+    if not ok:
+        sys.exit(1)
 
     result = pack3d.run(input_data)
 
