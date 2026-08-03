@@ -336,7 +336,7 @@ void commit_placement(
     }
 }
 
-std::vector<std::string> insertion_heuristic(
+void insertion_heuristic(
     const std::vector<Box>& items,
     const ContainerType& ctype,
     const std::map<std::string, BoxType>& box_type_map,
@@ -362,7 +362,6 @@ std::vector<std::string> insertion_heuristic(
     }
 
     std::set<std::string> loaded_ids;
-    std::vector<std::string> loaded_order;
 
     for (const auto& entry : ordered)
     {
@@ -393,11 +392,10 @@ std::vector<std::string> insertion_heuristic(
                 {
                     commit_placement(out_load, out_ctx, box, bt, orient, ep, problem);
                     loaded_ids.insert(box.id);
-                    loaded_order.push_back(box.id);
                     placed = true;
                     if (!TimeChecker::check())
                     {
-                        return loaded_order;
+                        return;
                     }
                     break;
                 }
@@ -408,8 +406,6 @@ std::vector<std::string> insertion_heuristic(
             }
         }
     }
-
-    return loaded_order;
 }
 
 } // namespace pack3d::rgs

@@ -13,9 +13,8 @@
 namespace pack3d::rgs
 {
 
-// Alg1: 单 ULD 插入启发式
-// 返回已装载的箱子 ID 列表
-[[nodiscard]] std::vector<std::string> insertion_heuristic(
+// Alg1: 单 ULD 插入启发式（状态经 out_load / out_ctx 返回）
+void insertion_heuristic(
     const std::vector<Box>& items,
     const ContainerType& ctype,
     const std::map<std::string, BoxType>& box_type_map,

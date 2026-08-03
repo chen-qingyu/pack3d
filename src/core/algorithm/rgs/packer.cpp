@@ -15,31 +15,11 @@ namespace pack3d
 namespace
 {
 
-// 用已有放置预填充 load 和 EP 上下文
-void prefill_load_and_ep(
-    ContainerLoad& load,
-    rgs::EpContext& ctx,
-    const std::vector<Placement>& existing,
-    const std::map<std::string, Box>& box_map)
+// 用已有放置预填充 EP 上下文（load 聚合字段由共享的 prefill_load 完成）
+void prefill_ep(rgs::EpContext& ctx, const std::vector<Placement>& existing)
 {
     for (const auto& pl : existing)
     {
-        load.placements.push_back(pl);
-        load.used_volume += pl.osize.volume();
-        if (!pl.platform.empty())
-        {
-            load.platforms.insert(pl.platform);
-        }
-        if (!pl.group.empty())
-        {
-            load.groups.insert(pl.group);
-        }
-        auto bx_it = box_map.find(pl.box_id);
-        if (bx_it != box_map.end() && bx_it->second.weight.has_value())
-        {
-            load.total_weight += bx_it->second.weight.value();
-        }
-
         ctx.extreme_points.insert({pl.position.x + pl.osize.dx, pl.position.y, pl.position.z});
         ctx.extreme_points.insert({pl.position.x, pl.position.y + pl.osize.dy, pl.position.z});
         ctx.extreme_points.insert({pl.position.x, pl.position.y, pl.position.z + pl.osize.dz});
@@ -84,9 +64,9 @@ ContainerLoad RgsPacker::pack_single(
             load.type = &ct;
             rgs::EpContext ctx;
             ctx.extreme_points.insert({0, 0, 0});
-            prefill_load_and_ep(load, ctx, existing, box_map_);
-            auto loaded1 = rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
-            (void)loaded1;
+            prefill_load(load, existing, box_map_);
+            prefill_ep(ctx, existing);
+            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
 
             if (stop_when_complete && load.placements.size() == items.size())
             {
@@ -118,9 +98,9 @@ ContainerLoad RgsPacker::pack_single(
             load.type = &ct;
             rgs::EpContext ctx;
             ctx.extreme_points.insert({0, 0, 0});
-            prefill_load_and_ep(load, ctx, existing, box_map_);
-            auto loaded2 = rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
-            (void)loaded2;
+            prefill_load(load, existing, box_map_);
+            prefill_ep(ctx, existing);
+            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
 
             if (stop_when_complete && load.placements.size() == items.size())
             {
