@@ -48,9 +48,7 @@ std::unique_ptr<PackerBase> make_packer(
     }
 }
 
-} // namespace
-
-json run(const json& j) noexcept
+json run_impl(const json& j)
 {
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
@@ -115,6 +113,25 @@ json run(const json& j) noexcept
     spdlog::info("Time used: {:.3f} s", solution.elapsed_second);
 
     return json(solution);
+}
+
+} // namespace
+
+json run(const json& j)
+{
+    try
+    {
+        return run_impl(j);
+    }
+    catch (const std::exception& e)
+    {
+        // 任何未预见的异常都返回 invalid，保证任意输入都有输出（不拖垮宿主进程）
+        spdlog::error("Unexpected exception: {}", e.what());
+        Solution s;
+        s.status = SolveStatus::Invalid;
+        s.violations.push_back(std::string("internal error: ") + e.what());
+        return json(s);
+    }
 }
 
 } // namespace pack3d
