@@ -5,6 +5,7 @@ set_languages("cxx20")
 set_encodings("utf-8")
 
 add_rules("mode.debug", "mode.release")
+add_defines("FMT_HEADER_ONLY") -- spdlog bundled fmt 默认非 header-only：MSVC 可传递解析，GCC 链接会缺
 add_requires("spdlog 1.17", "nlohmann_json 3.12", "json-schema-validator 2.4", "argparse 3.2", "catch2 3.14", "pybind11 3.0", "magic_enum 0.9")
 if is_plat("linux") then
     add_requireconfs("pybind11.python", {override = true, configs = {headeronly = true}})
