@@ -46,6 +46,10 @@ ContainerLoad RgsPacker::pack_single(
     constexpr int min_per_crit = config::RGS_MIN_TOTAL / num_criteria;
     constexpr int max_per_crit = config::RGS_MAX_TOTAL / num_criteria;
 
+    // 完成判定：load.placements 含已有放置 + 新增，须与总量对齐
+    // （否则后处理合并在 existing 非空时把"已放部分捐献箱"误判为完成，导致合并失败）
+    const size_t complete_size = existing.size() + items.size();
+
     ContainerLoad best_load;
     double best_score = -1e9;
 
@@ -68,7 +72,7 @@ ContainerLoad RgsPacker::pack_single(
             prefill_ep(ctx, existing);
             rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
 
-            if (stop_when_complete && load.placements.size() == items.size())
+            if (stop_when_complete && load.placements.size() == complete_size)
             {
                 best_load = std::move(load);
                 goto done;
@@ -102,7 +106,7 @@ ContainerLoad RgsPacker::pack_single(
             prefill_ep(ctx, existing);
             rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
 
-            if (stop_when_complete && load.placements.size() == items.size())
+            if (stop_when_complete && load.placements.size() == complete_size)
             {
                 best_load = std::move(load);
                 goto done;
