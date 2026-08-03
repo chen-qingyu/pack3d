@@ -81,6 +81,25 @@ TEST_CASE("check_support 部分支撑", "[core]")
     REQUIRE_FALSE(check_support({0, 0, 100}, {200, 100, 100}, load, 0.6));
 }
 
+// 四角均被支撑但面积占比不足时，高 support_rate 必须拒绝（回归：删除四角快通道后）
+TEST_CASE("check_support 四角支撑但面积不足被拒绝", "[core]")
+{
+    ContainerLoad load;
+    load.type_id = "test";
+    ContainerType ct{{}, {1000, 1000, 1000}};
+    load.type = &ct;
+
+    // 4 个 10x10 角块在四角，顶面 z=50
+    load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {10, 10, 50}});
+    load.placements.push_back({"", "bt", "", {90, 0, 0}, Orientation::XYZ, {10, 10, 50}});
+    load.placements.push_back({"", "bt", "", {0, 90, 0}, Orientation::XYZ, {10, 10, 50}});
+    load.placements.push_back({"", "bt", "", {90, 90, 0}, Orientation::XYZ, {10, 10, 50}});
+
+    // 100x100 大箱：四角全被支撑，但支撑面积仅 4%
+    REQUIRE_FALSE(check_support({0, 0, 50}, {100, 100, 100}, load, 0.9));
+    REQUIRE(check_support({0, 0, 50}, {100, 100, 100}, load, 0.03));
+}
+
 TEST_CASE("平台数量限制约束", "[core]")
 {
     ContainerLoad load;
