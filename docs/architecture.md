@@ -2,14 +2,12 @@
 
 ## 1. 算法总览
 
-`solve()` 根据 `problem_.algorithm.algorithm` 选择算法：
+统一入口 `app::run()` 解析并校验输入后，由 `PackerBase::pack()` 模板方法驱动整个求解流程：`select_largest_fitting` 选车 → 调用虚函数 `pack_single()` 填充单容器 → 收箱 → `postprocess()` 后处理。四种算法只需实现各自的 `pack_single()`，由 `make_packer()` 按 `problem.algorithm` 选择：
 
 - **`GEP`**（默认）— 极点贪心法：体积降序 + EP 优先填充。见 §3。
 - **`GLC`** — 贪心前瞻构造：块装载 + beam 搜索。见 §4。
 - **`RGS`** — 随机贪心搜索：EP-first-fit + 多策略排序 + Shaw 随机化，多起点采样择优。见 §5。
-- **`BSG`** — 束搜索：宽度限制的启发式树搜索 + KPA 块合并。
-
-四个算法均通过 `PackerBase` 多态基类接入统一的选车与后处理框架：`pack()` 模板方法负责 `select_largest_fitting` 选车 → 调用虚函数 `pack_single()` 填充单容器 → 收箱 → `postprocess()` 后处理。
+- **`BSG`** — 束搜索：宽度限制的启发式树搜索 + KPA 块合并。见 §6。
 
 ### 坐标系
 
@@ -274,9 +272,9 @@ ContainerLoad（共享）
 
 ## 8. 共享后处理
 
-`postprocess.hpp` 提供两个后处理阶段，所有算法共享，通过 `pack_single()` 回调重装：
+`postprocess.cpp` 提供两个后处理阶段，所有算法共享，通过 `pack_single()` 回调重装：
 
-1. **`repack_all_smaller`**：遍历每个容器，按体积升序尝试用更小容器类型重装（等价于 downsize）
+1. **`repack_last_smaller`**：把最后一个容器尝试用更小容器类型重装（等价于 downsize）
 2. **`reduce_platform_splits`**：把分散在多个容器中的同平台箱子并入某个已有容器（不新增容器，优先并入剩余空间最大的尾车），减少平台拆分
 
 后处理在 `PackerBase::pack()` 末尾统一调用。
@@ -290,7 +288,7 @@ ContainerLoad（共享）
 `Placement` 新增 `OrientedSize osize` 字段，放置时预计算朝向后的实际尺寸。消除了 `check_overlap`、`check_support` 中反复的 `box_type_map.at().size.orient()` 调用。
 
 - `check_overlap` 签名简化为 `(pos, osize, existing)`，不再需要 `box_type_map` 参数。
-- `check_support` 中支撑矩形和四角检测均使用 `pl.osize`，不再需要 `box_type_map` 参数。
+- `check_support` 中支撑矩形检测使用 `pl.osize`，不再需要 `box_type_map` 参数。
 
 ### 承重约束（max_stack / max_load）
 
