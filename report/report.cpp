@@ -18,6 +18,12 @@
 namespace fs = std::filesystem;
 
 // 全局拦截 new/delete 以追踪内存峰值
+// 前提：
+// 1. MSVC STL 容器释放走 sized operator delete(void*, size_t)，正确记账
+//    若换 GCC/MinGW，libstdc++ 容器走 unsized delete，g_allocated 只增不减，峰值≈累计分配总量
+// 2. 代码库无 alignas/SIMD 等 over-aligned 类型
+//
+// unsized delete 仅命中唯一多态类型 PackerBase 对象，其全程存活、本就计入峰值，且每次 run 前计数器清零，残留不影响报告峰值
 static std::atomic<size_t> g_allocated{0};
 static std::atomic<size_t> g_peak{0};
 
@@ -63,7 +69,6 @@ void operator delete[](void* p, size_t size) noexcept
 
 void operator delete(void* p) noexcept
 {
-    // size unknown via free; peak will be slightly inflated, acceptable
     std::free(p);
 }
 
