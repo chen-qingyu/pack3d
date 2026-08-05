@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "algorithm/config.hpp"
+
 namespace pack3d
 {
 
@@ -189,8 +191,8 @@ struct Problem
     std::vector<BoxType> box_types;
     std::vector<Box> boxes;
 
-    // 约束
-    double time_limit = 0.0;
+    // 约束（默认值唯一来源；time_limit 见 config.hpp）
+    double time_limit = config::TIME_LIMIT;
     double support_rate = 0.0;
     std::optional<int> platform_limit;
     std::optional<int> tender_limit;

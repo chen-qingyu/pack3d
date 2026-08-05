@@ -8,7 +8,6 @@ using namespace pack3d;
 TEST_CASE("pre_validate_input 检测重复 ID", "[parser]")
 {
     Problem p;
-    p.time_limit = 30.0;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
     p.container_types.push_back({"ct1", {2000, 2000, 2000}, 2000.0, std::nullopt});
     p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
@@ -29,7 +28,6 @@ TEST_CASE("pre_validate_input 检测重复 ID", "[parser]")
 TEST_CASE("pre_validate_input 检测路线缺失平台", "[parser]")
 {
     Problem p;
-    p.time_limit = 30.0;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
     p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
     p.boxes.push_back({"box1", "bt1", 10.0, "", "Z"});
@@ -55,7 +53,6 @@ TEST_CASE("pre_validate_input 检测路线缺失平台", "[parser]")
 TEST_CASE("pre_validate_input 检测 max_stack 数组长度不匹配", "[parser]")
 {
     Problem p;
-    p.time_limit = 30.0;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, std::nullopt, std::nullopt});
     BoxType bt;
     bt.id = "bt1";
@@ -80,7 +77,6 @@ TEST_CASE("pre_validate_input 检测 max_stack 数组长度不匹配", "[parser]
 TEST_CASE("pre_validate_input 检测 max_load 需要重量", "[parser]")
 {
     Problem p;
-    p.time_limit = 30.0;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
     BoxType bt;
     bt.id = "bt1";

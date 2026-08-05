@@ -9,7 +9,6 @@
 #include <nlohmann/json-schema.hpp>
 #include <spdlog/spdlog.h>
 
-#include "algorithm/config.hpp"
 #include "constraints.hpp"
 #include "input_schema.h"
 
@@ -157,22 +156,14 @@ void from_json(const json& j, ExistingPlacement& ep)
 void from_json(const json& j, ExistingContainer& ec)
 {
     j["type_id"].get_to(ec.type_id);
-    for (const auto& item : j["placements"])
-    {
-        ec.placements.push_back(item.get<ExistingPlacement>());
-    }
+    j["placements"].get_to(ec.placements);
 }
 
 void from_json(const json& j, Problem& p)
 {
-    for (const auto& item : j["container_types"])
-    {
-        p.container_types.push_back(item.get<ContainerType>());
-    }
-    for (const auto& item : j["box_types"])
-    {
-        p.box_types.push_back(item.get<BoxType>());
-    }
+    // schema 已保证必需字段存在；缺省值由 Problem 成员初始化提供（唯一来源）
+    j["container_types"].get_to(p.container_types);
+    j["box_types"].get_to(p.box_types);
     // 承重约束启用标志（presence-based）
     for (const auto& bt : p.box_types)
     {
@@ -185,17 +176,20 @@ void from_json(const json& j, Problem& p)
             p.has_max_load |= v.has_value();
         }
     }
-    for (const auto& item : j["boxes"])
-    {
-        p.boxes.push_back(item.get<Box>());
-    }
+    j["boxes"].get_to(p.boxes);
 
-    p.time_limit = config::TIME_LIMIT;
+    // 仅当 JSON 显式给出时覆盖默认值
     if (j.contains("constraints"))
     {
         const auto& c = j["constraints"];
-        p.time_limit = c.value("time_limit", config::TIME_LIMIT);
-        p.support_rate = c.value("support_rate", 0.0);
+        if (auto v = json_opt_double(c, "time_limit"))
+        {
+            p.time_limit = *v;
+        }
+        if (auto v = json_opt_double(c, "support_rate"))
+        {
+            p.support_rate = *v;
+        }
         p.platform_limit = json_opt_int(c, "platform_limit");
         p.tender_limit = json_opt_int(c, "tender_limit");
     }
@@ -219,10 +213,7 @@ void from_json(const json& j, Problem& p)
 
     if (j.contains("existing_containers"))
     {
-        for (const auto& item : j["existing_containers"])
-        {
-            p.existing_containers.push_back(item.get<ExistingContainer>());
-        }
+        j["existing_containers"].get_to(p.existing_containers);
     }
 }
 
