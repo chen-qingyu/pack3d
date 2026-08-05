@@ -30,5 +30,6 @@
     { "id": "a2", "box_type_id": "big_box", "weight": 10.0, "platform": "A" },
     { "id": "b1", "box_type_id": "tiny_box", "weight": 1.0, "platform": "B" },
     { "id": "b2", "box_type_id": "tiny_box", "weight": 1.0, "platform": "B" }
-  ]
+  ],
+  "route": ["A", "B"]
 }

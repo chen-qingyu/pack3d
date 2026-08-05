@@ -130,7 +130,7 @@ Schema 校验后，代码还会检查：
 
 - ID 唯一性：`container_types`、`box_types`、`boxes` 中各自的 `id` 必须唯一
 - 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
-- 路线合法性：路线中无重复平台，箱子平台必须在路线中
+- 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）设置了 `platform`，就必须提供 `route`；路线中无重复平台，箱子平台必须在路线中
 - 重量一致性：只要任一个箱子存在重量信息，则所有箱子和容器必须有重量信息
 
 ## 中间状态 `existing_containers`（可选）

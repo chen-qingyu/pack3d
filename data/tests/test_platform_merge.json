@@ -38,5 +38,6 @@
     { "id": "p3b", "box_type_id": "p3_box", "weight": 2.0, "platform": "p3" },
     { "id": "p3c", "box_type_id": "p3_box", "weight": 2.0, "platform": "p3" },
     { "id": "p3d", "box_type_id": "p3_box", "weight": 2.0, "platform": "p3" }
-  ]
+  ],
+  "route": ["p1", "p2", "p3"]
 }

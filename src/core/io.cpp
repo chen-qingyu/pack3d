@@ -369,6 +369,24 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         out.push_back("inconsistent weight: max_load requires all boxes to have weight");
     }
 
+    // 箱子/已有放置有 platform 就必须有 route 且平台在路线中
+    bool any_platform = false;
+    for (const auto& bx : problem.boxes)
+    {
+        any_platform |= !bx.platform.empty();
+    }
+    for (const auto& ec : problem.existing_containers)
+    {
+        for (const auto& ep : ec.placements)
+        {
+            any_platform |= !ep.platform.empty();
+        }
+    }
+    if (any_platform && !problem.route.has_value())
+    {
+        out.push_back("platform set but route is missing");
+    }
+
     if (problem.route.has_value())
     {
         const auto& route = problem.route.value();
@@ -387,6 +405,21 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             if (!bx.platform.empty() && !route.index_of.count(bx.platform))
             {
                 out.push_back("platform '" + bx.platform + "' not in route, box " + bx.id);
+            }
+        }
+
+        for (size_t ei = 0; ei < problem.existing_containers.size(); ++ei)
+        {
+            const auto& ec = problem.existing_containers[ei];
+            for (size_t pi = 0; pi < ec.placements.size(); ++pi)
+            {
+                const auto& ep = ec.placements[pi];
+                if (!ep.platform.empty() && !route.index_of.count(ep.platform))
+                {
+                    out.push_back("platform '" + ep.platform + "' not in route, existing_containers[" +
+                                  std::to_string(ei) + "].placements[" + std::to_string(pi) +
+                                  "] (box " + ep.box_id + ")");
+                }
             }
         }
     }
