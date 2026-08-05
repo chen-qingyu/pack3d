@@ -12,10 +12,12 @@
 
 using namespace pack3d;
 
+// 进程启动即全局关闭 spdlog，避免 Catch2 随机测试顺序导致日志时有时无
+static const bool g_spdlog_off = (spdlog::set_level(spdlog::level::off), true);
+
 // 从 JSON 文件加载测试场景
 static json load_data(const char* path)
 {
-    spdlog::set_level(spdlog::level::off); // 关闭日志以免干扰测试输出
     std::ifstream ifs(path);
     REQUIRE(ifs.is_open());
     std::stringstream buf;
@@ -42,8 +44,6 @@ TEST_CASE("fixed_default_objectives", "[solver]")
 // run() 对任何非法输入都返回 status=invalid 的 JSON，而不是抛异常/崩溃
 TEST_CASE("run 对畸形输入返回 invalid", "[solver]")
 {
-    spdlog::set_level(spdlog::level::off);
-
     // 合法基础结构（与 bsg_enforces_project_hard_constraints 相同的 initializer 风格）
     const auto make_base = []
     {
