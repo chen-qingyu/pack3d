@@ -1,6 +1,8 @@
 #include "packer.hpp"
 
 #include <algorithm>
+#include <limits>
+#include <set>
 
 #include <spdlog/spdlog.h>
 
@@ -26,6 +28,28 @@ void prefill_ep(rgs::EpContext& ctx, const std::vector<Placement>& existing)
     }
 }
 
+// 剩余箱子的平台数：未放入当前容器的箱子中，去重后的非空平台数。
+// 对齐字典序目标 min_platform_split（同 BSG 的 remaining_platform_count）：
+// 体积并列时选剩余平台更少的装箱，倾向把平台聚拢，降低后处理救不回的拆分概率。
+size_t count_remaining_platforms(const std::vector<Box>& items,
+                                 const ContainerLoad& load) noexcept
+{
+    std::set<std::string> placed;
+    for (const auto& pl : load.placements)
+    {
+        placed.insert(pl.box_id);
+    }
+    std::set<std::string> platforms;
+    for (const auto& bx : items)
+    {
+        if (!bx.platform.empty() && !placed.count(bx.id))
+        {
+            platforms.insert(bx.platform);
+        }
+    }
+    return platforms.size();
+}
+
 } // namespace
 
 ContainerLoad RgsPacker::pack_single(
@@ -34,7 +58,7 @@ ContainerLoad RgsPacker::pack_single(
     const std::vector<Placement>& existing,
     bool stop_when_complete)
 {
-    // rgs_single_uld：单容器多起点搜索，评分用纯体积率
+    // rgs_single_uld：单容器多起点搜索，评分 (体积率, 剩余平台数) 字典序
     static const rgs::SortCriterion criteria[] = {
         rgs::SortCriterion::StackabilityCumulatedVolume,
         rgs::SortCriterion::StackabilityHighestVolume,
@@ -52,6 +76,17 @@ ContainerLoad RgsPacker::pack_single(
 
     ContainerLoad best_load;
     double best_score = -1e9;
+    size_t best_remaining = std::numeric_limits<size_t>::max();
+
+    // 字典序评分：体积率优先，并列时剩余平台数少者优（对齐 min_platform_split）
+    auto better = [](double va, size_t ra, double vb, size_t rb) -> bool
+    {
+        if (va != vb)
+        {
+            return va > vb;
+        }
+        return ra < rb;
+    };
 
     // 第一轮：每个策略跑最低次数
     for (auto crit : criteria)
@@ -78,10 +113,12 @@ ContainerLoad RgsPacker::pack_single(
                 goto done;
             }
 
+            size_t remaining = count_remaining_platforms(items, load);
             double score = load.volume_rate();
-            if (score > best_score)
+            if (better(score, remaining, best_score, best_remaining))
             {
                 best_score = score;
+                best_remaining = remaining;
                 best_load = std::move(load);
             }
         }
@@ -112,10 +149,12 @@ ContainerLoad RgsPacker::pack_single(
                 goto done;
             }
 
+            size_t remaining = count_remaining_platforms(items, load);
             double score = load.volume_rate();
-            if (score > best_score)
+            if (better(score, remaining, best_score, best_remaining))
             {
                 best_score = score;
+                best_remaining = remaining;
                 best_load = std::move(load);
             }
         }
