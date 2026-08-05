@@ -200,16 +200,6 @@ struct GlobalContext
 };
 
 // ============================================================
-// BSGConfig — 运行时可配置参数
-// ============================================================
-struct BSGConfig
-{
-    double max_fr = 1.0; // min fill rate for block merging
-    int max_bl = 10000;  // max blocks to generate
-    double time_limit = 120.0;
-};
-
-// ============================================================
 // PackResult (bsg 内部)
 // ============================================================
 struct PackResult
