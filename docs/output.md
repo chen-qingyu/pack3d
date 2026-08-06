@@ -52,7 +52,9 @@ JSON，顶层四个字段：
   "containers": [
     {
       "type_id": "big",
-      "inner_size": { "x": 110, "y": 50, "z": 50 },
+      "sx": 110,
+      "sy": 50,
+      "sz": 50,
       "max_weight": 50000.0,
       "used_volume": 275000,
       "used_weight": 25.0,
@@ -65,8 +67,12 @@ JSON，顶层四个字段：
         {
           "box_id": "a1",
           "box_type_id": "big_box",
-          "position": { "x": 0, "y": 0, "z": 0 },
-          "size": { "dx": 50, "dy": 50, "dz": 50 },
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "dx": 50,
+          "dy": 50,
+          "dz": 50,
           "orientation": "xyz",
           "weight": 10.0,
           "platform": "P1",
@@ -78,7 +84,9 @@ JSON，顶层四个字段：
   "box_types": [
     {
       "id": "big_box",
-      "size": { "x": 50, "y": 50, "z": 50 },
+      "sx": 50,
+      "sy": 50,
+      "sz": 50,
       "allowed_orientations": ["xyz"],
       "max_stack": [3],
       "max_load": [200.0]
@@ -94,16 +102,16 @@ JSON，顶层四个字段：
 
 placement 字段说明：
 
-| 字段          | 说明                              |
-| ------------- | --------------------------------- |
-| `box_id`      | 箱子实例 ID                       |
-| `box_type_id` | 箱子类型 ID                       |
-| `position`    | 放置位置（min corner）`{x, y, z}` |
-| `size`        | 朝向后的实际尺寸 `{dx, dy, dz}`   |
-| `orientation` | 朝向（`xyz`/`xzy`/...）           |
-| `weight`      | 箱子重量，未设置时为 null         |
-| `platform`    | 平台 ID，未设置时为 null          |
-| `group`       | 分组 ID，未设置时为 null          |
+| 字段           | 说明                           |
+| -------------- | ------------------------------ |
+| `box_id`       | 箱子实例 ID                    |
+| `box_type_id`  | 箱子类型 ID                    |
+| `x`/`y`/`z`    | 放置位置（min corner）         |
+| `dx`/`dy`/`dz` | 朝向后的实际尺寸（沿容器轴向） |
+| `orientation`  | 朝向（`xyz`/`xzy`/...）        |
+| `weight`       | 箱子重量，未设置时为 null      |
+| `platform`     | 平台 ID，未设置时为 null       |
+| `group`        | 分组 ID，未设置时为 null       |
 
 ## `violations` 校验违规（仅 `status: "invalid"` 时出现）
 

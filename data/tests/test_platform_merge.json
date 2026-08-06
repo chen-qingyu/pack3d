@@ -2,7 +2,9 @@
   "container_types": [
     {
       "id": "truck",
-      "inner_size": { "x": 100, "y": 50, "z": 100 },
+      "sx": 100,
+      "sy": 50,
+      "sz": 100,
       "max_weight": 50000.0,
       "quantity_limit": null
     }
@@ -10,17 +12,23 @@
   "box_types": [
     {
       "id": "p1_box",
-      "size": { "x": 50, "y": 50, "z": 50 },
+      "sx": 50,
+      "sy": 50,
+      "sz": 50,
       "allowed_orientations": ["xyz"]
     },
     {
       "id": "p2_box",
-      "size": { "x": 25, "y": 50, "z": 50 },
+      "sx": 25,
+      "sy": 50,
+      "sz": 50,
       "allowed_orientations": ["xyz"]
     },
     {
       "id": "p3_box",
-      "size": { "x": 10, "y": 50, "z": 50 },
+      "sx": 10,
+      "sy": 50,
+      "sz": 50,
       "allowed_orientations": ["xyz"]
     }
   ],

@@ -34,8 +34,12 @@ export interface Instance {
 export interface Placement {
   box_id: string
   box_type_id: string
-  position: { x: number; y: number; z: number }
-  size: { dx: number; dy: number; dz: number }
+  x: number
+  y: number
+  z: number
+  dx: number
+  dy: number
+  dz: number
   orientation: string
   platform?: string | null
   group?: string | null
@@ -43,7 +47,9 @@ export interface Placement {
 
 export interface ContainerResult {
   type_id: string
-  inner_size: { x: number; y: number; z: number }
+  sx: number
+  sy: number
+  sz: number
   max_weight?: number | null
   used_volume?: number
   used_weight?: number | null
@@ -60,7 +66,7 @@ export interface ResultData {
   summary: Summary
   result?: {
     containers: ContainerResult[]
-    box_types?: Array<{ id: string; size: { x: number; y: number; z: number } }>
+    box_types?: Array<{ id: string; sx: number; sy: number; sz: number }>
     unpacked_boxes?: string[]
   }
   violations?: string[]

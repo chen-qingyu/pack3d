@@ -17,7 +17,7 @@ export function parseOfflineResult(text: string): ResultData {
     }
 
     for (const container of value.result.containers) {
-        if (!isObject(container) || !isObject(container.inner_size) || !Array.isArray(container.placements)) {
+        if (!isObject(container) || typeof container.sx !== 'number' || typeof container.sy !== 'number' || typeof container.sz !== 'number' || !Array.isArray(container.placements)) {
             throw new Error('输出 JSON 的容器数据不完整')
         }
     }

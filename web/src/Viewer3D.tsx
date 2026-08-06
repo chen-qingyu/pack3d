@@ -24,7 +24,7 @@ function placementFromObject(object: THREE.Object3D | undefined): Placement | nu
 
 function Viewer3D({ containers, boxTypes }: {
   containers: ContainerResult[]
-  boxTypes: Array<{ id: string; size: { x: number; y: number; z: number } }>
+  boxTypes: Array<{ id: string; sx: number; sy: number; sz: number }>
 }) {
   const mountRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<{ scene: THREE.Scene; camera: THREE.PerspectiveCamera; controls: OrbitControls; renderer: THREE.WebGLRenderer } | null>(null)
@@ -100,7 +100,7 @@ function Viewer3D({ containers, boxTypes }: {
     const edgeGeometry = new THREE.EdgesGeometry(geometry)
     let offsetX = 0
     visibleEntries.forEach(({ container }) => {
-      const dimensions = container.inner_size
+      const dimensions = { x: container.sx, y: container.sy, z: container.sz }
       const frame = new THREE.LineSegments(
         new THREE.EdgesGeometry(new THREE.BoxGeometry(dimensions.x, dimensions.z, dimensions.y)),
         new THREE.LineBasicMaterial({ color: '#91a5ad', transparent: true, opacity: 0.75 }),
@@ -112,8 +112,8 @@ function Viewer3D({ containers, boxTypes }: {
         if (visibleKeys.length && !visibleKeys.includes(key)) return
         const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: colors.get(key), roughness: 0.72, metalness: 0.06 }))
         mesh.add(new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: '#17232a', transparent: true, opacity: 0.72 })))
-        mesh.scale.set(placement.size.dx, placement.size.dz, placement.size.dy)
-        mesh.position.set(offsetX + placement.position.x + placement.size.dx / 2, placement.position.z + placement.size.dz / 2, placement.position.y + placement.size.dy / 2)
+        mesh.scale.set(placement.dx, placement.dz, placement.dy)
+        mesh.position.set(offsetX + placement.x + placement.dx / 2, placement.z + placement.dz / 2, placement.y + placement.dy / 2)
         mesh.userData = { placement }
         root.add(mesh)
         rayTargets.push(mesh)
@@ -157,10 +157,10 @@ function Viewer3D({ containers, boxTypes }: {
     const runtime = sceneRef.current
     if (!runtime || !visibleEntries.length) return
     const { camera, controls } = runtime
-    const globalMaxSize = containers.reduce((maximum, container) => Math.max(maximum, container.inner_size.x, container.inner_size.y, container.inner_size.z), 1)
-    const layoutWidth = containers.reduce((width, container) => width + container.inner_size.x, 0) + Math.max(0, containers.length - 1) * containerGap
+    const globalMaxSize = containers.reduce((maximum, container) => Math.max(maximum, container.sx, container.sy, container.sz), 1)
+    const layoutWidth = containers.reduce((width, container) => width + container.sx, 0) + Math.max(0, containers.length - 1) * containerGap
     const center = selectedContainer && containerIndex >= 0
-      ? new THREE.Vector3(selectedContainer.inner_size.x / 2, selectedContainer.inner_size.z / 2, selectedContainer.inner_size.y / 2)
+      ? new THREE.Vector3(selectedContainer.sx / 2, selectedContainer.sz / 2, selectedContainer.sy / 2)
       : new THREE.Vector3(layoutWidth / 2, globalMaxSize / 2, globalMaxSize / 2)
     const distance = Math.max(globalMaxSize, containerIndex < 0 ? layoutWidth : 0) * 1.8
     const positions: Record<ViewName, THREE.Vector3> = {
@@ -183,7 +183,7 @@ function Viewer3D({ containers, boxTypes }: {
     const placement = hoveredPlacement
     if (!placement) return null
     const boxType = boxTypes.find((bt) => bt.id === placement.box_type_id)
-    return <Paper pos="absolute" right={12} bottom={12} p="sm" shadow="sm" w={260}><Text size="sm" fw={700}>{placement.box_id}</Text><Text size="xs" c="dimmed">{placement.box_type_id} · {placement.orientation}</Text><Text size="xs">位置 {placement.position.x}, {placement.position.y}, {placement.position.z}</Text><Text size="xs">原始 {boxType?.size.x ?? '?'} × {boxType?.size.y ?? '?'} × {boxType?.size.z ?? '?'} · 放置 {placement.size.dx} × {placement.size.dy} × {placement.size.dz}</Text><Text size="xs">{placement.platform || '无平台'} · {placement.group || '无分组'}</Text></Paper>
+    return <Paper pos="absolute" right={12} bottom={12} p="sm" shadow="sm" w={260}><Text size="sm" fw={700}>{placement.box_id}</Text><Text size="xs" c="dimmed">{placement.box_type_id} · {placement.orientation}</Text><Text size="xs">位置 {placement.x}, {placement.y}, {placement.z}</Text><Text size="xs">原始 {boxType?.sx ?? '?'} × {boxType?.sy ?? '?'} × {boxType?.sz ?? '?'} · 放置 {placement.dx} × {placement.dy} × {placement.dz}</Text><Text size="xs">{placement.platform || '无平台'} · {placement.group || '无分组'}</Text></Paper>
   })()}</Box></Paper>
 }
 

@@ -27,7 +27,9 @@ def parse_br_file(file):
         container_id = f"{os.path.basename(file).split('.')[0]}#{problem_num}"
         container_type = {
             "id": container_id,
-            "inner_size": {"x": cx, "y": cy, "z": cz},
+            "sx": cx,
+            "sy": cy,
+            "sz": cz,
             "quantity_limit": 1,
         }
 
@@ -54,7 +56,9 @@ def parse_br_file(file):
 
             box_types.append({
                 "id": bt_id,
-                "size": {"x": bx, "y": by, "z": bz},
+                "sx": bx,
+                "sy": by,
+                "sz": bz,
                 "allowed_orientations": orients,
             })
             box_type_map[i] = bt_id

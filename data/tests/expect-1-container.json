@@ -2,21 +2,17 @@
   "container_types": [
     {
       "id": "40HQ",
-      "inner_size": {
-        "x": 11960,
-        "y": 2318,
-        "z": 2600
-      }
+      "sx": 11960,
+      "sy": 2318,
+      "sz": 2600
     }
   ],
   "box_types": [
     {
       "id": "t1",
-      "size": {
-        "x": 1200,
-        "y": 1000,
-        "z": 1260
-      },
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 1260,
       "allowed_orientations": ["xyz", "yxz"]
     }
   ],

@@ -2,13 +2,17 @@
   "container_types": [
     {
       "id": "small",
-      "inner_size": { "x": 100, "y": 100, "z": 100 },
+      "sx": 100,
+      "sy": 100,
+      "sz": 100,
       "max_weight": 500.0,
       "quantity_limit": null
     },
     {
       "id": "large",
-      "inner_size": { "x": 200, "y": 100, "z": 100 },
+      "sx": 200,
+      "sy": 100,
+      "sz": 100,
       "max_weight": 2000.0,
       "quantity_limit": null
     }
@@ -16,12 +20,16 @@
   "box_types": [
     {
       "id": "box_s",
-      "size": { "x": 30, "y": 20, "z": 20 },
+      "sx": 30,
+      "sy": 20,
+      "sz": 20,
       "allowed_orientations": ["xyz", "yxz", "xzy"]
     },
     {
       "id": "box_l",
-      "size": { "x": 100, "y": 100, "z": 90 },
+      "sx": 100,
+      "sy": 100,
+      "sz": 90,
       "allowed_orientations": ["xyz", "yxz", "xzy", "zxy", "yzx", "zyx"]
     }
   ],

@@ -12,20 +12,13 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "inner_size"],
+        "required": ["id", "sx", "sy", "sz"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
-          "inner_size": {
-            "type": "object",
-            "required": ["x", "y", "z"],
-            "additionalProperties": false,
-            "properties": {
-              "x": { "type": "integer", "minimum": 1 },
-              "y": { "type": "integer", "minimum": 1 },
-              "z": { "type": "integer", "minimum": 1 }
-            }
-          },
+          "sx": { "type": "integer", "minimum": 1 },
+          "sy": { "type": "integer", "minimum": 1 },
+          "sz": { "type": "integer", "minimum": 1 },
           "max_weight": { "type": ["number", "null"], "exclusiveMinimum": 0 },
           "quantity_limit": { "type": ["integer", "null"], "minimum": 1 }
         }
@@ -37,20 +30,13 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "size", "allowed_orientations"],
+        "required": ["id", "sx", "sy", "sz", "allowed_orientations"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
-          "size": {
-            "type": "object",
-            "required": ["x", "y", "z"],
-            "additionalProperties": false,
-            "properties": {
-              "x": { "type": "integer", "minimum": 1 },
-              "y": { "type": "integer", "minimum": 1 },
-              "z": { "type": "integer", "minimum": 1 }
-            }
-          },
+          "sx": { "type": "integer", "minimum": 1 },
+          "sy": { "type": "integer", "minimum": 1 },
+          "sz": { "type": "integer", "minimum": 1 },
           "allowed_orientations": {
             "type": "array",
             "minItems": 1,
@@ -152,35 +138,28 @@
             "minItems": 1,
             "items": {
               "type": "object",
-              "required": ["box_id", "box_type_id", "position", "orientation"],
+              "required": [
+                "box_id",
+                "box_type_id",
+                "x",
+                "y",
+                "z",
+                "orientation"
+              ],
               "additionalProperties": false,
               "properties": {
                 "box_id": { "type": "string" },
                 "box_type_id": { "type": "string" },
-                "position": {
-                  "type": "object",
-                  "required": ["x", "y", "z"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "x": { "type": "integer", "minimum": 0 },
-                    "y": { "type": "integer", "minimum": 0 },
-                    "z": { "type": "integer", "minimum": 0 }
-                  }
-                },
+                "x": { "type": "integer", "minimum": 0 },
+                "y": { "type": "integer", "minimum": 0 },
+                "z": { "type": "integer", "minimum": 0 },
                 "orientation": {
                   "type": "string",
                   "enum": ["xyz", "xzy", "yxz", "yzx", "zxy", "zyx"]
                 },
-                "size": {
-                  "type": "object",
-                  "required": ["dx", "dy", "dz"],
-                  "additionalProperties": false,
-                  "properties": {
-                    "dx": { "type": "integer", "minimum": 1 },
-                    "dy": { "type": "integer", "minimum": 1 },
-                    "dz": { "type": "integer", "minimum": 1 }
-                  }
-                },
+                "dx": { "type": "integer", "minimum": 1 },
+                "dy": { "type": "integer", "minimum": 1 },
+                "dz": { "type": "integer", "minimum": 1 },
                 "weight": { "type": ["number", "null"], "exclusiveMinimum": 0 },
                 "group": { "type": ["string", "null"] },
                 "platform": { "type": ["string", "null"] }

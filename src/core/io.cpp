@@ -102,9 +102,9 @@ void parse_optional_vector(const json& j, const char* key,
 void from_json(const json& j, ContainerType& ct)
 {
     j["id"].get_to(ct.id);
-    j["inner_size"]["x"].get_to(ct.inner_size.x);
-    j["inner_size"]["y"].get_to(ct.inner_size.y);
-    j["inner_size"]["z"].get_to(ct.inner_size.z);
+    j["sx"].get_to(ct.inner_size.x);
+    j["sy"].get_to(ct.inner_size.y);
+    j["sz"].get_to(ct.inner_size.z);
     ct.max_weight = json_opt_double(j, "max_weight");
     ct.quantity_limit = json_opt_int(j, "quantity_limit");
 }
@@ -112,9 +112,9 @@ void from_json(const json& j, ContainerType& ct)
 void from_json(const json& j, BoxType& bt)
 {
     j["id"].get_to(bt.id);
-    j["size"]["x"].get_to(bt.size.x);
-    j["size"]["y"].get_to(bt.size.y);
-    j["size"]["z"].get_to(bt.size.z);
+    j["sx"].get_to(bt.size.x);
+    j["sy"].get_to(bt.size.y);
+    j["sz"].get_to(bt.size.z);
     for (const auto& o_str : j["allowed_orientations"])
     {
         bt.allowed_orientations.push_back(orientation_from_string(o_str.get<std::string>()));
@@ -136,19 +136,19 @@ void from_json(const json& j, ExistingPlacement& ep)
 {
     j["box_id"].get_to(ep.box_id);
     j["box_type_id"].get_to(ep.box_type_id);
-    j["position"]["x"].get_to(ep.position.x);
-    j["position"]["y"].get_to(ep.position.y);
-    j["position"]["z"].get_to(ep.position.z);
+    j["x"].get_to(ep.position.x);
+    j["y"].get_to(ep.position.y);
+    j["z"].get_to(ep.position.z);
     ep.orientation = orientation_from_string(j["orientation"].get<std::string>());
     ep.weight = json_opt_double(j, "weight");
     ep.platform = j.value("platform", std::string());
     ep.group = j.value("group", std::string());
-    if (j.contains("size"))
+    if (j.contains("dx"))
     {
         OrientedSize sz;
-        j["size"]["dx"].get_to(sz.dx);
-        j["size"]["dy"].get_to(sz.dy);
-        j["size"]["dz"].get_to(sz.dz);
+        j["dx"].get_to(sz.dx);
+        j["dy"].get_to(sz.dy);
+        j["dz"].get_to(sz.dz);
         ep.size = sz;
     }
 }
@@ -630,10 +630,9 @@ void to_json(json& j, const Solution& sol)
         json cj;
 
         cj["type_id"] = cs.type_id;
-        cj["inner_size"] = json::object();
-        cj["inner_size"]["x"] = cs.inner_size.x;
-        cj["inner_size"]["y"] = cs.inner_size.y;
-        cj["inner_size"]["z"] = cs.inner_size.z;
+        cj["sx"] = cs.inner_size.x;
+        cj["sy"] = cs.inner_size.y;
+        cj["sz"] = cs.inner_size.z;
         cj["max_weight"] = opt_json(cs.max_weight);
         cj["used_volume"] = cs.used_volume;
         cj["used_weight"] = opt_json(cs.used_weight);
@@ -651,15 +650,13 @@ void to_json(json& j, const Solution& sol)
                 json pj;
                 pj["box_id"] = pl.box_id;
                 pj["box_type_id"] = pl.box_type_id;
-                pj["position"] = json::object();
-                pj["position"]["x"] = pl.position.x;
-                pj["position"]["y"] = pl.position.y;
-                pj["position"]["z"] = pl.position.z;
+                pj["x"] = pl.position.x;
+                pj["y"] = pl.position.y;
+                pj["z"] = pl.position.z;
                 pj["orientation"] = orientation_to_string(pl.orientation);
-                pj["size"] = json::object();
-                pj["size"]["dx"] = pl.osize.dx;
-                pj["size"]["dy"] = pl.osize.dy;
-                pj["size"]["dz"] = pl.osize.dz;
+                pj["dx"] = pl.osize.dx;
+                pj["dy"] = pl.osize.dy;
+                pj["dz"] = pl.osize.dz;
                 pj["platform"] = pl.platform.empty() ? json(nullptr) : json(pl.platform);
                 pj["group"] = pl.group.empty() ? json(nullptr) : json(pl.group);
                 pj["weight"] = opt_json(pl.weight);
@@ -677,10 +674,9 @@ void to_json(json& j, const Solution& sol)
     {
         json bj;
         bj["id"] = bt.id;
-        bj["size"] = json::object();
-        bj["size"]["x"] = bt.size.x;
-        bj["size"]["y"] = bt.size.y;
-        bj["size"]["z"] = bt.size.z;
+        bj["sx"] = bt.size.x;
+        bj["sy"] = bt.size.y;
+        bj["sz"] = bt.size.z;
         json orients = json::array();
         for (auto o : bt.allowed_orientations)
         {

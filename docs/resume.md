@@ -10,7 +10,7 @@
 
 - **已有放置不可移动**：`ContainerLoad::locked = true`，后处理（`merge_platforms`、`repack_last_smaller`）跳过 locked 容器。
 - **剩余箱子独立输入**：`boxes` 列表只列待装箱子，已放置箱子完全由 `existing_containers` 描述，两不相交。
-- **输入输出格式对齐**：`existing_containers` 的 placement 字段与输出 placement 完全一致（`box_id`、`box_type_id`、`position`、`orientation`、`size`、`weight`、`platform`、`group`），上轮输出可直接 copy-paste 为下轮输入。
+- **输入输出格式对齐**：`existing_containers` 的 placement 字段与输出 placement 完全一致（`box_id`、`box_type_id`、`x/y/z`、`dx/dy/dz`、`orientation`、`weight`、`platform`、`group`），上轮输出可直接 copy-paste 为下轮输入。
 
 ### 三阶段主循环
 
@@ -37,19 +37,19 @@ pack()
 
 `pre_validate_input()` 对已有容器做完整校验：
 
-| 校验项         | 说明                                                            |
-| -------------- | --------------------------------------------------------------- |
-| 容器类型存在性 | `type_id` 必须在 `container_types` 中                           |
-| 箱子类型存在性 | `box_type_id` 必须在 `box_types` 中                             |
-| 容器数量限制   | `quantity_limit` 超限检测                                       |
-| 重复 box_id    | 同一容器内、跨容器均不可重复                                    |
-| 边界           | `check_boundary`                                                |
-| 重叠           | `check_overlap`（仅与同容器已校验放置）                         |
-| 支撑率         | `check_support`                                                 |
-| 平台限制       | `check_platform_limit`                                          |
-| 路线顺序       | `check_route_order`                                             |
-| 重量上限       | `total_weight` vs `max_weight`                                  |
-| size 一致性    | 若提供 `size` 字段，必须与 `box_type_id`+`orientation` 推导一致 |
+| 校验项         | 说明                                                               |
+| -------------- | ------------------------------------------------------------------ |
+| 容器类型存在性 | `type_id` 必须在 `container_types` 中                              |
+| 箱子类型存在性 | `box_type_id` 必须在 `box_types` 中                                |
+| 容器数量限制   | `quantity_limit` 超限检测                                          |
+| 重复 box_id    | 同一容器内、跨容器均不可重复                                       |
+| 边界           | `check_boundary`                                                   |
+| 重叠           | `check_overlap`（仅与同容器已校验放置）                            |
+| 支撑率         | `check_support`                                                    |
+| 平台限制       | `check_platform_limit`                                             |
+| 路线顺序       | `check_route_order`                                                |
+| 重量上限       | `total_weight` vs `max_weight`                                     |
+| size 一致性    | 若提供 `dx`/`dy`/`dz`，必须与 `box_type_id`+`orientation` 推导一致 |
 
 ---
 

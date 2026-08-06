@@ -2,21 +2,17 @@
   "container_types": [
     {
       "id": "c1",
-      "inner_size": {
-        "x": 2000,
-        "y": 2000,
-        "z": 1400
-      }
+      "sx": 2000,
+      "sy": 2000,
+      "sz": 1400
     }
   ],
   "box_types": [
     {
       "id": "t1",
-      "size": {
-        "x": 1200,
-        "y": 800,
-        "z": 700
-      },
+      "sx": 1200,
+      "sy": 800,
+      "sz": 700,
       "allowed_orientations": ["xyz", "yxz"]
     }
   ],

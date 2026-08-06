@@ -241,7 +241,7 @@ npm run preview -- --host 127.0.0.1 --port 4173
 
 ## 7. 结果说明
 
-结果页中的平均体积利用率、容器数、已装箱数、未装箱数、平台拆分和分组拆分都来自后端结果。三维视图使用输出中的 `placements.position` 和 `placements.size`，不会在浏览器中重新推导箱子朝向。
+结果页中的平均体积利用率、容器数、已装箱数、未装箱数、平台拆分和分组拆分都来自后端结果。三维视图使用输出中的 `placements.x/y/z` 和 `placements.dx/dy/dz`，不会在浏览器中重新推导箱子朝向。
 
 原始输出字段和状态说明见 [output.md](output.md)。HTTP API 字段和接口说明见 [api.md](api.md)。
 

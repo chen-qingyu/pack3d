@@ -15,25 +15,29 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 ```json
 {
   "id": "big",
-  "inner_size": { "x": 110, "y": 50, "z": 50 },
+  "sx": 110,
+  "sy": 50,
+  "sz": 50,
   "max_weight": 50000.0,
   "quantity_limit": null
 }
 ```
 
-| 字段             | 类型            | 必填 | 说明                    |
-| ---------------- | --------------- | ---- | ----------------------- |
-| `id`             | string          | 是   | 唯一标识                |
-| `inner_size`     | {x,y,z: int>=1} | 是   | 内部尺寸                |
-| `max_weight`     | number          |      | 重量上限，null=不限     |
-| `quantity_limit` | int>=1          |      | 可用数量上限，null=不限 |
+| 字段             | 类型   | 必填 | 说明                    |
+| ---------------- | ------ | ---- | ----------------------- |
+| `id`             | string | 是   | 唯一标识                |
+| `sx`/`sy`/`sz`   | int>=1 | 是   | 内部尺寸                |
+| `max_weight`     | number |      | 重量上限，null=不限     |
+| `quantity_limit` | int>=1 |      | 可用数量上限，null=不限 |
 
 ## 箱子类型 `box_types`
 
 ```json
 {
   "id": "box_l",
-  "size": { "x": 100, "y": 50, "z": 30 },
+  "sx": 100,
+  "sy": 50,
+  "sz": 30,
   "allowed_orientations": ["xyz", "xzy"],
   "max_stack": 5,
   "max_load": [200.0, 150.0]
@@ -43,7 +47,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | 字段                   | 类型                     | 必填 | 说明                        |
 | ---------------------- | ------------------------ | ---- | --------------------------- |
 | `id`                   | string                   | 是   | 唯一标识                    |
-| `size`                 | {x,y,z: int>=1}          | 是   | 原始尺寸                    |
+| `sx`/`sy`/`sz`         | int>=1                   | 是   | 原始尺寸（箱体自身坐标）    |
 | `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下        |
 | `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限     |
 | `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限 |
@@ -55,7 +59,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 - 任一箱型有非空值即启用对应约束（presence-based）；两者与 `support_rate` 相互独立，可同时开启。
 - `max_load` 启用时要求所有箱子带重量。
 
-朝向枚举，表示原始尺寸的 x/y/z 分别映射到容器坐标轴的 X/Y/Z：
+朝向枚举，表示原始尺寸 `sx`/`sy`/`sz` 分别映射到容器坐标轴的 X/Y/Z：
 
 - xyz: x->X, y->Y, z->Z
 - yxz: x->Y, y->X, z->Z
@@ -146,8 +150,12 @@ Schema 校验后，代码还会检查：
         {
           "box_id": "b0",
           "box_type_id": "box_l",
-          "position": { "x": 0, "y": 0, "z": 0 },
-          "size": { "dx": 100, "dy": 50, "dz": 40 },
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "dx": 100,
+          "dy": 50,
+          "dz": 40,
           "orientation": "xyz",
           "weight": 10.0,
           "platform": "P1",
@@ -159,17 +167,17 @@ Schema 校验后，代码还会检查：
 }
 ```
 
-| 字段                       | 类型       | 必填 | 说明                                           |
-| -------------------------- | ---------- | ---- | ---------------------------------------------- |
-| `type_id`                  | string     | 是   | 引用 container_types 中的 id                   |
-| `placements[].box_id`      | string     | 是   | 箱子标识                                       |
-| `placements[].box_type_id` | string     | 是   | 引用 box_types 中的 id                         |
-| `placements[].position`    | {x,y,z}    | 是   | 放置位置（min corner）                         |
-| `placements[].orientation` | string     | 是   | 朝向，同 box_types 朝向枚举                    |
-| `placements[].size`        | {dx,dy,dz} |      | 朝向后的实际尺寸（可从 type+朝向推导，可省略） |
-| `placements[].weight`      | number     |      | 箱子重量，未设置时为 null                      |
-| `placements[].platform`    | string     |      | 平台 ID，未设置时为 null                       |
-| `placements[].group`       | string     |      | 分组 ID，未设置时为 null                       |
+| 字段                       | 类型   | 必填 | 说明                                           |
+| -------------------------- | ------ | ---- | ---------------------------------------------- |
+| `type_id`                  | string | 是   | 引用 container_types 中的 id                   |
+| `placements[].box_id`      | string | 是   | 箱子标识                                       |
+| `placements[].box_type_id` | string | 是   | 引用 box_types 中的 id                         |
+| `placements[].x/y/z`       | int>=0 | 是   | 放置位置（min corner）                         |
+| `placements[].orientation` | string | 是   | 朝向，同 box_types 朝向枚举                    |
+| `placements[].dx/dy/dz`    | int>=1 |      | 朝向后的实际尺寸（可从 type+朝向推导，可省略） |
+| `placements[].weight`      | number |      | 箱子重量，未设置时为 null                      |
+| `placements[].platform`    | string |      | 平台 ID，未设置时为 null                       |
+| `placements[].group`       | string |      | 分组 ID，未设置时为 null                       |
 
 已有容器中的箱子不会出现在 `boxes` 列表中。求解器会先尝试在已有容器中继续塞入剩余箱子（未满则继续），再开新容器。已有放置被锁定，后处理不会移动它们。
 

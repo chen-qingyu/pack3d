@@ -48,10 +48,8 @@ TEST_CASE("run 对畸形输入返回 invalid", "[solver]")
     const auto make_base = []
     {
         json j;
-        j["container_types"] = {{{"id", "t"}, {"inner_size", {{"x", 1}, {"y", 1}, {"z", 1}}}}};
-        j["box_types"] = {{{"id", "b"},
-                           {"size", {{"x", 1}, {"y", 1}, {"z", 1}}},
-                           {"allowed_orientations", {"xyz"}}}};
+        j["container_types"] = {{{"id", "t"}, {"sx", 1}, {"sy", 1}, {"sz", 1}}};
+        j["box_types"] = {{{"id", "b"}, {"sx", 1}, {"sy", 1}, {"sz", 1}, {"allowed_orientations", {"xyz"}}}};
         return j;
     };
 
@@ -189,8 +187,10 @@ TEST_CASE("bsg_enforces_project_hard_constraints", "[solver][bsg]")
 {
     json input = {
         {"algorithm", "bsg"},
-        {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 100}, {"y", 100}, {"z", 50}}}, {"max_weight", 10.0}, {"quantity_limit", nullptr}}}},
-        {"box_types", {{{"id", "half"}, {"size", {{"x", 50}, {"y", 100}, {"z", 50}}}, {"allowed_orientations", {"xyz"}}}}},
+        {"container_types", {{{"id", "truck"}, {"sx", 100}, {"sy", 100}, {"sz", 50}, {"max_weight", 10.0}, {"quantity_limit", nullptr}}}},
+        {"box_types", {
+                          {{"id", "half"}, {"sx", 50}, {"sy", 100}, {"sz", 50}, {"allowed_orientations", {"xyz"}}},
+                      }},
         {"boxes", {
                       {{"id", "later"}, {"box_type_id", "half"}, {"weight", 6.0}, {"platform", "B"}},
                       {{"id", "earlier"}, {"box_type_id", "half"}, {"weight", 6.0}, {"platform", "A"}},
@@ -217,19 +217,15 @@ TEST_CASE("bsg_enforces_project_hard_constraints", "[solver][bsg]")
                 {
                     continue;
                 }
-                const auto& lhs_position = lhs["position"];
-                const auto& lhs_size = lhs["size"];
-                const auto& rhs_position = rhs["position"];
-                const auto& rhs_size = rhs["size"];
                 bool yz_overlap =
-                    lhs_position["y"].get<int>() < rhs_position["y"].get<int>() + rhs_size["dy"].get<int>() &&
-                    rhs_position["y"].get<int>() < lhs_position["y"].get<int>() + lhs_size["dy"].get<int>() &&
-                    lhs_position["z"].get<int>() < rhs_position["z"].get<int>() + rhs_size["dz"].get<int>() &&
-                    rhs_position["z"].get<int>() < lhs_position["z"].get<int>() + lhs_size["dz"].get<int>();
+                    lhs["y"].get<int>() < rhs["y"].get<int>() + rhs["dy"].get<int>() &&
+                    rhs["y"].get<int>() < lhs["y"].get<int>() + lhs["dy"].get<int>() &&
+                    lhs["z"].get<int>() < rhs["z"].get<int>() + rhs["dz"].get<int>() &&
+                    rhs["z"].get<int>() < lhs["z"].get<int>() + lhs["dz"].get<int>();
                 if (yz_overlap && lhs["platform"] == "A" && rhs["platform"] == "B")
                 {
                     // A 先卸 → 应在近门处（X 更大），即 A.x >= B.x + B.dx
-                    CHECK(lhs_position["x"].get<int>() >= rhs_position["x"].get<int>() + rhs_size["dx"].get<int>());
+                    CHECK(lhs["x"].get<int>() >= rhs["x"].get<int>() + rhs["dx"].get<int>());
                 }
             }
         }
@@ -240,8 +236,10 @@ TEST_CASE("bsg_enforces_project_hard_constraints", "[solver][bsg]")
 TEST_CASE("max_stack 限制堆码层数", "[solver][stack]")
 {
     json input = {
-        {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 100}, {"y", 100}, {"z", 300}}}}}},
-        {"box_types", {{{"id", "cube"}, {"size", {{"x", 100}, {"y", 100}, {"z", 100}}}, {"allowed_orientations", {"xyz"}}, {"max_stack", 2}}}},
+        {"container_types", {{{"id", "truck"}, {"sx", 100}, {"sy", 100}, {"sz", 300}}}},
+        {"box_types", {
+                          {{"id", "cube"}, {"sx", 100}, {"sy", 100}, {"sz", 100}, {"allowed_orientations", {"xyz"}}, {"max_stack", 2}},
+                      }},
         {"boxes", {
                       {{"id", "b1"}, {"box_type_id", "cube"}},
                       {{"id", "b2"}, {"box_type_id", "cube"}},
@@ -268,8 +266,10 @@ TEST_CASE("max_stack 限制堆码层数", "[solver][stack]")
 TEST_CASE("max_load 限制单箱承重", "[solver][stack]")
 {
     json input = {
-        {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 100}, {"y", 100}, {"z", 300}}}, {"max_weight", 1000.0}}}},
-        {"box_types", {{{"id", "cube"}, {"size", {{"x", 100}, {"y", 100}, {"z", 100}}}, {"allowed_orientations", {"xyz"}}, {"max_load", 40.0}}}},
+        {"container_types", {{{"id", "truck"}, {"sx", 100}, {"sy", 100}, {"sz", 300}, {"max_weight", 1000.0}}}},
+        {"box_types", {
+                          {{"id", "cube"}, {"sx", 100}, {"sy", 100}, {"sz", 100}, {"allowed_orientations", {"xyz"}}, {"max_load", 40.0}},
+                      }},
         {"boxes", {
                       {{"id", "b1"}, {"box_type_id", "cube"}, {"weight", 50.0}},
                       {{"id", "b2"}, {"box_type_id", "cube"}, {"weight", 50.0}},
@@ -292,10 +292,10 @@ TEST_CASE("max_load 限制单箱承重", "[solver][stack]")
 TEST_CASE("max_load 非均匀重量保持重量一致性", "[solver][stack]")
 {
     json input = {
-        {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 300}, {"y", 100}, {"z", 220}}}, {"max_weight", 1000.0}}}},
+        {"container_types", {{{"id", "truck"}, {"sx", 300}, {"sy", 100}, {"sz", 220}, {"max_weight", 1000.0}}}},
         {"box_types", {
-                          {{"id", "base"}, {"size", {{"x", 300}, {"y", 100}, {"z", 100}}}, {"allowed_orientations", {"xyz"}}, {"max_load", 70.0}},
-                          {{"id", "top"}, {"size", {{"x", 150}, {"y", 100}, {"z", 100}}}, {"allowed_orientations", {"xyz"}}},
+                          {{"id", "base"}, {"sx", 300}, {"sy", 100}, {"sz", 100}, {"allowed_orientations", {"xyz"}}, {"max_load", 70.0}},
+                          {{"id", "top"}, {"sx", 150}, {"sy", 100}, {"sz", 100}, {"allowed_orientations", {"xyz"}}},
                       }},
         {"boxes", {
                       {{"id", "base1"}, {"box_type_id", "base"}, {"weight", 10.0}},
@@ -328,8 +328,10 @@ TEST_CASE("max_stack 按朝向数组", "[solver][stack]")
     auto make_input = [](int second_orient_limit) -> json
     {
         return {
-            {"container_types", {{{"id", "truck"}, {"inner_size", {{"x", 200}, {"y", 50}, {"z", 220}}}}}},
-            {"box_types", {{{"id", "box"}, {"size", {{"x", 200}, {"y", 100}, {"z", 50}}}, {"allowed_orientations", {"xyz", "xzy"}}, {"max_stack", {2, second_orient_limit}}}}},
+            {"container_types", {{{"id", "truck"}, {"sx", 200}, {"sy", 50}, {"sz", 220}}}},
+            {"box_types", {
+                              {{"id", "box"}, {"sx", 200}, {"sy", 100}, {"sz", 50}, {"allowed_orientations", {"xyz", "xzy"}}, {"max_stack", {2, second_orient_limit}}},
+                          }},
             {"boxes", {
                           {{"id", "b1"}, {"box_type_id", "box"}},
                           {{"id", "b2"}, {"box_type_id", "box"}},
