@@ -320,6 +320,17 @@ TEST_CASE("tender_limit 限制每 tender 容器数", "[solver][tender]")
         // 容器带 group → tender 为整数序号；未装箱子不产生容器
         REQUIRE(res["result"]["containers"].size() == 1);
         REQUIRE(res["result"]["containers"][0]["tender"].get<int>() >= 1);
+        // 非 complete 时 violations 说明原因：未装箱的 g1 系 tender_limit 所拒
+        REQUIRE(res["violations"].is_array());
+        bool has_tender_msg = false;
+        for (const auto& v : res["violations"])
+        {
+            if (v.get<std::string>().find("tender_limit") != std::string::npos)
+            {
+                has_tender_msg = true;
+            }
+        }
+        REQUIRE(has_tender_msg);
     }
 }
 

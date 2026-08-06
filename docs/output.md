@@ -115,10 +115,22 @@ placement 字段说明：
 | `platform`     | 平台 ID，未设置时为 null       |
 | `group`        | 分组 ID，未设置时为 null       |
 
-## `violations` 校验违规（仅 `status: "invalid"` 时出现）
+## `violations` 说明（非 `complete` 时可能出现）
+
+`status: "invalid"` 时为输入校验违规：
 
 ```json
 ["duplicate box id: b1", "unknown box_type_id 'foo' for box b2"]
 ```
 
-字符串数组，每条为一个完整可读的违规描述。
+`status: "partial"` / `"timeout"` 时给出未装箱原因说明：
+
+```json
+[
+  "1 box(es) not packed: exceeds tender_limit (max 1 containers per tender), groups: g1"
+]
+```
+
+- 启用 `tender_limit` 时：若未装箱子的 `group` 即使开新容器也会超限，会给出 `exceeds tender_limit` 说明（含 group 列表）。
+- 其余未装箱子给出通用说明：`timeout` 时为 `time limit exceeded`，`partial` 时为 `no feasible placement`。
+- `complete` 与 `invalid` 之外都可能有 `violations`，每条为一个完整可读的描述。

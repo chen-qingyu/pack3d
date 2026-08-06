@@ -242,6 +242,50 @@ Solution PackerBase::build_solution(
         sol.container_summaries[i].tender = tenders[i];
     }
 
+    // 非 complete 时给出未装箱原因说明（violations）
+    if (sol.status != SolveStatus::Complete && sol.unpacked_box_count > 0)
+    {
+        int tender_blocked = 0;
+        std::set<std::string> blocked_groups;
+        if (problem_.tender_limit.has_value())
+        {
+            const int limit = problem_.tender_limit.value();
+            // 全部容器视为已提交：若某 group 连开新容器都会超限，则该箱必为 tender 所拒
+            TenderState ts = build_tender_state(all_loads, all_loads.size(), limit);
+            for (const auto& bx : remaining)
+            {
+                if (!bx.group.empty() && !check_tender_limit(ts, {}, bx.group))
+                {
+                    ++tender_blocked;
+                    blocked_groups.insert(bx.group);
+                }
+            }
+        }
+        if (tender_blocked > 0)
+        {
+            std::string groups;
+            for (const auto& g : blocked_groups)
+            {
+                if (!groups.empty())
+                {
+                    groups += ", ";
+                }
+                groups += g;
+            }
+            sol.violations.push_back(
+                std::to_string(tender_blocked) + " box(es) not packed: exceeds tender_limit (max " +
+                std::to_string(problem_.tender_limit.value()) + " containers per tender), groups: " +
+                groups);
+        }
+        const int other = sol.unpacked_box_count - tender_blocked;
+        if (other > 0)
+        {
+            sol.violations.push_back(
+                std::to_string(other) + " box(es) not packed: " +
+                (sol.status == SolveStatus::Timeout ? "time limit exceeded" : "no feasible placement"));
+        }
+    }
+
     return sol;
 }
 
