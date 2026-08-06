@@ -1,0 +1,20 @@
+{
+  "container_types": [
+    {
+      "id": "t",
+      "sx": 1,
+      "sy": 1,
+      "sz": 1
+    }
+  ],
+  "box_types": [
+    {
+      "id": "b",
+      "sx": 1,
+      "sy": 1,
+      "sz": 1,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": []
+}

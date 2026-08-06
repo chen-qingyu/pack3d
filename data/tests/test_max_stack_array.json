@@ -1,0 +1,23 @@
+{
+  "container_types": [
+    {
+      "id": "truck",
+      "sx": 200,
+      "sy": 50,
+      "sz": 220
+    }
+  ],
+  "box_types": [
+    {
+      "id": "box",
+      "sx": 200,
+      "sy": 100,
+      "sz": 50,
+      "allowed_orientations": ["xyz", "xzy"]
+    }
+  ],
+  "boxes": [
+    { "id": "b1", "box_type_id": "box" },
+    { "id": "b2", "box_type_id": "box" }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "container_types": [
+    {
+      "id": "truck",
+      "sx": 100,
+      "sy": 100,
+      "sz": 300
+    }
+  ],
+  "box_types": [
+    {
+      "id": "cube",
+      "sx": 100,
+      "sy": 100,
+      "sz": 100,
+      "allowed_orientations": ["xyz"],
+      "max_stack": 2
+    }
+  ],
+  "boxes": [
+    { "id": "b1", "box_type_id": "cube" },
+    { "id": "b2", "box_type_id": "cube" },
+    { "id": "b3", "box_type_id": "cube" }
+  ],
+  "constraints": { "support_rate": 1.0 }
+}

@@ -44,14 +44,8 @@ TEST_CASE("fixed_default_objectives", "[solver]")
 // run() 对任何非法输入都返回 status=invalid 的 JSON，而不是抛异常/崩溃
 TEST_CASE("run 对畸形输入返回 invalid", "[solver]")
 {
-    // 合法基础结构（与 bsg_enforces_project_hard_constraints 相同的 initializer 风格）
-    const auto make_base = []
-    {
-        json j;
-        j["container_types"] = {{{"id", "t"}, {"sx", 1}, {"sy", 1}, {"sz", 1}}};
-        j["box_types"] = {{{"id", "b"}, {"sx", 1}, {"sy", 1}, {"sz", 1}, {"allowed_orientations", {"xyz"}}}};
-        return j;
-    };
+    // 合法基础结构（从 data/tests/test_invalid_base.json 加载）
+    const auto base = load_data("data/tests/test_invalid_base.json");
 
     std::vector<json> bad_inputs;
     bad_inputs.push_back(json::object()); // 缺必需字段
@@ -59,16 +53,16 @@ TEST_CASE("run 对畸形输入返回 invalid", "[solver]")
                           {"box_types", json::array()},
                           {"boxes", json::array()}}); // minItems 违反
 
-    auto dup = make_base();
+    auto dup = base;
     dup["boxes"] = {{{"id", "x"}, {"box_type_id", "b"}},
                     {{"id", "x"}, {"box_type_id", "b"}}}; // 重复 box id
     bad_inputs.push_back(dup);
 
-    auto unknown = make_base();
+    auto unknown = base;
     unknown["boxes"] = {{{"id", "x"}, {"box_type_id", "nope"}}}; // 未知箱型
     bad_inputs.push_back(unknown);
 
-    auto no_weight_meta = make_base();
+    auto no_weight_meta = base;
     no_weight_meta["boxes"] = {{{"id", "x"}, {"box_type_id", "b"}, {"weight", 5.0}}}; // 有重量但容器无 max_weight
     bad_inputs.push_back(no_weight_meta);
 
@@ -185,19 +179,7 @@ TEST_CASE("min_group_split", "[solver]")
 
 TEST_CASE("bsg_enforces_project_hard_constraints", "[solver][bsg]")
 {
-    json input = {
-        {"algorithm", "bsg"},
-        {"container_types", {{{"id", "truck"}, {"sx", 100}, {"sy", 100}, {"sz", 50}, {"max_weight", 10.0}, {"quantity_limit", nullptr}}}},
-        {"box_types", {
-                          {{"id", "half"}, {"sx", 50}, {"sy", 100}, {"sz", 50}, {"allowed_orientations", {"xyz"}}},
-                      }},
-        {"boxes", {
-                      {{"id", "later"}, {"box_type_id", "half"}, {"weight", 6.0}, {"platform", "B"}},
-                      {{"id", "earlier"}, {"box_type_id", "half"}, {"weight", 6.0}, {"platform", "A"}},
-                  }},
-        {"route", {"A", "B"}},
-        {"constraints", {{"time_limit", 5.0}, {"support_rate", 0.0}, {"platform_limit", 1}, {"tender_limit", nullptr}}},
-    };
+    json input = load_data("data/tests/test_bsg_constraints.json");
 
     auto result = run(input);
     REQUIRE(result["status"] == "complete");
@@ -235,18 +217,7 @@ TEST_CASE("bsg_enforces_project_hard_constraints", "[solver][bsg]")
 // 3 个 100 立方体，限堆 2 层 + support_rate=1（禁止悬空）→ 第 3 个无法堆叠 → 需要第 2 个容器
 TEST_CASE("max_stack 限制堆码层数", "[solver][stack]")
 {
-    json input = {
-        {"container_types", {{{"id", "truck"}, {"sx", 100}, {"sy", 100}, {"sz", 300}}}},
-        {"box_types", {
-                          {{"id", "cube"}, {"sx", 100}, {"sy", 100}, {"sz", 100}, {"allowed_orientations", {"xyz"}}, {"max_stack", 2}},
-                      }},
-        {"boxes", {
-                      {{"id", "b1"}, {"box_type_id", "cube"}},
-                      {{"id", "b2"}, {"box_type_id", "cube"}},
-                      {{"id", "b3"}, {"box_type_id", "cube"}},
-                  }},
-        {"constraints", {{"support_rate", 1.0}}},
-    };
+    json input = load_data("data/tests/test_max_stack.json");
     for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
         input["algorithm"] = algo;
@@ -265,18 +236,7 @@ TEST_CASE("max_stack 限制堆码层数", "[solver][stack]")
 // 每根柱最多 1 箱（任何叠放都会让支撑箱承重 50 > 40）→ 3 个箱子必须分到 3 个容器
 TEST_CASE("max_load 限制单箱承重", "[solver][stack]")
 {
-    json input = {
-        {"container_types", {{{"id", "truck"}, {"sx", 100}, {"sy", 100}, {"sz", 300}, {"max_weight", 1000.0}}}},
-        {"box_types", {
-                          {{"id", "cube"}, {"sx", 100}, {"sy", 100}, {"sz", 100}, {"allowed_orientations", {"xyz"}}, {"max_load", 40.0}},
-                      }},
-        {"boxes", {
-                      {{"id", "b1"}, {"box_type_id", "cube"}, {"weight", 50.0}},
-                      {{"id", "b2"}, {"box_type_id", "cube"}, {"weight", 50.0}},
-                      {{"id", "b3"}, {"box_type_id", "cube"}, {"weight", 50.0}},
-                  }},
-        {"constraints", {{"support_rate", 1.0}}},
-    };
+    json input = load_data("data/tests/test_max_load.json");
     for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
         input["algorithm"] = algo;
@@ -291,20 +251,7 @@ TEST_CASE("max_load 限制单箱承重", "[solver][stack]")
 // 回归：GLC 之前按平均重量 + 队尾消耗，输出回填按队首，两者对非均匀重量会不一致。
 TEST_CASE("max_load 非均匀重量保持重量一致性", "[solver][stack]")
 {
-    json input = {
-        {"container_types", {{{"id", "truck"}, {"sx", 300}, {"sy", 100}, {"sz", 220}, {"max_weight", 1000.0}}}},
-        {"box_types", {
-                          {{"id", "base"}, {"sx", 300}, {"sy", 100}, {"sz", 100}, {"allowed_orientations", {"xyz"}}, {"max_load", 70.0}},
-                          {{"id", "top"}, {"sx", 150}, {"sy", 100}, {"sz", 100}, {"allowed_orientations", {"xyz"}}},
-                      }},
-        {"boxes", {
-                      {{"id", "base1"}, {"box_type_id", "base"}, {"weight", 10.0}},
-                      {{"id", "t1"}, {"box_type_id", "top"}, {"weight", 50.0}},
-                      {{"id", "t2"}, {"box_type_id", "top"}, {"weight", 100.0}},
-                      {{"id", "t3"}, {"box_type_id", "top"}, {"weight", 50.0}},
-                  }},
-        {"constraints", {{"support_rate", 1.0}}},
-    };
+    json input = load_data("data/tests/test_max_load_weight.json");
     for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
         input["algorithm"] = algo;
@@ -327,16 +274,9 @@ TEST_CASE("max_stack 按朝向数组", "[solver][stack]")
 {
     auto make_input = [](int second_orient_limit) -> json
     {
-        return {
-            {"container_types", {{{"id", "truck"}, {"sx", 200}, {"sy", 50}, {"sz", 220}}}},
-            {"box_types", {
-                              {{"id", "box"}, {"sx", 200}, {"sy", 100}, {"sz", 50}, {"allowed_orientations", {"xyz", "xzy"}}, {"max_stack", {2, second_orient_limit}}},
-                          }},
-            {"boxes", {
-                          {{"id", "b1"}, {"box_type_id", "box"}},
-                          {{"id", "b2"}, {"box_type_id", "box"}},
-                      }},
-        };
+        auto input = load_data("data/tests/test_max_stack_array.json");
+        input["box_types"][0]["max_stack"] = {2, second_orient_limit};
+        return input;
     };
 
     // 立放（xzy）限 1 层 → b2 无法叠 → 2 容器
