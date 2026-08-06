@@ -359,7 +359,7 @@ void insertion_heuristic(
 
     out_ctx.extreme_points.insert({0, 0, 0});
 
-    auto ordered = build_ordered_list(items, box_type_map, criterion, rho);
+    auto ordered = build_ordered_list(items, box_type_map, criterion, rho, problem.route);
 
     // 预建 box_id -> Box 映射，避免内层 O(N^2) 线性搜索
     std::unordered_map<std::string, const Box*> box_by_id;

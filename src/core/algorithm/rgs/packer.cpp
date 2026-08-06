@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <limits>
 #include <set>
+#include <vector>
 
 #include <spdlog/spdlog.h>
 
@@ -60,16 +61,20 @@ ContainerLoad RgsPacker::pack_single(
     bool stop_when_complete)
 {
     // rgs_single_uld：单容器多起点搜索，评分 (体积率, 剩余平台数) 字典序
-    static const rgs::SortCriterion criteria[] = {
+    std::vector<rgs::SortCriterion> criteria = {
         rgs::SortCriterion::StackabilityCumulatedVolume,
         rgs::SortCriterion::StackabilityHighestVolume,
         rgs::SortCriterion::CumulatedVolume,
         rgs::SortCriterion::HighestVolume,
         rgs::SortCriterion::Random,
     };
-    constexpr int num_criteria = 5;
-    constexpr int min_per_crit = config::RGS_MIN_TOTAL / num_criteria;
-    constexpr int max_per_crit = config::RGS_MAX_TOTAL / num_criteria;
+    if (problem_.route.has_value())
+    {
+        criteria.push_back(rgs::SortCriterion::RouteOrder);
+    }
+    const int num_criteria = static_cast<int>(criteria.size());
+    const int min_per_crit = config::RGS_MIN_TOTAL / num_criteria;
+    const int max_per_crit = config::RGS_MAX_TOTAL / num_criteria;
 
     // 完成判定：load.placements 含已有放置 + 新增，须与总量对齐
     // （否则后处理合并在 existing 非空时把"已放部分捐献箱"误判为完成，导致合并失败）

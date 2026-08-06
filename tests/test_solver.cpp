@@ -113,9 +113,9 @@ TEST_CASE("min_platform_split", "[solver]")
 
 // test_platform_merge.json — 前车[p1,p2]装满、尾车[p2,p3]未满
 // 后处理必须在不新增容器的情况下把分散的 p2 并入尾车，使 platform_split = 0
-// 合并 trial 重排整个目标容器（目标自身箱子 + 捐献箱一起重新装载），
-// 碎片化布局也能重排容纳。RGS 例外：route 约束下 RGS 单容器装 6p2+4p3
-// 只装 9/10（搜索局限，BSG 可装 10），重排 trial 必失败 → 不再要求 platform_split=0。
+// 合并 trial 先插入、失败则重排整个目标容器（目标自身箱子 + 捐献箱一起重新装载）。
+// RGS 曾因 route 约束下排不出"深处平台先占 X 小侧"的布局而装不下 10 箱，
+// 新增 RouteOrder 排序准则（后卸/深处平台优先）后恢复通过。
 TEST_CASE("platform_merge_no_new_container", "[solver]")
 {
     auto base = load_data("data/tests/test_platform_merge.json");
@@ -137,10 +137,7 @@ TEST_CASE("platform_merge_no_new_container", "[solver]")
 
         REQUIRE(res["status"] == "complete");
         REQUIRE(res["summary"]["unpacked_box_count"] == 0);
-        if (std::string(algo) != "rgs")
-        {
-            REQUIRE(res["summary"]["platform_split"] == 0);
-        }
+        REQUIRE(res["summary"]["platform_split"] == 0);
         for (const auto& c : res["result"]["containers"])
         {
             REQUIRE(c["platforms"].size() <= 2);

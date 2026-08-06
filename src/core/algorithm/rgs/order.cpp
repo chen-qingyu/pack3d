@@ -85,6 +85,7 @@ struct IdenticalGroup
     std::vector<const Box*> boxes;
     int64_t total_volume = 0;
     int64_t max_volume = 0;
+    int route_depth = -1; // 组内箱子的最大 route 索引（无 route 平台为 -1）
 };
 
 struct SimilarGroup
@@ -93,6 +94,7 @@ struct SimilarGroup
     std::vector<IdenticalGroup> identicals;
     int64_t total_volume = 0;
     int64_t max_volume = 0;
+    int route_depth = -1; // 组内各 identical 组的最大 route 深度
 };
 
 int64_t box_volume(const BoxType& bt) noexcept
@@ -106,7 +108,8 @@ std::vector<OrderEntry> build_ordered_list(
     const std::vector<Box>& remaining,
     const std::map<std::string, BoxType>& box_type_map,
     SortCriterion criterion,
-    double rho) noexcept
+    double rho,
+    const std::optional<RouteOrder>& route) noexcept
 {
     if (remaining.empty())
     {
@@ -136,6 +139,27 @@ std::vector<OrderEntry> build_ordered_list(
         ig.total_volume += box_volume(bt);
     }
 
+    // 计算各 identical 组的 route 深度（组内箱子的最大 route 索引，用于 RouteOrder 准则）
+    if (route.has_value())
+    {
+        for (auto& [btid, ig] : ig_map)
+        {
+            ig.route_depth = -1;
+            for (const auto* bx : ig.boxes)
+            {
+                if (bx->platform.empty())
+                {
+                    continue;
+                }
+                auto it = route->index_of.find(bx->platform);
+                if (it != route->index_of.end())
+                {
+                    ig.route_depth = std::max(ig.route_depth, static_cast<int>(it->second));
+                }
+            }
+        }
+    }
+
     // ---- step 2: merge identical groups into similar groups ----
     std::vector<SimilarGroup> sgs;
 
@@ -151,6 +175,7 @@ std::vector<OrderEntry> build_ordered_list(
                 sg.identicals.push_back(std::move(ig));
                 sg.total_volume += sg.identicals.back().total_volume;
                 sg.max_volume = std::max(sg.max_volume, sg.identicals.back().max_volume);
+                sg.route_depth = std::max(sg.route_depth, sg.identicals.back().route_depth);
                 merged = true;
                 break;
             }
@@ -161,6 +186,7 @@ std::vector<OrderEntry> build_ordered_list(
             sg.z_heights = ig.z_heights; // 初始 = 第一个 identical group 的 z_heights
             sg.total_volume = ig.total_volume;
             sg.max_volume = ig.max_volume;
+            sg.route_depth = ig.route_depth;
             sg.identicals.push_back(std::move(ig));
             sgs.push_back(std::move(sg));
         }
@@ -178,6 +204,14 @@ std::vector<OrderEntry> build_ordered_list(
             case SortCriterion::StackabilityHighestVolume:
             case SortCriterion::HighestVolume:
                 return a.max_volume > b.max_volume;
+
+            case SortCriterion::RouteOrder:
+                // 深处平台（route 索引大）先放，占满 X 小侧；并列按体积
+                if (a.route_depth != b.route_depth)
+                {
+                    return a.route_depth > b.route_depth;
+                }
+                return a.total_volume > b.total_volume;
 
             case SortCriterion::Random:
             default:
@@ -201,12 +235,25 @@ std::vector<OrderEntry> build_ordered_list(
         std::sort(sgs.begin(), sgs.end(), sg_cmp);
     }
 
-    // ---- step 4: within each similar group, sort identical groups by volume desc ----
+    // ---- step 4: within each similar group, sort identical groups ----
     bool use_total = (criterion == SortCriterion::CumulatedVolume ||
                       criterion == SortCriterion::StackabilityCumulatedVolume);
+    bool use_route = (criterion == SortCriterion::RouteOrder);
     for (auto& sg : sgs)
     {
-        if (use_total)
+        if (use_route)
+        {
+            std::sort(sg.identicals.begin(), sg.identicals.end(),
+                      [](const IdenticalGroup& a, const IdenticalGroup& b)
+                      {
+                          if (a.route_depth != b.route_depth)
+                          {
+                              return a.route_depth > b.route_depth;
+                          }
+                          return a.total_volume > b.total_volume;
+                      });
+        }
+        else if (use_total)
         {
             std::sort(sg.identicals.begin(), sg.identicals.end(),
                       [](const IdenticalGroup& a, const IdenticalGroup& b)
