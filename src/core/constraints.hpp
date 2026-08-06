@@ -49,7 +49,8 @@ void recompute_stack_state(ContainerLoad& load,
                                         const std::string& platform,
                                         int platform_limit) noexcept;
 
-/// 路线顺序约束：先装平台（idx 小）应在更深处（X 小），后装平台应在更近门处（X 大）
+/// 路线顺序约束：卸货顺序中靠前的平台（idx 小，先卸）应在更近门处（X 大），
+/// 靠后的平台（后卸）应在更深处（X 小）
 [[nodiscard]] bool check_route_order(const ContainerLoad& load,
                                      const std::string& platform,
                                      const Position& pos, const OrientedSize& osize,
@@ -63,8 +64,8 @@ void recompute_stack_state(ContainerLoad& load,
 /// 已提交容器的 tender 分解（单次 pack_single 内不可变）
 struct TenderState
 {
-    int limit = 0;                                  // 0 = 未启用
-    std::vector<int> sizes;                         // tender id -> 容器数
+    int limit = 0;                                         // 0 = 未启用
+    std::vector<int> sizes;                                // tender id -> 容器数
     std::map<std::string, std::vector<int>> group_tenders; // group -> 含该 group 的已提交 tender id（升序去重）
 };
 
