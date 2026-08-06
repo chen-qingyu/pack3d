@@ -113,9 +113,9 @@ TEST_CASE("min_platform_split", "[solver]")
 
 // test_platform_merge.json — 前车[p1,p2]装满、尾车[p2,p3]未满
 // 后处理必须在不新增容器的情况下把分散的 p2 并入尾车，使 platform_split = 0
-// 注意：RGS 不再要求 platform_split=0——RGS 并入已有容器时曾漏做重叠检测
-// （grid 未注册已有放置），靠把捐献箱叠压在旧箱上"假合并"才通过；修复重叠后
-// RGS 生成的尾车自由空间碎片化，物理上无法无重叠并入全部捐献箱。
+// 合并 trial 重排整个目标容器（目标自身箱子 + 捐献箱一起重新装载），
+// 碎片化布局也能重排容纳。RGS 例外：route 约束下 RGS 单容器装 6p2+4p3
+// 只装 9/10（搜索局限，BSG 可装 10），重排 trial 必失败 → 不再要求 platform_split=0。
 TEST_CASE("platform_merge_no_new_container", "[solver]")
 {
     auto base = load_data("data/tests/test_platform_merge.json");

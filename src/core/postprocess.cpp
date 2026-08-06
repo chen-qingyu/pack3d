@@ -160,6 +160,10 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                     continue;
                 }
 
+                // 先试插入式：把捐献箱放入目标现有布局（保留目标布局，最省事）。
+                // 失败则重排整个目标容器：目标自身箱子 + 捐献箱一起重新装载，
+                // 碎片化布局也能重排容纳。目标必为非锁定容器（锁定容器已在 cis
+                // 中排除），其内箱子全部可自由重排。
                 // 合并期间捐献方容器仍带原 group，in-search tender 判定会过度收紧；
                 // 故 trial 不启用 tender，改为对最终 candidate 整体复检
                 ContainerLoad trial = packer.pack_single(donor_boxes, *target_load.type,
@@ -167,7 +171,31 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                 size_t expect = target_load.placements.size() + donor_boxes.size();
                 if (trial.placements.size() != expect)
                 {
-                    continue;
+                    std::vector<Box> rebox;
+                    rebox.reserve(target_load.placements.size() + donor_boxes.size());
+                    bool missing = false;
+                    for (const auto& pl : target_load.placements)
+                    {
+                        auto it = box_map.find(pl.box_id);
+                        if (it == box_map.end())
+                        {
+                            missing = true;
+                            break;
+                        }
+                        rebox.push_back(it->second);
+                    }
+                    if (missing)
+                    {
+                        continue;
+                    }
+                    rebox.insert(rebox.end(), donor_boxes.begin(), donor_boxes.end());
+
+                    trial = packer.pack_single(rebox, *target_load.type, {}, TenderState{}, true);
+                    expect = rebox.size();
+                    if (trial.placements.size() != expect)
+                    {
+                        continue;
+                    }
                 }
 
                 std::vector<ContainerLoad> candidate;
