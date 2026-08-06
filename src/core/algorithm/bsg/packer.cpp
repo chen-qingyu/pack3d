@@ -17,12 +17,15 @@ ContainerLoad BsgPacker::pack_single(
     const std::vector<Box>& items,
     const ContainerType& ct,
     const std::vector<Placement>& existing,
+    const TenderState& tender,
     bool /*stop_when_complete*/)
 {
     // 按影响硬约束的属性划分库存类，避免搜索后再补平台和重量。
+    // tender 启用时 group 入键，使束搜索期间能按块判 group；未启用则与旧行为一致。
+    const bool use_tender = problem_.tender_limit.has_value();
     std::vector<BoxType> box_types;
     std::vector<bsg::ItemClass> item_classes;
-    std::map<std::tuple<std::string, std::string, double>, int> class_index;
+    std::map<std::tuple<std::string, std::string, std::string, double>, int> class_index;
     for (const auto& bx : items)
     {
         auto bt_it = box_type_map_.find(bx.box_type_id);
@@ -31,12 +34,13 @@ ContainerLoad BsgPacker::pack_single(
             continue;
         }
         const double weight = bx.weight.value_or(0.0);
-        const auto key = std::make_tuple(bx.box_type_id, bx.platform, weight);
+        const std::string gkey = use_tender ? bx.group : "";
+        const auto key = std::make_tuple(bx.box_type_id, bx.platform, gkey, weight);
         auto [it, inserted] = class_index.emplace(key, static_cast<int>(item_classes.size()));
         if (inserted)
         {
             box_types.push_back(bt_it->second);
-            item_classes.push_back({bx.box_type_id, bx.platform, weight, {}});
+            item_classes.push_back({bx.box_type_id, bx.platform, weight, gkey, {}});
         }
         item_classes[it->second].box_ids.push_back(bx.id);
     }
@@ -71,6 +75,7 @@ ContainerLoad BsgPacker::pack_single(
     ctx.platform_limit = problem_.platform_limit;
     ctx.route = problem_.route;
     ctx.has_weight_info = has_weight_info_;
+    ctx.tender = tender;
     ctx.blocks = std::move(blocks);
     ctx.existing_placements = existing;
 

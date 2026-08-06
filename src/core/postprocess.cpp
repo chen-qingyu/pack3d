@@ -60,7 +60,8 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                             const std::map<std::string, Box>& box_map,
                             double support_rate,
                             bool has_max_stack,
-                            bool has_max_load)
+                            bool has_max_load,
+                            int tender_limit)
 {
     std::map<std::string, std::set<size_t>> plat_containers;
     std::set<std::string> locked_platforms;
@@ -159,8 +160,10 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                     continue;
                 }
 
+                // 合并期间捐献方容器仍带原 group，in-search tender 判定会过度收紧；
+                // 故 trial 不启用 tender，改为对最终 candidate 整体复检
                 ContainerLoad trial = packer.pack_single(donor_boxes, *target_load.type,
-                                                         target_load.placements, true);
+                                                         target_load.placements, TenderState{}, true);
                 size_t expect = target_load.placements.size() + donor_boxes.size();
                 if (trial.placements.size() != expect)
                 {
@@ -186,6 +189,12 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                             candidate.push_back(std::move(donor));
                         }
                     }
+                }
+
+                // tender 约束整体复检（合并后 group 分布可能改变连通结构）
+                if (!check_all_tenders(candidate, tender_limit))
+                {
+                    continue;
                 }
 
                 // 移除底层箱子后，剩余箱子的支撑/堆码/承重可能被破坏，整体复检
@@ -239,7 +248,8 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
                          PackerBase& packer,
                          const std::vector<ContainerType>& container_types,
                          const std::map<std::string, BoxType>& box_type_map,
-                         const std::map<std::string, Box>& box_map)
+                         const std::map<std::string, Box>& box_map,
+                         int tender_limit)
 {
     size_t i = all_loads.size() - 1;
     const auto& cl = all_loads[i];
@@ -309,7 +319,10 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
             continue;
         }
 
-        ContainerLoad new_load = packer.pack_single(items, ct, {}, true);
+        // 换小容器：新容器与旧容器同箱同 group，把旧容器视为"当前"排除，
+        // 使 tender 判定镜像原解结构（原解已满足约束则必不误拒）
+        TenderState tender = build_tender_state(all_loads, i, tender_limit);
+        ContainerLoad new_load = packer.pack_single(items, ct, {}, tender, true);
         if (new_load.placements.size() != items.size())
         {
             continue;
@@ -359,14 +372,15 @@ void postprocess(std::vector<ContainerLoad>& all_loads,
 
     reduce_platform_splits(all_loads, best_obj, packer, box_type_map, box_map,
                            packer.support_rate(), packer.has_max_stack(),
-                           packer.has_max_load());
+                           packer.has_max_load(), packer.tender_limit());
 
     if (!TimeChecker::check() || all_loads.empty())
     {
         return;
     }
 
-    repack_last_smaller(all_loads, best_obj, packer, container_types, box_type_map, box_map);
+    repack_last_smaller(all_loads, best_obj, packer, container_types, box_type_map, box_map,
+                        packer.tender_limit());
 }
 
 } // namespace pack3d

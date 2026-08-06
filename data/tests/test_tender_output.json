@@ -1,0 +1,148 @@
+{
+  "container_types": [
+    {
+      "id": "big",
+      "sx": 110,
+      "sy": 50,
+      "sz": 50,
+      "max_weight": 50000.0,
+      "quantity_limit": null
+    }
+  ],
+  "box_types": [
+    {
+      "id": "big_box",
+      "sx": 50,
+      "sy": 50,
+      "sz": 50,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [{ "id": "x1", "box_type_id": "big_box", "weight": 10.0 }],
+  "existing_containers": [
+    {
+      "type_id": "big",
+      "placements": [
+        {
+          "box_id": "a1",
+          "box_type_id": "big_box",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "orientation": "xyz",
+          "dx": 50,
+          "dy": 50,
+          "dz": 50,
+          "weight": 10.0,
+          "group": "g1"
+        },
+        {
+          "box_id": "a2",
+          "box_type_id": "big_box",
+          "x": 50,
+          "y": 0,
+          "z": 0,
+          "orientation": "xyz",
+          "dx": 50,
+          "dy": 50,
+          "dz": 50,
+          "weight": 10.0,
+          "group": "g2"
+        }
+      ]
+    },
+    {
+      "type_id": "big",
+      "placements": [
+        {
+          "box_id": "b1",
+          "box_type_id": "big_box",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "orientation": "xyz",
+          "dx": 50,
+          "dy": 50,
+          "dz": 50,
+          "weight": 10.0,
+          "group": "g2"
+        },
+        {
+          "box_id": "b2",
+          "box_type_id": "big_box",
+          "x": 50,
+          "y": 0,
+          "z": 0,
+          "orientation": "xyz",
+          "dx": 50,
+          "dy": 50,
+          "dz": 50,
+          "weight": 10.0,
+          "group": "g3"
+        }
+      ]
+    },
+    {
+      "type_id": "big",
+      "placements": [
+        {
+          "box_id": "c1",
+          "box_type_id": "big_box",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "orientation": "xyz",
+          "dx": 50,
+          "dy": 50,
+          "dz": 50,
+          "weight": 10.0,
+          "group": "g3"
+        },
+        {
+          "box_id": "c2",
+          "box_type_id": "big_box",
+          "x": 50,
+          "y": 0,
+          "z": 0,
+          "orientation": "xyz",
+          "dx": 50,
+          "dy": 50,
+          "dz": 50,
+          "weight": 10.0,
+          "group": "g4"
+        }
+      ]
+    },
+    {
+      "type_id": "big",
+      "placements": [
+        {
+          "box_id": "d1",
+          "box_type_id": "big_box",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "orientation": "xyz",
+          "dx": 50,
+          "dy": 50,
+          "dz": 50,
+          "weight": 10.0,
+          "group": "g5"
+        },
+        {
+          "box_id": "d2",
+          "box_type_id": "big_box",
+          "x": 50,
+          "y": 0,
+          "z": 0,
+          "orientation": "xyz",
+          "dx": 50,
+          "dy": 50,
+          "dz": 50,
+          "weight": 10.0,
+          "group": "g5"
+        }
+      ]
+    }
+  ]
+}

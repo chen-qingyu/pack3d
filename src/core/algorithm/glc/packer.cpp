@@ -11,6 +11,7 @@ ContainerLoad GlcPacker::pack_single(
     const std::vector<Box>& items,
     const ContainerType& ct,
     const std::vector<Placement>& existing,
+    const TenderState& tender,
     bool /*stop_when_complete*/)
 {
     std::vector<const Box*> box_ptrs;
@@ -20,7 +21,7 @@ ContainerLoad GlcPacker::pack_single(
         box_ptrs.push_back(&bx);
     }
 
-    auto pr_opt = pack_container(&ct, box_ptrs, existing);
+    auto pr_opt = pack_container(&ct, box_ptrs, existing, tender);
 
     ContainerLoad load;
     load.type_id = ct.id;
@@ -42,7 +43,8 @@ ContainerLoad GlcPacker::pack_single(
 std::optional<glc::PackResult> GlcPacker::pack_container(
     const ContainerType* ct,
     const std::vector<const Box*>& boxes,
-    const std::vector<Placement>& existing) const
+    const std::vector<Placement>& existing,
+    const TenderState& tender) const
 {
     std::vector<Box> box_list;
     for (const auto* bp : boxes)
@@ -50,7 +52,7 @@ std::optional<glc::PackResult> GlcPacker::pack_container(
         box_list.push_back(*bp);
     }
 
-    glc::Heuristic heuristic(*ct, box_type_map_, box_map_, problem_, has_weight_info_);
+    glc::Heuristic heuristic(*ct, box_type_map_, box_map_, problem_, has_weight_info_, tender);
     glc::PackResult pr = heuristic.pack_beam(box_list, existing, config::GLC_WIDTH);
     if (pr.success || !pr.placements.empty())
     {

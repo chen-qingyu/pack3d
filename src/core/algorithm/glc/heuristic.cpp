@@ -21,12 +21,14 @@ Heuristic::Heuristic(
     const std::map<std::string, BoxType>& box_type_map,
     const std::map<std::string, Box>& box_map,
     const Problem& problem,
-    bool has_weight_info)
+    bool has_weight_info,
+    const TenderState& tender)
     : container_(container)
     , box_type_map_(box_type_map)
     , box_map_(box_map)
     , problem_(problem)
     , has_weight_info_(has_weight_info)
+    , tender_(tender)
     , block_gen_(box_type_map)
 {
     std::map<std::string, std::pair<int, double>> weight_accum;
@@ -99,6 +101,12 @@ bool Heuristic::check_block_feasible(
     auto single = box_type_map_.at(block.box_type_id).size.orient(block.orientation);
 
     // ---- per-block 检查 ----
+
+    // tender 约束：块内同组，只查一次
+    if (!check_tender_limit(tender_, state.groups, block.group))
+    {
+        return false;
+    }
 
     // 重量：按该组平均重量检查块总重量
     if (has_weight_info_ && container_.max_weight.has_value())

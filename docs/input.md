@@ -111,12 +111,12 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段             | 类型       | 默认 | 说明                   |
-| ---------------- | ---------- | ---- | ---------------------- |
-| `time_limit`     | number>0   | 120  | 时限（秒）             |
-| `support_rate`   | number 0-1 | 0    | 底面支撑率阈值，0=跳过 |
-| `platform_limit` | int>=1     | null | 单容器最大平台数       |
-| `tender_limit`   | int>=1     | null | 单组最多分散容器数     |
+| 字段             | 类型       | 默认 | 说明                                                             |
+| ---------------- | ---------- | ---- | ---------------------------------------------------------------- |
+| `time_limit`     | number>0   | 120  | 时限（秒）                                                       |
+| `support_rate`   | number 0-1 | 0    | 底面支撑率阈值，0=跳过                                           |
+| `platform_limit` | int>=1     | null | 单容器最大平台数                                                 |
+| `tender_limit`   | int>=1     | null | 每 tender 最多容器数（tender = 容器按共享 group 连通的连通分量） |
 
 堆码层数 `max_stack` 与单箱承重 `max_load` 不在此处配置，而是**箱型字段**（见上节），有值即启用。
 

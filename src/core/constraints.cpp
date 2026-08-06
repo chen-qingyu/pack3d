@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
 namespace pack3d
 {
@@ -416,6 +417,230 @@ bool check_route_order(const ContainerLoad& load,
     }
 
     return true;
+}
+
+namespace
+{
+
+// DSU：按共享 group 合并 containers 中的容器，返回各容器的父指针（调用方需 find 取根）
+std::vector<int> tender_roots(const std::vector<ContainerLoad>& all_loads,
+                              const std::vector<int>& containers)
+{
+    std::vector<int> parent(all_loads.size());
+    std::vector<int> sz(all_loads.size(), 1);
+    for (size_t i = 0; i < parent.size(); ++i)
+    {
+        parent[i] = static_cast<int>(i);
+    }
+    auto find = [&parent](int x)
+    {
+        while (parent[x] != x)
+        {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        return x;
+    };
+    auto unite = [&](int a, int b)
+    {
+        a = find(a);
+        b = find(b);
+        if (a == b)
+        {
+            return;
+        }
+        if (sz[a] < sz[b])
+        {
+            std::swap(a, b);
+        }
+        parent[b] = a;
+        sz[a] += sz[b];
+    };
+
+    std::map<std::string, int> first_of_group;
+    for (int i : containers)
+    {
+        for (const auto& g : all_loads[i].groups)
+        {
+            auto [it, inserted] = first_of_group.emplace(g, i);
+            if (!inserted)
+            {
+                unite(it->second, i);
+            }
+        }
+    }
+    return parent;
+}
+
+} // namespace
+
+TenderState build_tender_state(const std::vector<ContainerLoad>& all_loads,
+                               size_t current, int tender_limit)
+{
+    TenderState ts;
+    ts.limit = tender_limit;
+    if (tender_limit <= 0)
+    {
+        return ts;
+    }
+
+    std::vector<int> committed;
+    committed.reserve(all_loads.size() - (current < all_loads.size() ? 1 : 0));
+    for (size_t i = 0; i < all_loads.size(); ++i)
+    {
+        if (i != current)
+        {
+            committed.push_back(static_cast<int>(i));
+        }
+    }
+
+    auto parent = tender_roots(all_loads, committed);
+    auto find = [&parent](int x)
+    {
+        while (parent[x] != x)
+        {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        return x;
+    };
+
+    std::vector<int> comp_size(all_loads.size(), 0);
+    for (int i : committed)
+    {
+        comp_size[find(i)]++;
+    }
+
+    std::map<int, int> root_to_id;
+    for (int i : committed)
+    {
+        int root = find(i);
+        auto [it, inserted] = root_to_id.emplace(root, static_cast<int>(ts.sizes.size()));
+        if (inserted)
+        {
+            ts.sizes.push_back(comp_size[root]);
+        }
+        for (const auto& g : all_loads[i].groups)
+        {
+            auto& list = ts.group_tenders[g];
+            if (list.empty() || list.back() != it->second)
+            {
+                list.push_back(it->second);
+            }
+        }
+    }
+    return ts;
+}
+
+bool check_tender_limit(const TenderState& ts,
+                        const std::set<std::string>& groups,
+                        const std::string& group) noexcept
+{
+    if (ts.limit <= 0 || group.empty() || groups.count(group))
+    {
+        return true;
+    }
+    std::vector<char> seen(ts.sizes.size(), 0);
+    int merged = 1; // 当前容器自身
+    auto absorb = [&](const std::vector<int>& tenders) noexcept
+    {
+        for (int t : tenders)
+        {
+            if (!seen[t])
+            {
+                seen[t] = 1;
+                merged += ts.sizes[t];
+            }
+        }
+    };
+    for (const auto& g : groups)
+    {
+        auto it = ts.group_tenders.find(g);
+        if (it != ts.group_tenders.end())
+        {
+            absorb(it->second);
+        }
+    }
+    auto it = ts.group_tenders.find(group);
+    if (it != ts.group_tenders.end())
+    {
+        absorb(it->second);
+    }
+    return merged <= ts.limit;
+}
+
+bool check_all_tenders(const std::vector<ContainerLoad>& all_loads, int tender_limit) noexcept
+{
+    if (tender_limit <= 0)
+    {
+        return true;
+    }
+    std::vector<int> all_idx(all_loads.size());
+    for (size_t i = 0; i < all_loads.size(); ++i)
+    {
+        all_idx[i] = static_cast<int>(i);
+    }
+    auto parent = tender_roots(all_loads, all_idx);
+    auto find = [&parent](int x)
+    {
+        while (parent[x] != x)
+        {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        return x;
+    };
+    std::vector<int> comp_size(all_loads.size(), 0);
+    for (size_t i = 0; i < all_loads.size(); ++i)
+    {
+        comp_size[find(static_cast<int>(i))]++;
+    }
+    for (int s : comp_size)
+    {
+        if (s > tender_limit)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::vector<std::optional<int>> compute_container_tenders(
+    const std::vector<ContainerLoad>& all_loads)
+{
+    std::vector<std::optional<int>> out(all_loads.size());
+    std::vector<int> all_idx(all_loads.size());
+    for (size_t i = 0; i < all_loads.size(); ++i)
+    {
+        all_idx[i] = static_cast<int>(i);
+    }
+    auto parent = tender_roots(all_loads, all_idx);
+    auto find = [&parent](int x)
+    {
+        while (parent[x] != x)
+        {
+            parent[x] = parent[parent[x]];
+            x = parent[x];
+        }
+        return x;
+    };
+    std::map<int, int> root_to_id;
+    int next = 1;
+    for (size_t i = 0; i < all_loads.size(); ++i)
+    {
+        if (all_loads[i].groups.empty())
+        {
+            continue; // 无 group 的容器不属于任何 tender → null
+        }
+        int root = find(static_cast<int>(i));
+        auto [it, inserted] = root_to_id.emplace(root, next);
+        if (inserted)
+        {
+            ++next;
+        }
+        out[i] = it->second;
+    }
+    return out;
 }
 
 } // namespace pack3d

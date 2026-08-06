@@ -102,6 +102,22 @@ bool can_place_block(
 
     next_load = state.constraint_load;
     next_item_classes = state.item_class_indices;
+
+    // tender 约束：块内叶子同一 item_class（同 group），只查一次；
+    // 通过后把 group 记入 next_load.groups，供后续块判定连通
+    if (ctx.tender.limit > 0)
+    {
+        const auto& item = ctx.item_classes[ctx.blocks[block_idx].type_idx];
+        if (!item.group.empty())
+        {
+            if (!check_tender_limit(ctx.tender, next_load.groups, item.group))
+            {
+                return false;
+            }
+            next_load.groups.insert(item.group);
+        }
+    }
+
     // 全支撑（support_rate>=1）下不存在"下方留空隙、后放下方箱"的乱序放置，可跳过检测
     const bool need_recompute_check = ctx.support_rate < 1.0;
     bool need_recompute = false;

@@ -296,6 +296,7 @@ struct ContainerSummary
     int packed_count = 0; // 本容器内放置的箱子数
     std::vector<std::string> platforms;
     std::vector<std::string> groups;
+    std::optional<int> tender = std::nullopt; // 所属 tender 序号（1-based），无 group 为 null
 };
 
 struct Solution

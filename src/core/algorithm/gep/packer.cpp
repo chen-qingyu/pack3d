@@ -11,6 +11,7 @@ ContainerLoad GepPacker::pack_single(
     const std::vector<Box>& items,
     const ContainerType& ct,
     const std::vector<Placement>& existing,
+    const TenderState& tender,
     bool /*stop_when_complete*/)
 {
     // 箱子按体积降序排序
@@ -57,6 +58,13 @@ ContainerLoad GepPacker::pack_single(
     for (auto& box : sorted)
     {
         const auto& bt = box_type_map_.at(box.box_type_id);
+
+        // tender 约束：与位置无关，先于朝向/极点循环判断
+        if (!check_tender_limit(tender, load.groups, box.group))
+        {
+            continue; // 放入本容器会使所属 tender 超限 → 留未装
+        }
+
         bool placed = false;
 
         for (auto orient : bt.allowed_orientations)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -53,5 +54,37 @@ void recompute_stack_state(ContainerLoad& load,
                                      const std::string& platform,
                                      const Position& pos, const OrientedSize& osize,
                                      const RouteOrder& route) noexcept;
+
+// ============================================================
+// tender（发标）约束：容器按共享 group 连通，每个连通分量即一个 tender。
+// tender_limit 限制每个 tender 最多包含的容器数。
+// ============================================================
+
+/// 已提交容器的 tender 分解（单次 pack_single 内不可变）
+struct TenderState
+{
+    int limit = 0;                                  // 0 = 未启用
+    std::vector<int> sizes;                         // tender id -> 容器数
+    std::map<std::string, std::vector<int>> group_tenders; // group -> 含该 group 的已提交 tender id（升序去重）
+};
+
+/// 构建已提交容器的 tender 分解；current 为正在装载的容器下标（自身不计入已提交），
+/// current >= all_loads.size() 表示开新容器（全部已提交）。limit<=0 返回未启用状态。
+[[nodiscard]] TenderState build_tender_state(const std::vector<ContainerLoad>& all_loads,
+                                             size_t current, int tender_limit);
+
+/// 预检：把 group 加入"已含 groups 的当前容器"是否会使所属 tender 超过 limit。
+/// group 已在 groups 中恒真；limit<=0 或 group 为空恒真。
+[[nodiscard]] bool check_tender_limit(const TenderState& ts,
+                                      const std::set<std::string>& groups,
+                                      const std::string& group) noexcept;
+
+/// 校验全部容器的每个 tender 连通分量都不超过 limit（后处理候选整体复检用）
+[[nodiscard]] bool check_all_tenders(const std::vector<ContainerLoad>& all_loads,
+                                     int tender_limit) noexcept;
+
+/// 全部容器的 tender 序号：连通分量按容器顺序首次出现编号（1-based），无 group 为 null。
+std::vector<std::optional<int>> compute_container_tenders(
+    const std::vector<ContainerLoad>& all_loads);
 
 } // namespace pack3d

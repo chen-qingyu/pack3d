@@ -21,13 +21,15 @@ public:
         const std::vector<Box>& items,
         const ContainerType& ct,
         const std::vector<Placement>& existing,
+        const TenderState& tender,
         bool stop_when_complete = false) override;
 
 private:
     std::optional<glc::PackResult> pack_container(
         const ContainerType* ct,
         const std::vector<const Box*>& boxes,
-        const std::vector<Placement>& existing) const;
+        const std::vector<Placement>& existing,
+        const TenderState& tender) const;
 };
 
 } // namespace pack3d

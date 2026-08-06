@@ -75,8 +75,9 @@ Solution PackerBase::pack()
     instance_counter = static_cast<int>(all_loads.size());
 
     // ---- 阶段 B: 继续塞已有容器 ----
-    for (auto& cl : all_loads)
+    for (size_t i = 0; i < all_loads.size(); ++i)
     {
+        auto& cl = all_loads[i];
         if (remaining.empty() || !TimeChecker::check())
         {
             break;
@@ -88,8 +89,9 @@ Solution PackerBase::pack()
             continue;
         }
 
-        // 将已有 placement 传给 pack_single 继续塞
-        ContainerLoad extra = pack_single(remaining, *ct_it->second, cl.placements);
+        // 将已有 placement 传给 pack_single 继续塞；当前容器不计入已提交 tender
+        TenderState tender = build_tender_state(all_loads, i, problem_.tender_limit.value_or(0));
+        ContainerLoad extra = pack_single(remaining, *ct_it->second, cl.placements, tender);
         if (extra.placements.size() <= cl.placements.size())
         {
             continue;
@@ -141,13 +143,21 @@ Solution PackerBase::pack()
             break;
         }
 
-        ContainerLoad load = pack_single(remaining, *ct, {});
+        // 新容器：全部已有容器为已提交 tender，自身不计入
+        TenderState tender = build_tender_state(all_loads, all_loads.size(),
+                                                problem_.tender_limit.value_or(0));
+        ContainerLoad load = pack_single(remaining, *ct, {}, tender);
         load.instance_id = ct->id + "_" + std::to_string(instance_counter++);
 
         std::set<std::string> packed;
         for (const auto& pl : load.placements)
         {
             packed.insert(pl.box_id);
+        }
+        if (packed.empty())
+        {
+            // 剩余箱子被约束（如 tender）拒绝，任何容器都放不下 → 保持未装
+            break;
         }
         std::erase_if(remaining, [&](const Box& b)
                       { return packed.count(b.id) != 0; });
@@ -223,6 +233,13 @@ Solution PackerBase::build_solution(
         cs.groups = std::vector<std::string>(cl.groups.begin(), cl.groups.end());
         sol.container_summaries.push_back(std::move(cs));
         sol.container_placements.push_back(cl.placements);
+    }
+
+    // 每个容器所属 tender 序号（按连通分量首次出现顺序，1-based；无 group 为 null）
+    auto tenders = compute_container_tenders(all_loads);
+    for (size_t i = 0; i < sol.container_summaries.size(); ++i)
+    {
+        sol.container_summaries[i].tender = tenders[i];
     }
 
     return sol;

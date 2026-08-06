@@ -1,0 +1,32 @@
+{
+  "container_types": [
+    {
+      "id": "big",
+      "sx": 110,
+      "sy": 50,
+      "sz": 50,
+      "max_weight": 50000.0,
+      "quantity_limit": null
+    }
+  ],
+  "box_types": [
+    {
+      "id": "big_box",
+      "sx": 50,
+      "sy": 50,
+      "sz": 50,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [
+    { "id": "a1", "box_type_id": "big_box", "weight": 10.0, "group": "g1" },
+    { "id": "a2", "box_type_id": "big_box", "weight": 10.0, "group": "g1" },
+    { "id": "a3", "box_type_id": "big_box", "weight": 10.0, "group": "g1" }
+  ],
+  "constraints": {
+    "time_limit": 120.0,
+    "support_rate": 0.0,
+    "platform_limit": null,
+    "tender_limit": 1
+  }
+}

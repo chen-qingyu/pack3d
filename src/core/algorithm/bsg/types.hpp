@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../../constraints.hpp"
 #include "../../types.hpp"
 
 namespace pack3d::bsg
@@ -151,6 +152,7 @@ struct ItemClass
     std::string box_type_id;
     std::string platform;
     double weight = 0.0;
+    std::string group;
     std::vector<std::string> box_ids;
 };
 
@@ -178,6 +180,9 @@ struct GlobalContext
     std::optional<RouteOrder> route;
     bool has_weight_info = false;
 
+    // 已提交容器的 tender 分解（本容器装载期间不可变；limit<=0 未启用）
+    TenderState tender;
+
     // 全局块列表（GeneralBlockGeneration 产物）
     std::vector<GeneralBlock> blocks;
 
@@ -188,12 +193,12 @@ struct GlobalContext
     // box_ids[i] = global box id string, box_index_of[id] = 0..N-1
     std::vector<std::string> box_ids;
 
-    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重）。
+    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重/tender）。
     /// 支撑由 is_supported 在块级处理，不在此列。
     [[nodiscard]] bool needs_leaf_validation() const noexcept
     {
         return has_weight_info || platform_limit.has_value() || route.has_value() ||
-               has_max_stack || has_max_load;
+               has_max_stack || has_max_load || tender.limit > 0;
     }
 
     std::vector<Placement> existing_placements;

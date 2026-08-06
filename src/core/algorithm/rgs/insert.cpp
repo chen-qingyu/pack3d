@@ -344,10 +344,18 @@ void insertion_heuristic(
     double rho,
     const Problem& problem,
     ContainerLoad& out_load,
-    EpContext& out_ctx) noexcept
+    EpContext& out_ctx,
+    const TenderState& tender) noexcept
 {
     out_load.type = &ctype;
     out_ctx.grid_cell_size = compute_cell_size(items, box_type_map);
+
+    // 已有放置（resume/续塞/后处理 trial）注册进碰撞网格：grid_collides 依赖它
+    // 检测与旧箱的重叠，否则会把新箱放到旧箱位置（此前会重叠放置）
+    for (size_t i = 0; i < out_load.placements.size(); ++i)
+    {
+        grid_register(out_ctx, out_load.placements, i);
+    }
 
     out_ctx.extreme_points.insert({0, 0, 0});
 
@@ -382,6 +390,12 @@ void insertion_heuristic(
             continue;
         }
         const BoxType& bt = bt_it->second;
+
+        // tender 约束：与位置无关，先于极点循环判断
+        if (!check_tender_limit(tender, out_load.groups, box.group))
+        {
+            continue; // 放入本容器会使所属 tender 超限 → 留未装
+        }
 
         bool placed = false;
         for (const auto& ep : out_ctx.extreme_points)

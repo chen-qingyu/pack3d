@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "constraints.hpp"
 #include "types.hpp"
 
 namespace pack3d
@@ -31,6 +32,7 @@ public:
         const std::vector<Box>& items,
         const ContainerType& ct,
         const std::vector<Placement>& existing,
+        const TenderState& tender,
         bool stop_when_complete = false) = 0;
 
     Solution pack();
@@ -38,6 +40,11 @@ public:
     double support_rate() const
     {
         return problem_.support_rate;
+    }
+
+    int tender_limit() const
+    {
+        return problem_.tender_limit.value_or(0);
     }
 
     bool has_max_stack() const

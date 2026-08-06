@@ -13,13 +13,13 @@ JSON，顶层四个字段：
 
 ## `status` 状态枚举
 
-| 值           | 含义                          |
-| ------------ | ----------------------------- |
-| `"complete"` | 全部装箱完成                  |
-| `"partial"`  | 算法完成，部分箱子未装入      |
-| `"timeout"`  | 时限中断，返回当前最优        |
-| `"blocked"`  | 硬约束阻断（如 tender_limit） |
-| `"invalid"`  | 输入非法                      |
+| 值           | 含义                         |
+| ------------ | ---------------------------- |
+| `"complete"` | 全部装箱完成                 |
+| `"partial"`  | 算法完成，部分箱子未装入     |
+| `"timeout"`  | 时限中断，返回当前最优       |
+| `"blocked"`  | 硬约束阻断（当前无产生路径） |
+| `"invalid"`  | 输入非法                     |
 
 ## `summary` 统计摘要
 
@@ -63,6 +63,7 @@ JSON，顶层四个字段：
       "packed_count": 3,
       "platforms": ["A", "B"],
       "groups": ["X"],
+      "tender": 1,
       "placements": [
         {
           "box_id": "a1",
@@ -97,6 +98,8 @@ JSON，顶层四个字段：
 ```
 
 容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置平台/分组时 `platform`/`group` 为 null）。
+
+`tender` 为该容器所属 tender 的序号（1-based）：容器按共享 `group` 连通，每个连通分量即一个 tender，按容器顺序首次出现编号。无 group 的容器为 `null`。如容器 A{g1,g2}、B{g2,g3}、C{g3,g4}、D{g5}，则 A/B/C 的 `tender` 均为 1，D 为 2。
 
 `result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的数组，未配置则省略）。
 

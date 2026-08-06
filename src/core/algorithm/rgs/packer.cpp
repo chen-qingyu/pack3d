@@ -56,6 +56,7 @@ ContainerLoad RgsPacker::pack_single(
     const std::vector<Box>& items,
     const ContainerType& ct,
     const std::vector<Placement>& existing,
+    const TenderState& tender,
     bool stop_when_complete)
 {
     // rgs_single_uld：单容器多起点搜索，评分 (体积率, 剩余平台数) 字典序
@@ -105,7 +106,7 @@ ContainerLoad RgsPacker::pack_single(
             ctx.extreme_points.insert({0, 0, 0});
             prefill_load(load, existing, box_map_);
             prefill_ep(ctx, existing);
-            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
+            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx, tender);
 
             if (stop_when_complete && load.placements.size() == complete_size)
             {
@@ -141,7 +142,7 @@ ContainerLoad RgsPacker::pack_single(
             ctx.extreme_points.insert({0, 0, 0});
             prefill_load(load, existing, box_map_);
             prefill_ep(ctx, existing);
-            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx);
+            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx, tender);
 
             if (stop_when_complete && load.placements.size() == complete_size)
             {

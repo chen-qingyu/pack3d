@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "../../constraints.hpp"
 #include "../../types.hpp"
 #include "order.hpp"
 #include "state.hpp"
@@ -22,7 +23,8 @@ void insertion_heuristic(
     double rho,
     const Problem& problem,
     ContainerLoad& out_load,
-    EpContext& out_ctx) noexcept;
+    EpContext& out_ctx,
+    const TenderState& tender) noexcept;
 
 // 四道门检查（论文 §4.4）
 [[nodiscard]] bool can_place(

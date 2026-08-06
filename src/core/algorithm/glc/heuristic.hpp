@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "../../constraints.hpp"
 #include "../../types.hpp"
 #include "block.hpp"
 #include "space.hpp"
@@ -34,7 +35,8 @@ public:
         const std::map<std::string, BoxType>& box_type_map,
         const std::map<std::string, Box>& box_map,
         const Problem& problem,
-        bool has_weight_info);
+        bool has_weight_info,
+        const TenderState& tender);
 
     /// Beam 搜索装载
     /// beam_width: 每层保留的部分方案数（GLC 论文取 6~16）
@@ -61,6 +63,8 @@ private:
     const std::map<std::string, Box>& box_map_;
     const Problem& problem_;
     bool has_weight_info_;
+
+    TenderState tender_; // 已提交容器的 tender 分解（本容器装载期间不可变）
 
     BlockGenerator block_gen_;
     std::map<std::string, double> type_avg_weight_;

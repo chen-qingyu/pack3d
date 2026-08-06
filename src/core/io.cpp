@@ -641,6 +641,7 @@ void to_json(json& j, const Solution& sol)
         cj["packed_count"] = cs.packed_count;
         cj["platforms"] = cs.platforms;
         cj["groups"] = cs.groups;
+        cj["tender"] = opt_json(cs.tender);
 
         json placements_json = json::array();
         if (i < sol.container_placements.size())
