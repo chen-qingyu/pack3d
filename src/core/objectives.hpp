@@ -1,26 +1,11 @@
 #pragma once
 
-#include <string>
-#include <vector>
-
 #include "types.hpp"
 
 namespace pack3d
 {
 
 // 目标向量计算与比较
-
-/// 默认目标键（按优先级排序）
-[[nodiscard]] inline const std::vector<std::string>& default_objective_keys()
-{
-    static const std::vector<std::string> keys = {
-        "min_container_count",
-        "min_platform_split",
-        "max_volume_rate",
-        "min_group_split",
-    };
-    return keys;
-}
 
 /// 根据 ContainerLoad 列表计算完整目标向量
 [[nodiscard]] ObjectiveVector compute_objective(
