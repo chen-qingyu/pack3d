@@ -87,7 +87,7 @@ def _run_worker(input_json: str, run_dir: str, random_seed: int, conn):
     (Path(run_dir) / "output.json").write_text(
         json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    # core 的 "complete" / "partial" / "timeout" / "blocked" 都是正常完成
+    # core 的 "complete" / "partial" / "timeout" 都是正常完成
     # 只有 "invalid" 是输入问题
     core_status = result["status"]
     run_status = "invalid" if core_status == "invalid" else "completed"

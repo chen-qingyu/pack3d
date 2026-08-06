@@ -160,7 +160,6 @@ enum class SolveStatus : uint8_t
 {
     Complete,
     Invalid,
-    Blocked,
     Timeout,
     Partial,
 };
