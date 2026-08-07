@@ -54,6 +54,12 @@ export interface Obstacle {
   dz: number
 }
 
+export interface Facet {
+  dx?: number
+  dy?: number
+  dz?: number
+}
+
 export interface ContainerResult {
   type_id: string
   sx: number
@@ -68,6 +74,7 @@ export interface ContainerResult {
   platforms?: string[]
   groups?: string[]
   obstacles?: Obstacle[]
+  facets?: Facet[]
   placements: Placement[]
 }
 

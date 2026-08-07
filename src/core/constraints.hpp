@@ -22,6 +22,21 @@ namespace pack3d
 [[nodiscard]] bool check_obstacle(const Position& pos, const OrientedSize& osize,
                                   const std::vector<Obstacle>& obstacles) noexcept;
 
+/// 检查放置是否与斜面禁区相交（楔形凸半空间：箱子极角点单次点积判定，面贴面允许）
+[[nodiscard]] bool check_facet(const Position& pos, const OrientedSize& osize,
+                               const Size& container_size,
+                               const std::vector<Facet>& facets) noexcept;
+
+// 斜面楔形的 N 步阶梯 AABB 近似（只覆盖禁区、永不过挖安全台阶区，过挖≈楔形/N）
+struct FacetSlab
+{
+    int32_t x = 0, y = 0, z = 0;
+    int32_t dx = 0, dy = 0, dz = 0;
+};
+[[nodiscard]] std::vector<FacetSlab> facet_staircase(const Facet& f,
+                                                     const Size& csize,
+                                                     int steps) noexcept;
+
 /// 检查放入箱子后是否超重
 [[nodiscard]] bool check_weight(const ContainerLoad& load,
                                 double box_weight) noexcept;

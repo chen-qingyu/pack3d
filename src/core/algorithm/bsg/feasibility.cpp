@@ -130,7 +130,9 @@ bool can_place_block(
         const auto& item = ctx.item_classes[leaf.item_class_idx];
         if (!check_boundary(ctx.container_type, leaf.position, leaf.osize) ||
             check_overlap(leaf.position, leaf.osize, next_load.placements) ||
-            check_obstacle(leaf.position, leaf.osize, ctx.container_type.obstacles))
+            check_obstacle(leaf.position, leaf.osize, ctx.container_type.obstacles) ||
+            check_facet(leaf.position, leaf.osize, ctx.container_size,
+                        ctx.container_type.facets))
         {
             return false;
         }

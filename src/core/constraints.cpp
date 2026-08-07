@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <numeric>
 
 namespace pack3d
@@ -62,6 +63,129 @@ bool check_obstacle(const Position& pos, const OrientedSize& osize,
         return true;
     }
     return false;
+}
+
+bool check_facet(const Position& pos, const OrientedSize& osize,
+                 const Size& csize, const std::vector<Facet>& facets) noexcept
+{
+    for (const auto& f : facets)
+    {
+        // 恰好两个非零截距（预校验保证）；防御性：不足两个则跳过
+        int32_t intercepts[3] = {f.dx, f.dy, f.dz};
+        int32_t extents[3] = {csize.x, csize.y, csize.z};
+        int64_t dists[2] = {0, 0};
+        int n = 0;
+        for (int a = 0; a < 3; ++a)
+        {
+            if (intercepts[a] == 0)
+            {
+                continue;
+            }
+            int32_t lo = (a == 0) ? pos.x : ((a == 1) ? pos.y : pos.z);
+            int32_t hi = lo + ((a == 0) ? osize.dx : ((a == 1) ? osize.dy : osize.dz));
+            // 极角点：最靠禁区的角；距禁区侧向内的距离
+            if (intercepts[a] > 0)
+            {
+                dists[n] = static_cast<int64_t>(extents[a]) - hi;
+            }
+            else
+            {
+                dists[n] = static_cast<int64_t>(lo);
+            }
+            intercepts[n] = intercepts[a];
+            ++n;
+        }
+        if (n < 2)
+        {
+            continue;
+        }
+        int64_t m0 = std::abs(static_cast<int64_t>(intercepts[0]));
+        int64_t m1 = std::abs(static_cast<int64_t>(intercepts[1]));
+        // 极角点落入楔形禁区 → 相交
+        if (dists[0] * m1 + dists[1] * m0 < m0 * m1)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<FacetSlab> facet_staircase(const Facet& f, const Size& csize, int steps) noexcept
+{
+    std::vector<FacetSlab> out;
+    int32_t intercepts[3] = {f.dx, f.dy, f.dz};
+    int32_t extents[3] = {csize.x, csize.y, csize.z};
+    int u_axis = -1, v_axis = -1;
+    for (int a = 0; a < 3; ++a)
+    {
+        if (intercepts[a] == 0)
+        {
+            continue;
+        }
+        if (u_axis < 0)
+        {
+            u_axis = a;
+        }
+        else
+        {
+            v_axis = a;
+        }
+    }
+    if (u_axis < 0 || v_axis < 0 || steps <= 0)
+    {
+        return out;
+    }
+    const int64_t mu = std::abs(static_cast<int64_t>(intercepts[u_axis]));
+    const int64_t mv = std::abs(static_cast<int64_t>(intercepts[v_axis]));
+    const int w_axis = 3 - u_axis - v_axis;
+
+    auto set_axis = [&](int axis, int64_t lo, int64_t hi)
+    {
+        switch (axis)
+        {
+            case 0:
+                out.back().x = static_cast<int32_t>(lo);
+                out.back().dx = static_cast<int32_t>(hi - lo);
+                break;
+            case 1:
+                out.back().y = static_cast<int32_t>(lo);
+                out.back().dy = static_cast<int32_t>(hi - lo);
+                break;
+            default:
+                out.back().z = static_cast<int32_t>(lo);
+                out.back().dz = static_cast<int32_t>(hi - lo);
+                break;
+        }
+    };
+
+    for (int i = 1; i <= steps; ++i)
+    {
+        out.emplace_back();
+        // u 方向：本片最大进深（角侧向内）
+        int64_t u_depth = mu * (steps - i + 1) / steps;
+        if (intercepts[u_axis] > 0)
+        {
+            set_axis(u_axis, extents[u_axis] - u_depth, extents[u_axis]);
+        }
+        else
+        {
+            set_axis(u_axis, 0, u_depth);
+        }
+        // v 方向：距角侧 [(i-1)*mv/steps, i*mv/steps]
+        int64_t v_lo = (i - 1) * mv / steps;
+        int64_t v_hi = i * mv / steps;
+        if (intercepts[v_axis] > 0)
+        {
+            set_axis(v_axis, extents[v_axis] - v_hi, extents[v_axis] - v_lo);
+        }
+        else
+        {
+            set_axis(v_axis, v_lo, v_hi);
+        }
+        // 平行轴贯穿全容器
+        set_axis(w_axis, 0, extents[w_axis]);
+    }
+    return out;
 }
 
 bool check_weight(const ContainerLoad& load,

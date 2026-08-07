@@ -45,4 +45,9 @@ void carve_out_space(const Space& space,
 void carve_obstacles(std::vector<Space>& stack,
                      const std::vector<Obstacle>& obstacles) noexcept;
 
+/// 从空间栈中挖掉全部斜面楔形禁区（N 步阶梯近似，只覆盖禁区）
+void carve_facets(std::vector<Space>& stack,
+                  const Size& container_size,
+                  const std::vector<Facet>& facets) noexcept;
+
 } // namespace pack3d::glc

@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <set>
 #include <string>
 
@@ -119,6 +120,17 @@ void from_json(const json& j, ContainerType& ct)
             o["dy"].get_to(obs.dy);
             o["dz"].get_to(obs.dz);
             ct.obstacles.push_back(obs);
+        }
+    }
+    if (j.contains("facets"))
+    {
+        for (const auto& f : j["facets"])
+        {
+            Facet facet;
+            facet.dx = json_opt_int(f, "dx").value_or(0);
+            facet.dy = json_opt_int(f, "dy").value_or(0);
+            facet.dz = json_opt_int(f, "dz").value_or(0);
+            ct.facets.push_back(facet);
         }
     }
 }
@@ -303,6 +315,41 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                     o.z < q.z + q.dz && o.z + o.dz > q.z)
                 {
                     out.push_back(opfx + ": overlaps with obstacles[" + std::to_string(oj) + "]");
+                }
+            }
+        }
+    }
+    // 斜面校验：恰好两个非零截距、截距不越界
+    for (const auto& ct : problem.container_types)
+    {
+        for (size_t fi = 0; fi < ct.facets.size(); ++fi)
+        {
+            const auto& f = ct.facets[fi];
+            std::string fpfx = "container_type " + ct.id + " facets[" + std::to_string(fi) + "]";
+            int32_t intercepts[3] = {f.dx, f.dy, f.dz};
+            int32_t extents[3] = {ct.inner_size.x, ct.inner_size.y, ct.inner_size.z};
+            int count = 0;
+            for (int a = 0; a < 3; ++a)
+            {
+                if (intercepts[a] != 0)
+                {
+                    ++count;
+                }
+            }
+            if (count != 2)
+            {
+                out.push_back(fpfx + ": must have exactly two non-zero intercepts (dx/dy/dz)");
+            }
+            for (int a = 0; a < 3; ++a)
+            {
+                if (intercepts[a] == 0)
+                {
+                    continue;
+                }
+                int64_t mag = std::abs(static_cast<int64_t>(intercepts[a]));
+                if (mag < 1 || mag > extents[a])
+                {
+                    out.push_back(fpfx + ": intercept out of container bounds");
                 }
             }
         }
@@ -535,6 +582,11 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                     out.push_back(pfx + " (" + pl.box_id + "): overlaps with container obstacle");
                 }
 
+                if (check_facet(pl.position, pl.osize, ct.inner_size, ct.facets))
+                {
+                    out.push_back(pfx + " (" + pl.box_id + "): violates container facet");
+                }
+
                 // 只检查与已校验放置的重叠
                 for (size_t pj = 0; pj < pi; ++pj)
                 {
@@ -694,6 +746,28 @@ void to_json(json& j, const Solution& sol)
                 obs_json.push_back(std::move(oj));
             }
             cj["obstacles"] = std::move(obs_json);
+        }
+        if (!cs.facets.empty())
+        {
+            json fac_json = json::array();
+            for (const auto& f : cs.facets)
+            {
+                json fj;
+                if (f.dx != 0)
+                {
+                    fj["dx"] = f.dx;
+                }
+                if (f.dy != 0)
+                {
+                    fj["dy"] = f.dy;
+                }
+                if (f.dz != 0)
+                {
+                    fj["dz"] = f.dz;
+                }
+                fac_json.push_back(std::move(fj));
+            }
+            cj["facets"] = std::move(fac_json);
         }
         cj["max_weight"] = opt_json(cs.max_weight);
         cj["used_volume"] = cs.used_volume;

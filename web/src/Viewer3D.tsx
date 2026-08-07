@@ -114,6 +114,43 @@ function Viewer3D({ containers, boxTypes }: {
           mesh.position.set(offsetX + obstacle.x + obstacle.dx / 2, obstacle.z + obstacle.dz / 2, obstacle.y + obstacle.dy / 2)
           root.add(mesh)
         })
+        ; (container.facets ?? []).forEach((facet) => {
+          const axes = [
+            { key: 'dx' as const, extent: container.sx },
+            { key: 'dy' as const, extent: container.sy },
+            { key: 'dz' as const, extent: container.sz },
+          ]
+          const present = axes.filter((a) => facet[a.key] !== undefined && facet[a.key] !== 0)
+          if (present.length !== 2) return
+          const [u, v] = present
+          const w = axes.find((a) => !present.includes(a))
+          if (!w) return
+          const su = facet[u.key] ?? 0
+          const sv = facet[v.key] ?? 0
+          const cornerU = su > 0 ? u.extent : 0
+          const cornerV = sv > 0 ? v.extent : 0
+          // 斜面矩形面两个端点：A 在 u 墙上（距 v 角 sv），B 在 v 墙上（距 u 角 su）；沿 w 贯穿
+          const toThree = (cu: number, cv: number, cw: number) => {
+            const coords: Record<string, number> = { dx: 0, dy: 0, dz: 0 }
+            coords[u.key] = cu
+            coords[v.key] = cv
+            coords[w.key] = cw
+            return new THREE.Vector3(offsetX + coords.dx, coords.dz, coords.dy)
+          }
+          const A = toThree(cornerU, cornerV - sv, 0)
+          const A2 = toThree(cornerU, cornerV - sv, w.extent)
+          const B = toThree(cornerU - su, cornerV, 0)
+          const B2 = toThree(cornerU - su, cornerV, w.extent)
+          const facetGeometry = new THREE.BufferGeometry()
+          const positions = new Float32Array([
+            A.x, A.y, A.z, B.x, B.y, B.z, A2.x, A2.y, A2.z,
+            B.x, B.y, B.z, B2.x, B2.y, B2.z, A2.x, A2.y, A2.z,
+          ])
+          facetGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+          const mesh = new THREE.Mesh(facetGeometry, new THREE.MeshStandardMaterial({ color: '#e34d3a', transparent: true, opacity: 0.35, roughness: 0.5, metalness: 0.1, side: THREE.DoubleSide }))
+          mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(facetGeometry), new THREE.LineBasicMaterial({ color: '#8c2f22', transparent: true, opacity: 0.6 })))
+          root.add(mesh)
+        })
       container.placements.forEach((placement) => {
         const key = categoryOf(placement, colorMode)
         if (visibleKeys.length && !visibleKeys.includes(key)) return

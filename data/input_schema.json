@@ -34,6 +34,18 @@
                 "dz": { "type": "integer", "minimum": 1 }
               }
             }
+          },
+          "facets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "dx": { "type": "integer", "not": { "const": 0 } },
+                "dy": { "type": "integer", "not": { "const": 0 } },
+                "dz": { "type": "integer", "not": { "const": 0 } }
+              }
+            }
           }
         }
       }

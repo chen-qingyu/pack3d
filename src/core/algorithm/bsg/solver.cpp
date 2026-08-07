@@ -109,6 +109,14 @@ PackResult solve(const GlobalContext& ctx,
     {
         update_residual_space(s0.R, {o.x, o.y, o.z}, {o.dx, o.dy, o.dz});
     }
+    // 挖掉斜面楔形禁区（N 步阶梯近似，只覆盖禁区）
+    for (const auto& f : ctx.container_type.facets)
+    {
+        for (const auto& s : facet_staircase(f, ctx.container_size, 2))
+        {
+            update_residual_space(s0.R, {s.x, s.y, s.z}, {s.dx, s.dy, s.dz});
+        }
+    }
     s0.remaining_counts = initial_counts;
     s0.available_blocks.reserve(ctx.blocks.size());
     for (int i = 0; i < static_cast<int>(ctx.blocks.size()); ++i)

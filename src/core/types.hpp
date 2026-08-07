@@ -90,6 +90,15 @@ struct Obstacle
     int32_t dz = 0;
 };
 
+// 斜面（斜切角）：恰好两个带符号轴名截距非零，缺失轴 = 斜面平行贯穿轴；
+// 截距 + 从该轴 max 侧向内进深、- 从 min 侧向内；0 = 未设置
+struct Facet
+{
+    int32_t dx = 0;
+    int32_t dy = 0;
+    int32_t dz = 0;
+};
+
 struct ContainerType
 {
     std::string id;
@@ -97,6 +106,7 @@ struct ContainerType
     std::optional<double> max_weight = std::nullopt;
     std::optional<int> quantity_limit; // null 表示无限制
     std::vector<Obstacle> obstacles;   // 固定占位实体，箱子不得相交，顶面可承托
+    std::vector<Facet> facets;         // 斜切平面禁区，箱子不得侵入，不参与支撑
 
     bool has_remaining(const std::map<std::string, int>& usage) const noexcept
     {
@@ -300,6 +310,7 @@ struct ContainerSummary
     std::string type_id;
     Size inner_size;                 // 容器内部尺寸，绘图所需
     std::vector<Obstacle> obstacles; // 本容器实例的障碍物（类型继承）
+    std::vector<Facet> facets;       // 本容器实例的斜面（类型继承）
     std::optional<double> max_weight = std::nullopt;
     int64_t used_volume = 0;
     double volume_rate = 0.0;

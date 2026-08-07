@@ -240,6 +240,11 @@ bool can_place(
         return false;
     }
 
+    if (check_facet(ep, osize, load.type->inner_size, load.type->facets))
+    {
+        return false;
+    }
+
     if (!check_support(ep, osize, load, problem.support_rate))
     {
         return false;

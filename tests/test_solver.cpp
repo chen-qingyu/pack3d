@@ -417,3 +417,75 @@ TEST_CASE("obstacle 非法输入返回 invalid", "[solver][obstacle]")
     }
     REQUIRE(has_resume);
 }
+
+// test_facet_chamfer.json — 顶前 45° 斜切 {dx:10,dz:10}（x+z>20 为楔形禁区）
+// 物理最大/雕刻后均为 10 箱（后半 8 + 前下 2），volume_rate = 1250/2000 = 0.625
+// 验证：禁入（无箱侵入楔形）、填充率达物理上限、输出 facets 自包含
+TEST_CASE("facet 斜切禁入与填充率", "[solver][facet]")
+{
+    auto input = load_data("data/tests/test_facet_chamfer.json");
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        input["algorithm"] = algo;
+        auto res = run(input);
+        INFO("algo=" << algo);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["packed_box_count"] == 10);
+        REQUIRE(res["summary"]["container_count"] == 1);
+        REQUIRE(res["summary"]["volume_rate"].get<double>() == Catch::Approx(0.625));
+        // 输出自包含 facets
+        REQUIRE(res["result"]["containers"][0]["facets"].size() == 1);
+        REQUIRE(res["result"]["containers"][0]["facets"][0]["dx"] == 10);
+        REQUIRE(res["result"]["containers"][0]["facets"][0]["dz"] == 10);
+        // 无箱子侵入楔形禁区（x+z <= 20）
+        for (const auto& p : res["result"]["containers"][0]["placements"])
+        {
+            int corner = p["x"].get<int>() + p["dx"].get<int>() +
+                         p["z"].get<int>() + p["dz"].get<int>();
+            REQUIRE(corner <= 20);
+        }
+    }
+}
+
+// 斜面非法输入：截距个数错误 / 越界 / 与已有放置冲突 → status=invalid + 具体信息
+TEST_CASE("facet 非法输入返回 invalid", "[solver][facet]")
+{
+    auto intercepts = load_data("data/tests/test_facet_invalid_intercepts.json");
+    auto res = run(intercepts);
+    REQUIRE(res["status"] == "invalid");
+    bool has_intercepts = false;
+    for (const auto& v : res["violations"])
+    {
+        if (v.get<std::string>().find("exactly two non-zero intercepts") != std::string::npos)
+        {
+            has_intercepts = true;
+        }
+    }
+    REQUIRE(has_intercepts);
+
+    auto bounds = load_data("data/tests/test_facet_invalid_bounds.json");
+    res = run(bounds);
+    REQUIRE(res["status"] == "invalid");
+    bool has_bounds = false;
+    for (const auto& v : res["violations"])
+    {
+        if (v.get<std::string>().find("intercept out of container bounds") != std::string::npos)
+        {
+            has_bounds = true;
+        }
+    }
+    REQUIRE(has_bounds);
+
+    auto resume = load_data("data/tests/test_facet_resume_invalid.json");
+    res = run(resume);
+    REQUIRE(res["status"] == "invalid");
+    bool has_resume = false;
+    for (const auto& v : res["violations"])
+    {
+        if (v.get<std::string>().find("violates container facet") != std::string::npos)
+        {
+            has_resume = true;
+        }
+    }
+    REQUIRE(has_resume);
+}

@@ -104,6 +104,12 @@ ContainerLoad GepPacker::pack_single(
                     continue;
                 }
 
+                // 斜面禁区检查
+                if (check_facet(pos, os, ct.inner_size, ct.facets))
+                {
+                    continue;
+                }
+
                 // 重量检查
                 if (has_weight_info_ && !check_weight(load, box.weight.value()))
                 {

@@ -166,6 +166,12 @@ bool Heuristic::check_block_feasible(
                     return false;
                 }
 
+                // 斜面禁区检查（阶梯雕刻的兜底安全网）
+                if (check_facet(pos, single, container_.inner_size, container_.facets))
+                {
+                    return false;
+                }
+
                 // 重叠检查仅需查 state.placements（块内箱子网格排列，互不重叠）
                 if (check_overlap(pos, single, state.placements))
                 {
@@ -552,6 +558,8 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
 
     // 初始空间 = 容器减障碍物（凸自由空间分解）
     carve_obstacles(stack, container_.obstacles);
+    // 再挖掉斜面楔形禁区（阶梯近似）
+    carve_facets(stack, container_.inner_size, container_.facets);
 
     while (!stack.empty() && !available.empty())
     {
