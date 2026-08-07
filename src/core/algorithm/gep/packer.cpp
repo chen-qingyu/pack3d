@@ -58,14 +58,10 @@ ContainerLoad GepPacker::pack_single(
     // 障碍物 8 角点（4 顶角可上到顶面，4 底角可贴侧放置）
     for (const auto& o : ct.obstacles)
     {
-        eps.insert({o.x, o.y, o.z});
-        eps.insert({o.x + o.dx, o.y, o.z});
-        eps.insert({o.x, o.y + o.dy, o.z});
-        eps.insert({o.x + o.dx, o.y + o.dy, o.z});
-        eps.insert({o.x, o.y, o.z + o.dz});
-        eps.insert({o.x + o.dx, o.y, o.z + o.dz});
-        eps.insert({o.x, o.y + o.dy, o.z + o.dz});
-        eps.insert({o.x + o.dx, o.y + o.dy, o.z + o.dz});
+        for (const auto& c : obstacle_corners(o))
+        {
+            eps.insert({c.x, c.y, c.z});
+        }
     }
 
     for (auto& box : sorted)

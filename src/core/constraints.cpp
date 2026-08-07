@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 #include <numeric>
 
 namespace pack3d
@@ -65,44 +64,45 @@ bool check_obstacle(const Position& pos, const OrientedSize& osize,
     return false;
 }
 
+std::array<Position, 8> obstacle_corners(const Obstacle& o) noexcept
+{
+    return {{
+        {o.x, o.y, o.z},
+        {o.x + o.dx, o.y, o.z},
+        {o.x, o.y + o.dy, o.z},
+        {o.x + o.dx, o.y + o.dy, o.z},
+        {o.x, o.y, o.z + o.dz},
+        {o.x + o.dx, o.y, o.z + o.dz},
+        {o.x, o.y + o.dy, o.z + o.dz},
+        {o.x + o.dx, o.y + o.dy, o.z + o.dz},
+    }};
+}
+
 bool check_facet(const Position& pos, const OrientedSize& osize,
                  const Size& csize, const std::vector<Facet>& facets) noexcept
 {
+    const int32_t extents[3] = {csize.x, csize.y, csize.z};
     for (const auto& f : facets)
     {
-        // 恰好两个非零截距（预校验保证）；防御性：不足两个则跳过
-        int32_t intercepts[3] = {f.dx, f.dy, f.dz};
-        int32_t extents[3] = {csize.x, csize.y, csize.z};
-        int64_t dists[2] = {0, 0};
-        int n = 0;
-        for (int a = 0; a < 3; ++a)
+        const auto nf = normalize_facet(f);
+        if (nf.u_axis < 0 || nf.v_axis < 0)
         {
-            if (intercepts[a] == 0)
-            {
-                continue;
-            }
-            int32_t lo = (a == 0) ? pos.x : ((a == 1) ? pos.y : pos.z);
-            int32_t hi = lo + ((a == 0) ? osize.dx : ((a == 1) ? osize.dy : osize.dz));
-            // 极角点：最靠禁区的角；距禁区侧向内的距离
-            if (intercepts[a] > 0)
-            {
-                dists[n] = static_cast<int64_t>(extents[a]) - hi;
-            }
-            else
-            {
-                dists[n] = static_cast<int64_t>(lo);
-            }
-            intercepts[n] = intercepts[a];
-            ++n;
+            continue; // 防御：预校验保证恰好两个非零截距
         }
-        if (n < 2)
+        // 极角点：最靠禁区的角；距禁区侧向内的距离
+        auto corner_dist = [&](int axis, int64_t intercept) -> int64_t
         {
-            continue;
-        }
-        int64_t m0 = std::abs(static_cast<int64_t>(intercepts[0]));
-        int64_t m1 = std::abs(static_cast<int64_t>(intercepts[1]));
+            int32_t lo = (axis == 0) ? pos.x : ((axis == 1) ? pos.y : pos.z);
+            int32_t hi = lo + ((axis == 0) ? osize.dx : ((axis == 1) ? osize.dy : osize.dz));
+            return (intercept > 0) ? (static_cast<int64_t>(extents[axis]) - hi)
+                                   : static_cast<int64_t>(lo);
+        };
+        const int64_t d0 = corner_dist(nf.u_axis, nf.su);
+        const int64_t d1 = corner_dist(nf.v_axis, nf.sv);
+        const int64_t m0 = (nf.su < 0) ? -nf.su : nf.su;
+        const int64_t m1 = (nf.sv < 0) ? -nf.sv : nf.sv;
         // 极角点落入楔形禁区 → 相交
-        if (dists[0] * m1 + dists[1] * m0 < m0 * m1)
+        if (d0 * m1 + d1 * m0 < m0 * m1)
         {
             return true;
         }
@@ -113,31 +113,14 @@ bool check_facet(const Position& pos, const OrientedSize& osize,
 std::vector<FacetSlab> facet_staircase(const Facet& f, const Size& csize, int steps) noexcept
 {
     std::vector<FacetSlab> out;
-    int32_t intercepts[3] = {f.dx, f.dy, f.dz};
-    int32_t extents[3] = {csize.x, csize.y, csize.z};
-    int u_axis = -1, v_axis = -1;
-    for (int a = 0; a < 3; ++a)
-    {
-        if (intercepts[a] == 0)
-        {
-            continue;
-        }
-        if (u_axis < 0)
-        {
-            u_axis = a;
-        }
-        else
-        {
-            v_axis = a;
-        }
-    }
-    if (u_axis < 0 || v_axis < 0 || steps <= 0)
+    const auto nf = normalize_facet(f);
+    if (nf.u_axis < 0 || nf.v_axis < 0 || steps <= 0)
     {
         return out;
     }
-    const int64_t mu = std::abs(static_cast<int64_t>(intercepts[u_axis]));
-    const int64_t mv = std::abs(static_cast<int64_t>(intercepts[v_axis]));
-    const int w_axis = 3 - u_axis - v_axis;
+    const int32_t extents[3] = {csize.x, csize.y, csize.z};
+    const int64_t mu = (nf.su < 0) ? -nf.su : nf.su;
+    const int64_t mv = (nf.sv < 0) ? -nf.sv : nf.sv;
 
     auto set_axis = [&](int axis, int64_t lo, int64_t hi)
     {
@@ -163,27 +146,27 @@ std::vector<FacetSlab> facet_staircase(const Facet& f, const Size& csize, int st
         out.emplace_back();
         // u 方向：本片最大进深（角侧向内）
         int64_t u_depth = mu * (steps - i + 1) / steps;
-        if (intercepts[u_axis] > 0)
+        if (nf.su > 0)
         {
-            set_axis(u_axis, extents[u_axis] - u_depth, extents[u_axis]);
+            set_axis(nf.u_axis, extents[nf.u_axis] - u_depth, extents[nf.u_axis]);
         }
         else
         {
-            set_axis(u_axis, 0, u_depth);
+            set_axis(nf.u_axis, 0, u_depth);
         }
         // v 方向：距角侧 [(i-1)*mv/steps, i*mv/steps]
         int64_t v_lo = (i - 1) * mv / steps;
         int64_t v_hi = i * mv / steps;
-        if (intercepts[v_axis] > 0)
+        if (nf.sv > 0)
         {
-            set_axis(v_axis, extents[v_axis] - v_hi, extents[v_axis] - v_lo);
+            set_axis(nf.v_axis, extents[nf.v_axis] - v_hi, extents[nf.v_axis] - v_lo);
         }
         else
         {
-            set_axis(v_axis, v_lo, v_hi);
+            set_axis(nf.v_axis, v_lo, v_hi);
         }
         // 平行轴贯穿全容器
-        set_axis(w_axis, 0, extents[w_axis]);
+        set_axis(nf.w_axis, 0, extents[nf.w_axis]);
     }
     return out;
 }

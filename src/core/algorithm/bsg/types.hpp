@@ -193,11 +193,13 @@ struct GlobalContext
     // box_ids[i] = global box id string, box_index_of[id] = 0..N-1
     std::vector<std::string> box_ids;
 
-    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重/tender/障碍物/斜面）。
-    /// 支撑由 is_supported 在块级处理，不在此列；障碍物/斜面存在时强制逐叶。
+    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重/tender）。
+    /// 支撑由 is_supported 在块级处理；障碍物在 support_rate>0 时强制逐叶（快路径的
+    /// is_supported 不认障碍物顶面支撑）；support_rate==0 时雕刻已保证空间无禁区，快路径即可。
+    /// 斜面由阶梯雕刻保证（覆盖禁区、永不过挖），从不强制逐叶。
     [[nodiscard]] bool needs_leaf_validation() const noexcept
     {
-        return !container_type.obstacles.empty() || !container_type.facets.empty() ||
+        return (!container_type.obstacles.empty() && support_rate > 0.0) ||
                has_weight_info || platform_limit.has_value() || route.has_value() ||
                has_max_stack || has_max_load || tender.limit > 0;
     }

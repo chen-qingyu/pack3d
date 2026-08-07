@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <map>
 #include <set>
 #include <string>
@@ -21,6 +22,9 @@ namespace pack3d
 /// 检查放置是否与容器障碍物相交（面贴面允许，相交禁止）
 [[nodiscard]] bool check_obstacle(const Position& pos, const OrientedSize& osize,
                                   const std::vector<Obstacle>& obstacles) noexcept;
+
+/// 障碍物 8 角点（4 顶角 + 4 底角），极点类算法的候选点种子
+[[nodiscard]] std::array<Position, 8> obstacle_corners(const Obstacle& o) noexcept;
 
 /// 检查放置是否与斜面禁区相交（楔形凸半空间：箱子极角点单次点积判定，面贴面允许）
 [[nodiscard]] bool check_facet(const Position& pos, const OrientedSize& osize,

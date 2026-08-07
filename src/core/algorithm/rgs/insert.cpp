@@ -372,14 +372,10 @@ void insertion_heuristic(
     // 障碍物 8 角点（4 顶角可上到顶面，4 底角可贴侧放置）
     for (const auto& o : ctype.obstacles)
     {
-        out_ctx.extreme_points.insert({o.x, o.y, o.z});
-        out_ctx.extreme_points.insert({o.x + o.dx, o.y, o.z});
-        out_ctx.extreme_points.insert({o.x, o.y + o.dy, o.z});
-        out_ctx.extreme_points.insert({o.x + o.dx, o.y + o.dy, o.z});
-        out_ctx.extreme_points.insert({o.x, o.y, o.z + o.dz});
-        out_ctx.extreme_points.insert({o.x + o.dx, o.y, o.z + o.dz});
-        out_ctx.extreme_points.insert({o.x, o.y + o.dy, o.z + o.dz});
-        out_ctx.extreme_points.insert({o.x + o.dx, o.y + o.dy, o.z + o.dz});
+        for (const auto& c : obstacle_corners(o))
+        {
+            out_ctx.extreme_points.insert(c);
+        }
     }
 
     auto ordered = build_ordered_list(items, box_type_map, criterion, rho, problem.route);

@@ -99,6 +99,41 @@ struct Facet
     int32_t dz = 0;
 };
 
+// 斜面归一化：u/v = 两个非零截距轴（0=x,1=y,2=z），w = 平行轴（截距 0）
+struct NormalizedFacet
+{
+    int u_axis = -1;
+    int v_axis = -1;
+    int w_axis = -1;
+    int64_t su = 0; // u 轴带符号截距
+    int64_t sv = 0; // v 轴带符号截距
+};
+
+[[nodiscard]] inline NormalizedFacet normalize_facet(const Facet& f) noexcept
+{
+    NormalizedFacet n;
+    const int32_t intercepts[3] = {f.dx, f.dy, f.dz};
+    for (int a = 0; a < 3; ++a)
+    {
+        if (intercepts[a] == 0)
+        {
+            n.w_axis = a;
+            continue;
+        }
+        if (n.u_axis < 0)
+        {
+            n.u_axis = a;
+            n.su = intercepts[a];
+        }
+        else
+        {
+            n.v_axis = a;
+            n.sv = intercepts[a];
+        }
+    }
+    return n;
+}
+
 struct ContainerType
 {
     std::string id;
@@ -289,30 +324,17 @@ struct ContainerLoad
         {
             usable -= static_cast<int64_t>(o.dx) * o.dy * o.dz;
         }
+        const int32_t extents[3] = {type->inner_size.x, type->inner_size.y, type->inner_size.z};
         for (const auto& f : type->facets)
         {
-            int32_t intercepts[3] = {f.dx, f.dy, f.dz};
-            int32_t extents[3] = {type->inner_size.x, type->inner_size.y, type->inner_size.z};
-            int64_t mu = 0, mv = 0;
-            int32_t wext = 0;
-            for (int a = 0; a < 3; ++a)
+            const auto nf = normalize_facet(f);
+            if (nf.u_axis < 0 || nf.v_axis < 0)
             {
-                if (intercepts[a] == 0)
-                {
-                    wext = extents[a];
-                }
-                else if (mu == 0)
-                {
-                    mu = (intercepts[a] < 0) ? -static_cast<int64_t>(intercepts[a])
-                                             : static_cast<int64_t>(intercepts[a]);
-                }
-                else
-                {
-                    mv = (intercepts[a] < 0) ? -static_cast<int64_t>(intercepts[a])
-                                             : static_cast<int64_t>(intercepts[a]);
-                }
+                continue; // 防御：预校验保证恰好两个非零截距
             }
-            usable -= (mu * mv / 2) * wext;
+            int64_t mu = (nf.su < 0) ? -nf.su : nf.su;
+            int64_t mv = (nf.sv < 0) ? -nf.sv : nf.sv;
+            usable -= (mu * mv / 2) * extents[nf.w_axis];
         }
         return usable > 0 ? usable : 1;
     }
