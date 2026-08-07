@@ -55,7 +55,7 @@ JSON，顶层四个字段：
       "sy": 50,
       "sz": 50,
       "max_weight": 50000.0,
-      "used_volume": 275000,
+      "used_volume": 271000,
       "used_weight": 25.0,
       "volume_rate": 1.0,
       "weight_rate": 0.0005,

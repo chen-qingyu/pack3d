@@ -419,8 +419,9 @@ TEST_CASE("obstacle 非法输入返回 invalid", "[solver][obstacle]")
 }
 
 // test_facet_chamfer.json — 顶前 45° 斜切 {dx:10,dz:10}（x+z>20 为楔形禁区）
-// 物理最大/雕刻后均为 10 箱（后半 8 + 前下 2），volume_rate = 1250/2000 = 0.625
-// 验证：禁入（无箱侵入楔形）、填充率达物理上限、输出 facets 自包含
+// 物理最大/雕刻后均为 10 箱（后半 8 + 前下 2）；可用容积 = 2000 − 楔形 500 = 1500
+// 填充率（可用容积口径）= 1250/1500 ≈ 0.8333
+// 验证：禁入（无箱侵入楔形）、填充率达可用容积上限、输出 facets 自包含
 TEST_CASE("facet 斜切禁入与填充率", "[solver][facet]")
 {
     auto input = load_data("data/tests/test_facet_chamfer.json");
@@ -432,7 +433,7 @@ TEST_CASE("facet 斜切禁入与填充率", "[solver][facet]")
         REQUIRE(res["status"] == "complete");
         REQUIRE(res["summary"]["packed_box_count"] == 10);
         REQUIRE(res["summary"]["container_count"] == 1);
-        REQUIRE(res["summary"]["volume_rate"].get<double>() == Catch::Approx(0.625));
+        REQUIRE(res["summary"]["volume_rate"].get<double>() == Catch::Approx(1250.0 / 1500.0));
         // 输出自包含 facets
         REQUIRE(res["result"]["containers"][0]["facets"].size() == 1);
         REQUIRE(res["result"]["containers"][0]["facets"][0]["dx"] == 10);

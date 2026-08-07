@@ -281,9 +281,45 @@ struct ContainerLoad
         return type->inner_size.volume();
     }
 
+    // 可用容积 = 物理总容积 − 障碍物体积 − 斜面楔形体积（体积率分母）
+    int64_t usable_volume() const noexcept
+    {
+        int64_t usable = total_volume();
+        for (const auto& o : type->obstacles)
+        {
+            usable -= static_cast<int64_t>(o.dx) * o.dy * o.dz;
+        }
+        for (const auto& f : type->facets)
+        {
+            int32_t intercepts[3] = {f.dx, f.dy, f.dz};
+            int32_t extents[3] = {type->inner_size.x, type->inner_size.y, type->inner_size.z};
+            int64_t mu = 0, mv = 0;
+            int32_t wext = 0;
+            for (int a = 0; a < 3; ++a)
+            {
+                if (intercepts[a] == 0)
+                {
+                    wext = extents[a];
+                }
+                else if (mu == 0)
+                {
+                    mu = (intercepts[a] < 0) ? -static_cast<int64_t>(intercepts[a])
+                                             : static_cast<int64_t>(intercepts[a]);
+                }
+                else
+                {
+                    mv = (intercepts[a] < 0) ? -static_cast<int64_t>(intercepts[a])
+                                             : static_cast<int64_t>(intercepts[a]);
+                }
+            }
+            usable -= (mu * mv / 2) * wext;
+        }
+        return usable > 0 ? usable : 1;
+    }
+
     double volume_rate() const noexcept
     {
-        return static_cast<double>(used_volume) / static_cast<double>(total_volume());
+        return static_cast<double>(used_volume) / static_cast<double>(usable_volume());
     }
 };
 
