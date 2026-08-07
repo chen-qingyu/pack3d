@@ -217,6 +217,7 @@ Solution PackerBase::build_solution(
         ContainerSummary cs;
         cs.type_id = cl.type->id;
         cs.inner_size = cl.type->inner_size;
+        cs.obstacles = cl.type->obstacles;
         cs.max_weight = cl.type->max_weight;
         cs.used_volume = cl.used_volume;
         cs.volume_rate = cl.volume_rate();

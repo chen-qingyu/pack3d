@@ -55,6 +55,19 @@ ContainerLoad GepPacker::pack_single(
         eps.insert({pl.position.x, pl.position.y, pl.position.z + pl.osize.dz});
     }
 
+    // 障碍物 8 角点（4 顶角可上到顶面，4 底角可贴侧放置）
+    for (const auto& o : ct.obstacles)
+    {
+        eps.insert({o.x, o.y, o.z});
+        eps.insert({o.x + o.dx, o.y, o.z});
+        eps.insert({o.x, o.y + o.dy, o.z});
+        eps.insert({o.x + o.dx, o.y + o.dy, o.z});
+        eps.insert({o.x, o.y, o.z + o.dz});
+        eps.insert({o.x + o.dx, o.y, o.z + o.dz});
+        eps.insert({o.x, o.y + o.dy, o.z + o.dz});
+        eps.insert({o.x + o.dx, o.y + o.dy, o.z + o.dz});
+    }
+
     for (auto& box : sorted)
     {
         const auto& bt = box_type_map_.at(box.box_type_id);
@@ -81,6 +94,12 @@ ContainerLoad GepPacker::pack_single(
                     continue;
                 }
                 if (check_overlap(pos, os, load.placements))
+                {
+                    continue;
+                }
+
+                // 障碍物相交检查
+                if (check_obstacle(pos, os, ct.obstacles))
                 {
                     continue;
                 }

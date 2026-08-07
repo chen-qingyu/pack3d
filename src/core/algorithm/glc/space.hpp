@@ -41,4 +41,8 @@ void carve_out_space(const Space& space,
                      const Placement& pl,
                      std::vector<Space>& stack) noexcept;
 
+/// 从空间栈中挖掉全部障碍物（每个障碍物对每个相交空间 6 向切割）
+void carve_obstacles(std::vector<Space>& stack,
+                     const std::vector<Obstacle>& obstacles) noexcept;
+
 } // namespace pack3d::glc

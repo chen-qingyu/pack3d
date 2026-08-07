@@ -104,6 +104,11 @@ PackResult solve(const GlobalContext& ctx,
     // 构建初始状态
     BSGState s0;
     s0.R.push_back({{0, 0, 0}, ctx.container_size.x, ctx.container_size.y, ctx.container_size.z});
+    // 挖掉障碍物（残差空间 cover 不含障碍物区域）
+    for (const auto& o : ctx.container_type.obstacles)
+    {
+        update_residual_space(s0.R, {o.x, o.y, o.z}, {o.dx, o.dy, o.dz});
+    }
     s0.remaining_counts = initial_counts;
     s0.available_blocks.reserve(ctx.blocks.size());
     for (int i = 0; i < static_cast<int>(ctx.blocks.size()); ++i)

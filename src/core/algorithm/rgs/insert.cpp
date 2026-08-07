@@ -235,6 +235,11 @@ bool can_place(
         return false;
     }
 
+    if (check_obstacle(ep, osize, load.type->obstacles))
+    {
+        return false;
+    }
+
     if (!check_support(ep, osize, load, problem.support_rate))
     {
         return false;
@@ -358,6 +363,19 @@ void insertion_heuristic(
     }
 
     out_ctx.extreme_points.insert({0, 0, 0});
+
+    // 障碍物 8 角点（4 顶角可上到顶面，4 底角可贴侧放置）
+    for (const auto& o : ctype.obstacles)
+    {
+        out_ctx.extreme_points.insert({o.x, o.y, o.z});
+        out_ctx.extreme_points.insert({o.x + o.dx, o.y, o.z});
+        out_ctx.extreme_points.insert({o.x, o.y + o.dy, o.z});
+        out_ctx.extreme_points.insert({o.x + o.dx, o.y + o.dy, o.z});
+        out_ctx.extreme_points.insert({o.x, o.y, o.z + o.dz});
+        out_ctx.extreme_points.insert({o.x + o.dx, o.y, o.z + o.dz});
+        out_ctx.extreme_points.insert({o.x, o.y + o.dy, o.z + o.dz});
+        out_ctx.extreme_points.insert({o.x + o.dx, o.y + o.dy, o.z + o.dz});
+    }
 
     auto ordered = build_ordered_list(items, box_type_map, criterion, rho, problem.route);
 

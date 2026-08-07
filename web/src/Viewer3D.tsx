@@ -107,6 +107,13 @@ function Viewer3D({ containers, boxTypes }: {
       )
       frame.position.set(offsetX + dimensions.x / 2, dimensions.z / 2, dimensions.y / 2)
       root.add(frame)
+        ; (container.obstacles ?? []).forEach((obstacle) => {
+          const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: '#e34d3a', transparent: true, opacity: 0.35, roughness: 0.5, metalness: 0.1 }))
+          mesh.add(new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: '#8c2f22', transparent: true, opacity: 0.6 })))
+          mesh.scale.set(obstacle.dx, obstacle.dz, obstacle.dy)
+          mesh.position.set(offsetX + obstacle.x + obstacle.dx / 2, obstacle.z + obstacle.dz / 2, obstacle.y + obstacle.dy / 2)
+          root.add(mesh)
+        })
       container.placements.forEach((placement) => {
         const key = categoryOf(placement, colorMode)
         if (visibleKeys.length && !visibleKeys.includes(key)) return

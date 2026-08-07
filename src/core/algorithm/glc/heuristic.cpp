@@ -160,6 +160,12 @@ bool Heuristic::check_block_feasible(
                     return false;
                 }
 
+                // 障碍物相交检查（空间雕刻的兜底安全网）
+                if (check_obstacle(pos, single, container_.obstacles))
+                {
+                    return false;
+                }
+
                 // 重叠检查仅需查 state.placements（块内箱子网格排列，互不重叠）
                 if (check_overlap(pos, single, state.placements))
                 {
@@ -543,6 +549,9 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
     {
         stack = reconstruct_spaces(existing, container_.inner_size);
     }
+
+    // 初始空间 = 容器减障碍物（凸自由空间分解）
+    carve_obstacles(stack, container_.obstacles);
 
     while (!stack.empty() && !available.empty())
     {

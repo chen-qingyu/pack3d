@@ -19,7 +19,8 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
   "sy": 50,
   "sz": 50,
   "max_weight": 50000.0,
-  "quantity_limit": null
+  "quantity_limit": null,
+  "obstacles": [{ "x": 0, "y": 0, "z": 40, "dx": 3, "dy": 50, "dz": 10 }]
 }
 ```
 
@@ -29,6 +30,18 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | `sx`/`sy`/`sz`   | int>=1 | 是   | 内部尺寸                |
 | `max_weight`     | number |      | 重量上限，null=不限     |
 | `quantity_limit` | int>=1 |      | 可用数量上限，null=不限 |
+| `obstacles`      | array  |      | 固定占位实体（见下）    |
+
+### 障碍物 `obstacles`
+
+容器内固定的轴对齐长方体占位（如门框包边、台阶、轮拱凸起），所有该类型实例共享。箱子不得与障碍物**空间相交**（面贴面允许）；障碍物顶面**等价于地板**，可承托箱子（计入支撑率检查，放在其上的箱子堆码层号=1）。障碍物不参与体积率分母（`volume_rate` 仍为装箱体积 / 容器物理总容积）。
+
+| 字段           | 类型   | 必填 | 说明                         |
+| -------------- | ------ | ---- | ---------------------------- |
+| `x`/`y`/`z`    | int>=0 | 是   | 容器内相对坐标（min corner） |
+| `dx`/`dy`/`dz` | int>=1 | 是   | 沿容器轴的实际尺寸           |
+
+预校验：障碍物必须完全在容器内、互不重叠；`existing_containers` 中已有放置不得与障碍物重叠。
 
 ## 箱子类型 `box_types`
 
@@ -136,6 +149,7 @@ Schema 校验后，代码还会检查：
 - 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
 - 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）设置了 `platform`，就必须提供 `route`；路线中无重复平台，箱子平台必须在路线中
 - 重量一致性：只要任一个箱子存在重量信息，则所有箱子和容器必须有重量信息
+- 障碍物合法性：每个障碍物必须完全在所属容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠
 
 ## 中间状态 `existing_containers`（可选）
 

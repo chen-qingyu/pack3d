@@ -48,6 +48,22 @@ bool check_overlap(const Position& pos, const OrientedSize& osize,
     return false;
 }
 
+bool check_obstacle(const Position& pos, const OrientedSize& osize,
+                    const std::vector<Obstacle>& obstacles) noexcept
+{
+    for (const auto& o : obstacles)
+    {
+        if ((o.x + o.dx <= pos.x) || (pos.x + osize.dx <= o.x) ||
+            (o.y + o.dy <= pos.y) || (pos.y + osize.dy <= o.y) ||
+            (o.z + o.dz <= pos.z) || (pos.z + osize.dz <= o.z))
+        {
+            continue;
+        }
+        return true;
+    }
+    return false;
+}
+
 bool check_weight(const ContainerLoad& load,
                   double box_weight) noexcept
 {
@@ -101,6 +117,28 @@ bool check_support(const Position& pos, const OrientedSize& osize,
 
         directly_supported = true;
         supported_area += static_cast<int64_t>(ox2 - ox1) * (oy2 - oy1);
+    }
+
+    // 障碍物顶面等价地板：顶面 z == 候选底面 z 且投影相交的面积计入支撑
+    if (load.type != nullptr)
+    {
+        for (const auto& o : load.type->obstacles)
+        {
+            if (o.z + o.dz != pos.z)
+            {
+                continue;
+            }
+            int32_t ox1 = std::max(bx1, o.x);
+            int32_t ox2 = std::min(bx2, o.x + o.dx);
+            int32_t oy1 = std::max(by1, o.y);
+            int32_t oy2 = std::min(by2, o.y + o.dy);
+            if (ox1 >= ox2 || oy1 >= oy2)
+            {
+                continue;
+            }
+            directly_supported = true;
+            supported_area += static_cast<int64_t>(ox2 - ox1) * (oy2 - oy1);
+        }
     }
 
     if (!directly_supported)

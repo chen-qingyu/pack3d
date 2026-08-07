@@ -45,6 +45,15 @@ export interface Placement {
   group?: string | null
 }
 
+export interface Obstacle {
+  x: number
+  y: number
+  z: number
+  dx: number
+  dy: number
+  dz: number
+}
+
 export interface ContainerResult {
   type_id: string
   sx: number
@@ -58,6 +67,7 @@ export interface ContainerResult {
   packed_count: number
   platforms?: string[]
   groups?: string[]
+  obstacles?: Obstacle[]
   placements: Placement[]
 }
 

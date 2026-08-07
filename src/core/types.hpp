@@ -79,12 +79,24 @@ struct Position
     auto operator<=>(const Position&) const = default;
 };
 
+// 容器内障碍物（轴对齐长方体，实体，顶面等价地板可承托箱子）
+struct Obstacle
+{
+    int32_t x = 0;
+    int32_t y = 0;
+    int32_t z = 0;
+    int32_t dx = 0;
+    int32_t dy = 0;
+    int32_t dz = 0;
+};
+
 struct ContainerType
 {
     std::string id;
     Size inner_size;
     std::optional<double> max_weight = std::nullopt;
     std::optional<int> quantity_limit; // null 表示无限制
+    std::vector<Obstacle> obstacles;   // 固定占位实体，箱子不得相交，顶面可承托
 
     bool has_remaining(const std::map<std::string, int>& usage) const noexcept
     {
@@ -286,7 +298,8 @@ struct ObjectiveVector
 struct ContainerSummary
 {
     std::string type_id;
-    Size inner_size; // 容器内部尺寸，绘图所需
+    Size inner_size;                 // 容器内部尺寸，绘图所需
+    std::vector<Obstacle> obstacles; // 本容器实例的障碍物（类型继承）
     std::optional<double> max_weight = std::nullopt;
     int64_t used_volume = 0;
     double volume_rate = 0.0;

@@ -18,6 +18,10 @@ namespace pack3d
 [[nodiscard]] bool check_overlap(const Position& pos, const OrientedSize& osize,
                                  const std::vector<Placement>& existing) noexcept;
 
+/// 检查放置是否与容器障碍物相交（面贴面允许，相交禁止）
+[[nodiscard]] bool check_obstacle(const Position& pos, const OrientedSize& osize,
+                                  const std::vector<Obstacle>& obstacles) noexcept;
+
 /// 检查放入箱子后是否超重
 [[nodiscard]] bool check_weight(const ContainerLoad& load,
                                 double box_weight) noexcept;

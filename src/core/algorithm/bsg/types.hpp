@@ -193,11 +193,12 @@ struct GlobalContext
     // box_ids[i] = global box id string, box_index_of[id] = 0..N-1
     std::vector<std::string> box_ids;
 
-    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重/tender）。
-    /// 支撑由 is_supported 在块级处理，不在此列。
+    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重/tender/障碍物）。
+    /// 支撑由 is_supported 在块级处理，不在此列；障碍物存在时强制逐叶（支撑面+相交检查）。
     [[nodiscard]] bool needs_leaf_validation() const noexcept
     {
-        return has_weight_info || platform_limit.has_value() || route.has_value() ||
+        return !container_type.obstacles.empty() || has_weight_info ||
+               platform_limit.has_value() || route.has_value() ||
                has_max_stack || has_max_load || tender.limit > 0;
     }
 

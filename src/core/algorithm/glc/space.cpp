@@ -294,4 +294,62 @@ void carve_out_space(const Space& space,
     }
 }
 
+void carve_obstacles(std::vector<Space>& stack,
+                     const std::vector<Obstacle>& obstacles) noexcept
+{
+    if (obstacles.empty())
+    {
+        return;
+    }
+    for (const auto& o : obstacles)
+    {
+        std::vector<Space> next;
+        for (const auto& sp : stack)
+        {
+            int32_t sx = sp.pos.x, sy = sp.pos.y, sz = sp.pos.z;
+            int32_t ex = sx + sp.lx, ey = sy + sp.ly, ez = sz + sp.lz;
+            int32_t ox_min = std::max(sx, o.x), ox_max = std::min(ex, o.x + o.dx);
+            int32_t oy_min = std::max(sy, o.y), oy_max = std::min(ey, o.y + o.dy);
+            int32_t oz_min = std::max(sz, o.z), oz_max = std::min(ez, o.z + o.dz);
+
+            // 不相交：保留原空间
+            if (ox_min >= ox_max || oy_min >= oy_max || oz_min >= oz_max)
+            {
+                next.push_back(sp);
+                continue;
+            }
+
+            // 6-slab 分解：左右前后下上，完整覆盖 space - obstacle（勿用 carve_out_space，
+            // 其十字形切割会丢失对角空间）
+            auto push = [&](int32_t x, int32_t y, int32_t z,
+                            int32_t lx, int32_t ly, int32_t lz)
+            {
+                if (lx > 0 && ly > 0 && lz > 0)
+                {
+                    Space s;
+                    s.pos = {x, y, z};
+                    s.lx = lx;
+                    s.ly = ly;
+                    s.lz = lz;
+                    s.id = next_space_id();
+                    s.parent_id = sp.id;
+                    s.kind = SpaceKind::Root;
+                    next.push_back(s);
+                }
+            };
+            push(sx, sy, sz, ox_min - sx, sp.ly, sp.lz);                                 // 左
+            push(ox_max, sy, sz, ex - ox_max, sp.ly, sp.lz);                             // 右
+            push(ox_min, sy, sz, ox_max - ox_min, oy_min - sy, sp.lz);                   // 前
+            push(ox_min, oy_max, sz, ox_max - ox_min, ey - oy_max, sp.lz);               // 后
+            push(ox_min, oy_min, sz, ox_max - ox_min, oy_max - oy_min, oz_min - sz);     // 下
+            push(ox_min, oy_min, oz_max, ox_max - ox_min, oy_max - oy_min, ez - oz_max); // 上
+        }
+        stack = std::move(next);
+        if (stack.empty())
+        {
+            return;
+        }
+    }
+}
+
 } // namespace pack3d::glc

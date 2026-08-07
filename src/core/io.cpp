@@ -107,6 +107,20 @@ void from_json(const json& j, ContainerType& ct)
     j["sz"].get_to(ct.inner_size.z);
     ct.max_weight = json_opt_double(j, "max_weight");
     ct.quantity_limit = json_opt_int(j, "quantity_limit");
+    if (j.contains("obstacles"))
+    {
+        for (const auto& o : j["obstacles"])
+        {
+            Obstacle obs;
+            o["x"].get_to(obs.x);
+            o["y"].get_to(obs.y);
+            o["z"].get_to(obs.z);
+            o["dx"].get_to(obs.dx);
+            o["dy"].get_to(obs.dy);
+            o["dz"].get_to(obs.dz);
+            ct.obstacles.push_back(obs);
+        }
+    }
 }
 
 void from_json(const json& j, BoxType& bt)
@@ -263,6 +277,33 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             if (!seen.insert(ct.id).second)
             {
                 out.push_back("duplicate container_type id: " + ct.id);
+            }
+        }
+    }
+
+    // 障碍物校验：完全在容器内、互不重叠
+    for (const auto& ct : problem.container_types)
+    {
+        for (size_t oi = 0; oi < ct.obstacles.size(); ++oi)
+        {
+            const auto& o = ct.obstacles[oi];
+            std::string opfx = "container_type " + ct.id + " obstacles[" + std::to_string(oi) + "]";
+            if (o.x < 0 || o.y < 0 || o.z < 0 ||
+                o.x + o.dx > ct.inner_size.x ||
+                o.y + o.dy > ct.inner_size.y ||
+                o.z + o.dz > ct.inner_size.z)
+            {
+                out.push_back(opfx + ": out of container bounds");
+            }
+            for (size_t oj = 0; oj < oi; ++oj)
+            {
+                const auto& q = ct.obstacles[oj];
+                if (o.x < q.x + q.dx && o.x + o.dx > q.x &&
+                    o.y < q.y + q.dy && o.y + o.dy > q.y &&
+                    o.z < q.z + q.dz && o.z + o.dz > q.z)
+                {
+                    out.push_back(opfx + ": overlaps with obstacles[" + std::to_string(oj) + "]");
+                }
             }
         }
     }
@@ -489,6 +530,11 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                     out.push_back(pfx + " (" + pl.box_id + "): out of container boundary");
                 }
 
+                if (check_obstacle(pl.position, pl.osize, ct.obstacles))
+                {
+                    out.push_back(pfx + " (" + pl.box_id + "): overlaps with container obstacle");
+                }
+
                 // 只检查与已校验放置的重叠
                 for (size_t pj = 0; pj < pi; ++pj)
                 {
@@ -633,6 +679,22 @@ void to_json(json& j, const Solution& sol)
         cj["sx"] = cs.inner_size.x;
         cj["sy"] = cs.inner_size.y;
         cj["sz"] = cs.inner_size.z;
+        if (!cs.obstacles.empty())
+        {
+            json obs_json = json::array();
+            for (const auto& o : cs.obstacles)
+            {
+                json oj;
+                oj["x"] = o.x;
+                oj["y"] = o.y;
+                oj["z"] = o.z;
+                oj["dx"] = o.dx;
+                oj["dy"] = o.dy;
+                oj["dz"] = o.dz;
+                obs_json.push_back(std::move(oj));
+            }
+            cj["obstacles"] = std::move(obs_json);
+        }
         cj["max_weight"] = opt_json(cs.max_weight);
         cj["used_volume"] = cs.used_volume;
         cj["used_weight"] = opt_json(cs.used_weight);

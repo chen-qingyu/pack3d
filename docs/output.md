@@ -63,6 +63,7 @@ JSON，顶层四个字段：
       "platforms": ["A", "B"],
       "groups": ["X"],
       "tender": 1,
+      "obstacles": [{ "x": 0, "y": 0, "z": 40, "dx": 3, "dy": 50, "dz": 10 }],
       "placements": [
         {
           "box_id": "a1",
@@ -97,6 +98,8 @@ JSON，顶层四个字段：
 ```
 
 容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置平台/分组时 `platform`/`group` 为 null）。
+
+`obstacles` 为本容器实例的障碍物（从容器类型继承，自包含），结构与输入一致；容器类型未配置障碍物时省略。
 
 `tender` 为该容器所属 tender 的序号（1-based）：容器按共享 `group` 连通，每个连通分量即一个 tender，按容器顺序首次出现编号。无 group 的容器为 `null`。如容器 A{g1,g2}、B{g2,g3}、C{g3,g4}、D{g5}，则 A/B/C 的 `tender` 均为 1，D 为 2。
 
