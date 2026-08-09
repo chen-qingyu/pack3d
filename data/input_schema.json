@@ -87,7 +87,8 @@
                 "items": { "type": ["number", "null"], "minimum": 0 }
               }
             ]
-          }
+          },
+          "palletize": { "type": "boolean", "default": false }
         }
       }
     },
@@ -110,6 +111,24 @@
     "route": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "pallet_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "sx", "sy", "sz", "max_weight", "max_height"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "sx": { "type": "integer", "minimum": 1 },
+          "sy": { "type": "integer", "minimum": 1 },
+          "sz": { "type": "integer", "minimum": 1 },
+          "max_weight": { "type": "number", "exclusiveMinimum": 0 },
+          "max_height": { "type": "integer", "minimum": 1 },
+          "self_weight": { "type": "number", "minimum": 0, "default": 0 }
+        }
+      }
     },
     "algorithm": {
       "type": "string",
@@ -140,6 +159,16 @@
           "type": ["integer", "null"],
           "minimum": 1,
           "default": null
+        },
+        "pallet_fallback": {
+          "type": "boolean",
+          "default": false
+        },
+        "pallet_support_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 1
         }
       }
     },

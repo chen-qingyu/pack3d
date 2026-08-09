@@ -1,0 +1,62 @@
+{
+  "container_types": [
+    {
+      "id": "truck",
+      "sx": 6000,
+      "sy": 2500,
+      "sz": 2500,
+      "max_weight": 20000
+    }
+  ],
+  "box_types": [
+    {
+      "id": "loose_small",
+      "sx": 60,
+      "sy": 40,
+      "sz": 30,
+      "allowed_orientations": ["xyz"],
+      "palletize": true
+    },
+    {
+      "id": "loose_big",
+      "sx": 1500,
+      "sy": 1500,
+      "sz": 100,
+      "allowed_orientations": ["xyz"],
+      "palletize": true
+    },
+    {
+      "id": "reg",
+      "sx": 100,
+      "sy": 100,
+      "sz": 100,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [
+    { "id": "l1", "box_type_id": "loose_small", "weight": 5, "group": "A" },
+    { "id": "l2", "box_type_id": "loose_small", "weight": 5, "group": "A" },
+    { "id": "l3", "box_type_id": "loose_small", "weight": 5, "group": "A" },
+    { "id": "l4", "box_type_id": "loose_small", "weight": 5, "group": "A" },
+    { "id": "big1", "box_type_id": "loose_big", "weight": 50 },
+    { "id": "r1", "box_type_id": "reg", "weight": 10 },
+    { "id": "r2", "box_type_id": "reg", "weight": 10 }
+  ],
+  "pallet_types": [
+    {
+      "id": "pt1200",
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 150,
+      "max_weight": 1000,
+      "max_height": 1500,
+      "self_weight": 30
+    }
+  ],
+  "constraints": {
+    "time_limit": 60,
+    "support_rate": 0.6,
+    "pallet_fallback": true
+  },
+  "algorithm": "gep"
+}

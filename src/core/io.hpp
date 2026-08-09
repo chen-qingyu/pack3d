@@ -32,6 +32,7 @@ void from_json(const json& j, Box& bx);
 void from_json(const json& j, ExistingPlacement& ep);
 void from_json(const json& j, ExistingContainer& ec);
 void from_json(const json& j, Problem& p);
+void to_json(json& j, const Placement& pl);
 void to_json(json& j, const Solution& sol);
 
 /// 从已有放置构建 ContainerLoad（校验用 + pack 预填充）

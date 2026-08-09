@@ -159,6 +159,7 @@ struct BoxType
     // 与 allowed_orientations 对齐：每朝向的堆码层数 / 单箱上方承重上限；nullopt=该朝向不限
     std::vector<std::optional<int>> max_stack;
     std::vector<std::optional<double>> max_load;
+    bool palletize = false; // 该箱型是否需要装托（true=散件，false=普通箱子直接装车）
 
     /// 按朝向查堆码层数上限（无此朝向或未配置则返回 nullopt）
     [[nodiscard]] std::optional<int> max_stack_for(Orientation o) const noexcept
@@ -194,6 +195,16 @@ struct Box
     std::optional<double> weight = std::nullopt;
     std::string group;    // 空字符串表示未设置
     std::string platform; // 空字符串表示未设置
+};
+
+// 托盘类型（用户自定义，可多种并存，由装托循环选择）
+struct PalletType
+{
+    std::string id;
+    Size size;                // sx, sy, sz（sz = 托盘自身高度）
+    double max_weight = 0.0;  // 货物额定载重（不含自重）
+    int max_height = 0;       // 含托盘的堆高上限（> sz）
+    double self_weight = 0.0; // 托盘自重
 };
 
 // 路线
@@ -256,6 +267,11 @@ struct Problem
     // 承重约束启用标志（presence-based，解析时计算）
     bool has_max_stack = false; // 任一箱型声明了 max_stack
     bool has_max_load = false;  // 任一箱型声明了 max_load
+
+    // 装托（palletizing）：pallet_types 非空即启用装托模式
+    std::vector<PalletType> pallet_types;
+    bool pallet_fallback = false;     // 散件装不进任何托盘时是否降级散装
+    double pallet_support_rate = 1.0; // 装托阶段专用底面支撑率（默认完全支撑）
 
     // 算法
     Algorithm algorithm = Algorithm::GEP;
@@ -345,6 +361,19 @@ struct ContainerLoad
     }
 };
 
+// 装托结果：一个托盘 + 其上箱子（容器 placements 中虚拟箱 box_id == pallet_id）
+struct PalletLoad
+{
+    std::string pallet_id; // 形如 "pt1200#1"
+    std::string type_id;   // PalletType.id
+    const PalletType* type = nullptr;
+    std::vector<Placement> placements; // 托盘上的箱子（复用 Placement）
+    int loaded_height = 0;             // 货物顶高（不含托盘 sz）
+    double goods_weight = 0.0;         // 货物总重（不含自重）
+    std::set<std::string> groups;
+    std::set<std::string> platforms;
+};
+
 // 目标向量（字典序，非加权和）
 struct ObjectiveVector
 {
@@ -396,6 +425,13 @@ struct Solution
 
     /// 输出 JSON 自包含所需的箱子类型定义
     std::vector<BoxType> box_types;
+
+    // 装托模式扩展（非装托模式为空/0，输出省略）
+    bool pallet_mode = false;
+    std::vector<PalletLoad> pallets;
+    int pallet_count = 0;         // 托盘单元数
+    int palletized_box_count = 0; // 已装托的散件箱数
+    int loose_box_count = 0;      // 直接装车的箱子数（普通箱子 + fallback 降级散件）
 
     std::vector<std::string> violations;
 };

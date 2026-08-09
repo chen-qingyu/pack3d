@@ -12,6 +12,7 @@
 
 #include "constraints.hpp"
 #include "input_schema.h"
+#include "pallet.hpp"
 
 namespace pack3d
 {
@@ -147,6 +148,7 @@ void from_json(const json& j, BoxType& bt)
     }
     parse_optional_vector<int>(j, "max_stack", bt.max_stack, bt.allowed_orientations.size());
     parse_optional_vector<double>(j, "max_load", bt.max_load, bt.allowed_orientations.size());
+    bt.palletize = j.value("palletize", false);
 }
 
 void from_json(const json& j, Box& bx)
@@ -204,6 +206,11 @@ void from_json(const json& j, Problem& p)
     }
     j["boxes"].get_to(p.boxes);
 
+    if (j.contains("pallet_types"))
+    {
+        j["pallet_types"].get_to(p.pallet_types);
+    }
+
     // 仅当 JSON 显式给出时覆盖默认值
     if (j.contains("constraints"))
     {
@@ -218,6 +225,15 @@ void from_json(const json& j, Problem& p)
         }
         p.platform_limit = json_opt_int(c, "platform_limit");
         p.tender_limit = json_opt_int(c, "tender_limit");
+        auto it = c.find("pallet_fallback");
+        if (it != c.end() && !it->is_null())
+        {
+            it->get_to(p.pallet_fallback);
+        }
+        if (auto v = json_opt_double(c, "pallet_support_rate"))
+        {
+            p.pallet_support_rate = *v;
+        }
     }
 
     if (j.contains("route"))
@@ -503,6 +519,64 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
     }
 
+    // 装托（palletizing）预校验
+    if (!problem.pallet_types.empty())
+    {
+        std::set<std::string> pt_seen;
+        for (const auto& pt : problem.pallet_types)
+        {
+            if (!pt_seen.insert(pt.id).second)
+            {
+                out.push_back("duplicate pallet_type id: " + pt.id);
+            }
+            if (pt.max_height <= pt.size.z)
+            {
+                out.push_back("pallet_type " + pt.id + ": max_height " +
+                              std::to_string(pt.max_height) + " must be > sz " +
+                              std::to_string(pt.size.z));
+            }
+        }
+
+        // 装托模式强制全重量：所有箱子与容器必须带重量
+        bool all_boxes_have_weight = true;
+        for (const auto& bx : problem.boxes)
+        {
+            if (!bx.weight.has_value())
+            {
+                all_boxes_have_weight = false;
+                break;
+            }
+        }
+        if (!all_boxes_have_weight)
+        {
+            out.push_back("inconsistent weight: pallet mode requires all boxes to have weight");
+        }
+        bool all_ct_have_weight = true;
+        for (const auto& ct : problem.container_types)
+        {
+            if (!ct.max_weight.has_value())
+            {
+                all_ct_have_weight = false;
+                break;
+            }
+        }
+        if (!all_ct_have_weight)
+        {
+            out.push_back("inconsistent weight: pallet mode requires all container_types to have max_weight");
+        }
+    }
+
+    // 任一箱型声明 palletize:true 但未提供 pallet_types → 配置错误
+    bool any_palletize = false;
+    for (const auto& bt : problem.box_types)
+    {
+        any_palletize |= bt.palletize;
+    }
+    if (any_palletize && problem.pallet_types.empty())
+    {
+        out.push_back("palletize declared but no pallet_types");
+    }
+
     // 已有容器校验
     if (!problem.existing_containers.empty())
     {
@@ -705,6 +779,22 @@ ContainerLoad build_load_from_existing(
     return load;
 }
 
+void to_json(json& j, const Placement& pl)
+{
+    j["box_id"] = pl.box_id;
+    j["box_type_id"] = pl.box_type_id;
+    j["x"] = pl.position.x;
+    j["y"] = pl.position.y;
+    j["z"] = pl.position.z;
+    j["orientation"] = orientation_to_string(pl.orientation);
+    j["dx"] = pl.osize.dx;
+    j["dy"] = pl.osize.dy;
+    j["dz"] = pl.osize.dz;
+    j["platform"] = pl.platform.empty() ? json(nullptr) : json(pl.platform);
+    j["group"] = pl.group.empty() ? json(nullptr) : json(pl.group);
+    j["weight"] = opt_json(pl.weight);
+}
+
 void to_json(json& j, const Solution& sol)
 {
     j["status"] = status_to_string(sol.status);
@@ -717,6 +807,12 @@ void to_json(json& j, const Solution& sol)
     summary["platform_split"] = sol.objective.platform_split;
     summary["volume_rate"] = sol.objective.avg_volume_rate;
     summary["group_split"] = sol.objective.group_split_sum;
+    if (sol.pallet_mode)
+    {
+        summary["pallet_count"] = sol.pallet_count;
+        summary["palletized_box_count"] = sol.palletized_box_count;
+        summary["loose_box_count"] = sol.loose_box_count;
+    }
 
     j["summary"] = std::move(summary);
 
@@ -784,20 +880,7 @@ void to_json(json& j, const Solution& sol)
         {
             for (const auto& pl : sol.container_placements[i])
             {
-                json pj;
-                pj["box_id"] = pl.box_id;
-                pj["box_type_id"] = pl.box_type_id;
-                pj["x"] = pl.position.x;
-                pj["y"] = pl.position.y;
-                pj["z"] = pl.position.z;
-                pj["orientation"] = orientation_to_string(pl.orientation);
-                pj["dx"] = pl.osize.dx;
-                pj["dy"] = pl.osize.dy;
-                pj["dz"] = pl.osize.dz;
-                pj["platform"] = pl.platform.empty() ? json(nullptr) : json(pl.platform);
-                pj["group"] = pl.group.empty() ? json(nullptr) : json(pl.group);
-                pj["weight"] = opt_json(pl.weight);
-                placements_json.push_back(std::move(pj));
+                placements_json.push_back(json(pl));
             }
         }
         cj["placements"] = std::move(placements_json);
@@ -805,6 +888,11 @@ void to_json(json& j, const Solution& sol)
         containers_json.push_back(std::move(cj));
     }
     result["containers"] = std::move(containers_json);
+
+    if (sol.pallet_mode)
+    {
+        result["pallets"] = sol.pallets;
+    }
 
     json box_types_json = json::array();
     for (const auto& bt : sol.box_types)

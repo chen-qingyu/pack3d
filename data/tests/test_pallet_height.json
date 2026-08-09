@@ -1,0 +1,78 @@
+{
+  "container_types": [
+    {
+      "id": "truck",
+      "sx": 6000,
+      "sy": 2500,
+      "sz": 2500,
+      "max_weight": 20000
+    }
+  ],
+  "box_types": [
+    {
+      "id": "loose",
+      "sx": 300,
+      "sy": 300,
+      "sz": 200,
+      "allowed_orientations": ["xyz"],
+      "palletize": true
+    },
+    {
+      "id": "reg",
+      "sx": 100,
+      "sy": 100,
+      "sz": 100,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [
+    { "id": "l1", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l2", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l3", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l4", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l5", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l6", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l7", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l8", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l9", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l10", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l11", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l12", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l13", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l14", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l15", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l16", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l17", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l18", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l19", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l20", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l21", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l22", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l23", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l24", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l25", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l26", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l27", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l28", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l29", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "l30", "box_type_id": "loose", "weight": 10, "group": "A" },
+    { "id": "r1", "box_type_id": "reg", "weight": 10 },
+    { "id": "r2", "box_type_id": "reg", "weight": 10 }
+  ],
+  "pallet_types": [
+    {
+      "id": "pt1200",
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 150,
+      "max_weight": 1000,
+      "max_height": 600,
+      "self_weight": 30
+    }
+  ],
+  "constraints": {
+    "time_limit": 60,
+    "support_rate": 0.6
+  },
+  "algorithm": "gep"
+}
