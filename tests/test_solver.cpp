@@ -115,7 +115,7 @@ TEST_CASE("min_platform_split", "[solver]")
 // 后处理必须在不新增容器的情况下把分散的 p2 并入尾车，使 platform_split = 0
 // 合并 trial 先插入、失败则重排整个目标容器（目标自身箱子 + 捐献箱一起重新装载）。
 // RGS 曾因 route 约束下排不出"深处平台先占 X 小侧"的布局而装不下 10 箱，
-// 新增 RouteOrder 排序准则（后卸/深处平台优先）后恢复通过。
+// 所有排序准则的确定性 pass 在 route 下统一按深度优先稳定排序（深处平台先放）后恢复通过。
 TEST_CASE("platform_merge_no_new_container", "[solver]")
 {
     auto base = load_data("data/tests/test_platform_merge.json");

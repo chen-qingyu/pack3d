@@ -139,7 +139,8 @@ std::vector<OrderEntry> build_ordered_list(
         ig.total_volume += box_volume(bt);
     }
 
-    // 计算各 identical 组的 route 深度（组内箱子的最大 route 索引，用于 RouteOrder 准则）
+    // 计算各 identical 组的 route 深度（组内箱子的最大 route 索引）
+    // route 存在时所有排序策略都按深度优先稳定排序，深处平台先占满 X 小侧
     if (route.has_value())
     {
         for (auto& [btid, ig] : ig_map)
@@ -205,14 +206,6 @@ std::vector<OrderEntry> build_ordered_list(
             case SortCriterion::HighestVolume:
                 return a.max_volume > b.max_volume;
 
-            case SortCriterion::RouteOrder:
-                // 深处平台（route 索引大）先放，占满 X 小侧；并列按体积
-                if (a.route_depth != b.route_depth)
-                {
-                    return a.route_depth > b.route_depth;
-                }
-                return a.total_volume > b.total_volume;
-
             case SortCriterion::Random:
             default:
                 return false;
@@ -235,25 +228,22 @@ std::vector<OrderEntry> build_ordered_list(
         std::sort(sgs.begin(), sgs.end(), sg_cmp);
     }
 
+    // 路线纪律（仅确定性 pass，rho==0）：所有排序策略统一按 route 深度降序稳定排序
+    // （深处平台先放，占满 X 小侧）。Shaw 迭代（rho>0）保持准则原排序 + 硬门校验，
+    // 保留旧代码被验证的多样性（可合并布局、体积优先容器分配）。
+    if (route.has_value() && rho == 0.0)
+    {
+        std::stable_sort(sgs.begin(), sgs.end(),
+                         [](const SimilarGroup& a, const SimilarGroup& b)
+                         { return a.route_depth > b.route_depth; });
+    }
+
     // ---- step 4: within each similar group, sort identical groups ----
     bool use_total = (criterion == SortCriterion::CumulatedVolume ||
                       criterion == SortCriterion::StackabilityCumulatedVolume);
-    bool use_route = (criterion == SortCriterion::RouteOrder);
     for (auto& sg : sgs)
     {
-        if (use_route)
-        {
-            std::sort(sg.identicals.begin(), sg.identicals.end(),
-                      [](const IdenticalGroup& a, const IdenticalGroup& b)
-                      {
-                          if (a.route_depth != b.route_depth)
-                          {
-                              return a.route_depth > b.route_depth;
-                          }
-                          return a.total_volume > b.total_volume;
-                      });
-        }
-        else if (use_total)
+        if (use_total)
         {
             std::sort(sg.identicals.begin(), sg.identicals.end(),
                       [](const IdenticalGroup& a, const IdenticalGroup& b)
@@ -264,6 +254,14 @@ std::vector<OrderEntry> build_ordered_list(
             std::sort(sg.identicals.begin(), sg.identicals.end(),
                       [](const IdenticalGroup& a, const IdenticalGroup& b)
                       { return a.max_volume > b.max_volume; });
+        }
+
+        // 组内同样按深度优先稳定排序（仅确定性 pass）
+        if (route.has_value() && rho == 0.0)
+        {
+            std::stable_sort(sg.identicals.begin(), sg.identicals.end(),
+                             [](const IdenticalGroup& a, const IdenticalGroup& b)
+                             { return a.route_depth > b.route_depth; });
         }
     }
 
@@ -300,7 +298,7 @@ std::vector<OrderEntry> build_ordered_list(
             }
         }
 
-        // 6b: Shaw item-order randomization
+        // 6b: Shaw item-order randomization（rho>0 时全列表；确定性 pass 已跳过此步）
         auto shaw = [&rng, rho](std::vector<OrderEntry>& work)
         {
             if (work.size() <= 1)

@@ -61,6 +61,7 @@ ContainerLoad RgsPacker::pack_single(
     bool stop_when_complete)
 {
     // rgs_single_uld：单容器多起点搜索，评分 (体积率, 剩余平台数) 字典序
+    // 5 种排序策略；route 存在时确定性 pass 统一按深度优先稳定排序（深处平台先放）
     std::vector<rgs::SortCriterion> criteria = {
         rgs::SortCriterion::StackabilityCumulatedVolume,
         rgs::SortCriterion::StackabilityHighestVolume,
@@ -68,10 +69,6 @@ ContainerLoad RgsPacker::pack_single(
         rgs::SortCriterion::HighestVolume,
         rgs::SortCriterion::Random,
     };
-    if (problem_.route.has_value())
-    {
-        criteria.push_back(rgs::SortCriterion::RouteOrder);
-    }
     const int num_criteria = static_cast<int>(criteria.size());
     const int min_per_crit = config::RGS_MIN_TOTAL / num_criteria;
     const int max_per_crit = config::RGS_MAX_TOTAL / num_criteria;
