@@ -290,10 +290,11 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
     for (const auto& pl : cl.placements)
     {
         auto it = box_map.find(pl.box_id);
-        if (it != box_map.end())
+        if (it == box_map.end())
         {
-            items.push_back(it->second);
+            return; // 缺失箱子的放置无法安全重排，放弃该候选
         }
+        items.push_back(it->second);
     }
 
     int64_t cur_vol = cl.type->inner_size.volume();
