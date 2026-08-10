@@ -141,7 +141,12 @@ bool Heuristic::check_block_feasible(
     }
 
     // 该块消耗的精确单箱重量（队首 box_count 件，与 place_block / 末尾回填一致）
-    const auto* w = &available.find(block.key)->second;
+    auto avail_it = available.find(block.key);
+    if (avail_it == available.end())
+    {
+        return false;
+    }
+    const auto* w = &avail_it->second;
 
     int cell = 0;
     for (int iz = 0; iz < block.nz; ++iz)
