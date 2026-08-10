@@ -189,10 +189,6 @@ struct GlobalContext
     // block id → blocks 数组索引（packer 构建一次，feasibility 复用）
     std::unordered_map<int64_t, int> block_indices;
 
-    // 每箱的整数 ID（0..N-1），用于去相似 hash
-    // box_ids[i] = global box id string, box_index_of[id] = 0..N-1
-    std::vector<std::string> box_ids;
-
     /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重/tender）。
     /// 支撑由 is_supported 在块级处理；障碍物在 support_rate>0 时强制逐叶（快路径的
     /// is_supported 不认障碍物顶面支撑）；support_rate==0 时雕刻已保证空间无禁区，快路径即可。

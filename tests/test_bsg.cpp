@@ -22,7 +22,6 @@ static GlobalContext make_ctx_1box()
     bt.size = {50, 50, 50};
     bt.allowed_orientations = {Orientation::XYZ};
     ctx.box_types.push_back(bt);
-    ctx.box_ids = {"b1"};
     return ctx;
 }
 
