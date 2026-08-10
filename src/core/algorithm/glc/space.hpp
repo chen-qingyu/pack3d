@@ -36,7 +36,7 @@ void split_space(const Space& space, const OrientedSize& block_osize,
 /// 返回 true 表示空间被回收
 bool transfer_space(std::vector<Space>& stack) noexcept;
 
-/// 从 Space 中挖掉嵌入的放置（不在角落时用），生成子空间入栈
+/// 从 Space 中挖掉嵌入的放置（不在角落时用），6-slab 完整分解剩余空间入栈（不丢对角空间）
 void carve_out_space(const Space& space,
                      const Placement& pl,
                      std::vector<Space>& stack) noexcept;

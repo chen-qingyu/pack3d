@@ -116,7 +116,7 @@ bool transfer_space(std::vector<Space>& stack) noexcept
         return true;
     }
 
-    // 根空间永不丢弃
+    // 根空间（初始空间/雕刻产物）不参与同级合并：无可行块时返回 false，由调用方 pop 丢弃
     if (top.kind == SpaceKind::Root)
     {
         return false;
@@ -181,121 +181,6 @@ bool transfer_space(std::vector<Space>& stack) noexcept
     return true;
 }
 
-void carve_out_space(const Space& space,
-                     const Placement& pl,
-                     std::vector<Space>& stack) noexcept
-{
-    // 从 space 中挖掉 pl 占用的区域
-    // pl 完全包含在 space 内，但不在角落
-    // 生成 6 个方向的子空间，按体积降序入栈（小块在栈顶优先处理）
-
-    int32_t sx = space.pos.x, sy = space.pos.y, sz = space.pos.z;
-    int32_t slx = space.lx, sly = space.ly, slz = space.lz;
-    int32_t px = pl.position.x, py = pl.position.y, pz = pl.position.z;
-    int32_t plx = pl.osize.dx, ply = pl.osize.dy, plz = pl.osize.dz;
-
-    struct Candidate
-    {
-        Space sp;
-        int64_t vol;
-    };
-    std::vector<Candidate> cands;
-
-    // 上方 (Z+)
-    if (sz + slz > pz + plz)
-    {
-        Space s;
-        s.pos = {px, py, pz + plz};
-        s.lx = plx;
-        s.ly = ply;
-        s.lz = sz + slz - pz - plz;
-        s.id = next_space_id();
-        s.parent_id = space.id;
-        s.kind = SpaceKind::Z;
-        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
-    }
-
-    // 下方 (Z-)
-    if (pz > sz)
-    {
-        Space s;
-        s.pos = {sx, sy, sz};
-        s.lx = slx;
-        s.ly = sly;
-        s.lz = pz - sz;
-        s.id = next_space_id();
-        s.parent_id = space.id;
-        s.kind = SpaceKind::Z;
-        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
-    }
-
-    // 右方 (X+)
-    if (sx + slx > px + plx)
-    {
-        Space s;
-        s.pos = {px + plx, py, pz};
-        s.lx = sx + slx - px - plx;
-        s.ly = ply;
-        s.lz = plz;
-        s.id = next_space_id();
-        s.parent_id = space.id;
-        s.kind = SpaceKind::X;
-        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
-    }
-
-    // 左方 (X-)
-    if (px > sx)
-    {
-        Space s;
-        s.pos = {sx, py, pz};
-        s.lx = px - sx;
-        s.ly = ply;
-        s.lz = plz;
-        s.id = next_space_id();
-        s.parent_id = space.id;
-        s.kind = SpaceKind::X;
-        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
-    }
-
-    // 后方 (Y+)
-    if (sy + sly > py + ply)
-    {
-        Space s;
-        s.pos = {px, py + ply, pz};
-        s.lx = plx;
-        s.ly = sy + sly - py - ply;
-        s.lz = plz;
-        s.id = next_space_id();
-        s.parent_id = space.id;
-        s.kind = SpaceKind::Y;
-        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
-    }
-
-    // 前方 (Y-)
-    if (py > sy)
-    {
-        Space s;
-        s.pos = {px, sy, pz};
-        s.lx = plx;
-        s.ly = py - sy;
-        s.lz = plz;
-        s.id = next_space_id();
-        s.parent_id = space.id;
-        s.kind = SpaceKind::Y;
-        cands.push_back({s, s.lx * static_cast<int64_t>(s.ly) * s.lz});
-    }
-
-    // 体积降序排列 → 小块先压栈（后弹出，优先处理）
-    std::sort(cands.begin(), cands.end(),
-              [](const Candidate& a, const Candidate& b) noexcept
-              { return a.vol < b.vol; });
-
-    for (auto& c : cands)
-    {
-        stack.push_back(std::move(c.sp));
-    }
-}
-
 namespace
 {
 
@@ -318,8 +203,7 @@ void carve_box_into(const Space& sp,
         return;
     }
 
-    // 6-slab 分解：左右前后下上，完整覆盖 space - box（勿用 carve_out_space，
-    // 其十字形切割会丢失对角空间）
+    // 6-slab 分解：左右前后下上，完整覆盖 space - box（carve_out_space 复用本实现）
     auto push = [&](int32_t x, int32_t y, int32_t z,
                     int32_t lx, int32_t ly, int32_t lz)
     {
@@ -358,6 +242,31 @@ void carve_box(std::vector<Space>& stack,
 }
 
 } // namespace
+
+void carve_out_space(const Space& space,
+                     const Placement& pl,
+                     std::vector<Space>& stack) noexcept
+{
+    // 从 space 中挖掉 pl 占用的区域（pl 完全包含在 space 内，但不在角落）
+    // 6-slab 完整分解 space - pl，覆盖全部剩余空间（不丢对角空间）
+    std::vector<Space> next;
+    carve_box_into(space,
+                   pl.position.x, pl.position.y, pl.position.z,
+                   pl.osize.dx, pl.osize.dy, pl.osize.dz,
+                   next);
+
+    // 体积降序排序后入栈 → 小块最后压栈（栈顶），优先处理
+    std::sort(next.begin(), next.end(),
+              [](const Space& a, const Space& b) noexcept
+              {
+                  return a.lx * static_cast<int64_t>(a.ly) * a.lz >
+                         b.lx * static_cast<int64_t>(b.ly) * b.lz;
+              });
+    for (auto& s : next)
+    {
+        stack.push_back(std::move(s));
+    }
+}
 
 void carve_obstacles(std::vector<Space>& stack,
                      const std::vector<Obstacle>& obstacles) noexcept
