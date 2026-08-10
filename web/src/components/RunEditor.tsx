@@ -46,7 +46,6 @@ export function RunEditor({ form, setField, onBack, onRun, onFile, onFormat }: R
               <Gauge size={20} />
             </Group>
             <TextInput label="运行名称" value={form.runName} onChange={(event) => setField('runName', event.target.value)} />
-            <TextInput label="随机种子" type="number" value={form.randomSeed} onChange={(event) => setField('randomSeed', event.target.value)} />
             <Select label="算法" data={[
               { value: '', label: '默认' },
               { value: 'gep', label: 'GEP' },

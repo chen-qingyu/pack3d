@@ -16,7 +16,6 @@ export interface Run {
   instance_name: string
   run_name: string
   status: RunStatus
-  random_seed: number
   error: string | null
   created_at: string
   summary?: Summary
@@ -118,9 +117,9 @@ export const api = {
     method: 'PATCH', body: JSON.stringify({ name }),
   }),
   deleteInstance: (id: string) => request<void>(`/api/instances/${id}`, { method: 'DELETE' }),
-  createRun: (id: string, inputJson: Record<string, unknown>, randomSeed: number, runName: string) =>
+  createRun: (id: string, inputJson: Record<string, unknown>, runName: string) =>
     request<Run>(`/api/instances/${id}/runs`, {
-      method: 'POST', body: JSON.stringify({ input_json: inputJson, random_seed: randomSeed, run_name: runName }),
+      method: 'POST', body: JSON.stringify({ input_json: inputJson, run_name: runName }),
     }),
   getRun: (instanceId: string, runId: string) => request<Run>(`/api/instances/${instanceId}/runs/${runId}`),
   getResult: (instanceId: string, runId: string) => request<ResultData>(`/api/instances/${instanceId}/runs/${runId}/result`),

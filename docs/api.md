@@ -85,7 +85,6 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
       "instance_name": "仓库装箱",
       "run_name": "仓库装箱",
       "status": "completed",
-      "random_seed": 42,
       "error": null,
       "created_at": "...",
       "summary": {
@@ -126,16 +125,14 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
     "algorithm": "gep",
     "constraints": { "time_limit": 30, "support_rate": 0.6 }
   },
-  "random_seed": 42,
   "run_name": "仓库装箱"
 }
 ```
 
-| 字段          | 类型    | 必填 | 默认值          | 说明             |
-| ------------- | ------- | ---- | --------------- | ---------------- |
-| `input_json`  | object  | 是   | —               | pack3d 输入 JSON |
-| `random_seed` | integer | 否   | `42`            | 随机种子         |
-| `run_name`    | string  | 否   | `instance_name` | 运行名称         |
+| 字段         | 类型   | 必填 | 默认值          | 说明             |
+| ------------ | ------ | ---- | --------------- | ---------------- |
+| `input_json` | object | 是   | —               | pack3d 输入 JSON |
+| `run_name`   | string | 否   | `instance_name` | 运行名称         |
 
 **响应 `201`：**
 
@@ -146,7 +143,6 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
   "instance_name": "仓库装箱",
   "run_name": "仓库装箱",
   "status": "running",
-  "random_seed": 42,
   "error": null,
   "created_at": "..."
 }
@@ -165,7 +161,6 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
       "instance_name": "...",
       "run_name": "...",
       "status": "completed",
-      "random_seed": 42,
       "error": null,
       "created_at": "...",
       "summary": { ... }
@@ -229,7 +224,7 @@ py -m uvicorn server.main:app --host 127.0.0.1 --port 8000
 xh :8000/api/instances name=demo
 
 # 提交求解
-xh :8000/api/instances/{id}/runs input_json:=@data/demo.json random_seed:=42
+xh :8000/api/instances/{id}/runs input_json:=@data/demo.json
 
 # 查看结果
 xh :8000/api/instances/{id}/runs/{rid}

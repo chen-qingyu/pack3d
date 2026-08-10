@@ -1,7 +1,6 @@
 export interface RunFormState {
   inputText: string
   runName: string
-  randomSeed: string
   algorithm: string | null
   timeLimit: string | number
   supportRate: string | number
@@ -18,7 +17,6 @@ export const initialInput = `{
 export const INITIAL_FORM: RunFormState = {
   inputText: initialInput,
   runName: '',
-  randomSeed: '42',
   algorithm: null,
   timeLimit: '',
   supportRate: '',

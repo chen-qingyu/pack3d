@@ -152,7 +152,7 @@ function App() {
     if (constraintsDirty) input.constraints = constraints
 
     try {
-      const created = await api.createRun(selectedInstance.instance_id, input, Number(form.randomSeed) || 42, form.runName.trim() || selectedInstance.instance_name)
+      const created = await api.createRun(selectedInstance.instance_id, input, form.runName.trim() || selectedInstance.instance_name)
       setActiveRun(created)
       setResult(null)
       setView('run')
