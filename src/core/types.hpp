@@ -159,7 +159,8 @@ struct BoxType
     // 与 allowed_orientations 对齐：每朝向的堆码层数 / 单箱上方承重上限；nullopt=该朝向不限
     std::vector<std::optional<int>> max_stack;
     std::vector<std::optional<double>> max_load;
-    bool palletize = false; // 该箱型是否需要装托（true=散件，false=普通箱子直接装车）
+    std::optional<double> weight; // 箱型级重量（与 boxes 重量互斥，输入重量三选一）
+    bool palletize = false;       // 该箱型是否需要装托（true=散件，false=普通箱子直接装车）
 
     /// 按朝向查堆码层数上限（无此朝向或未配置则返回 nullopt）
     [[nodiscard]] std::optional<int> max_stack_for(Orientation o) const noexcept

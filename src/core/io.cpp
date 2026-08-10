@@ -148,6 +148,7 @@ void from_json(const json& j, BoxType& bt)
     }
     parse_optional_vector<int>(j, "max_stack", bt.max_stack, bt.allowed_orientations.size());
     parse_optional_vector<double>(j, "max_load", bt.max_load, bt.allowed_orientations.size());
+    bt.weight = json_opt_double(j, "weight");
     bt.palletize = j.value("palletize", false);
 }
 
@@ -404,26 +405,48 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
     }
 
-    // 重量信息一致性校验
-    bool any_box_has_weight = false;
-    bool all_boxes_have_weight = true;
+    // 重量信息一致性：三选一——无重量 / 全箱型有重量（箱子无）/ 全箱子有重量（箱型无）
+    bool any_bt_weight = false;
+    bool all_bt_weight = true;
+    for (const auto& bt : problem.box_types)
+    {
+        if (bt.weight.has_value())
+        {
+            any_bt_weight = true;
+        }
+        else
+        {
+            all_bt_weight = false;
+        }
+    }
+    bool any_box_weight = false;
+    bool all_box_weight = true;
     for (const auto& bx : problem.boxes)
     {
         if (bx.weight.has_value())
         {
-            any_box_has_weight = true;
+            any_box_weight = true;
         }
         else
         {
-            all_boxes_have_weight = false;
+            all_box_weight = false;
         }
     }
-    if (any_box_has_weight)
+    const bool weight_info = any_bt_weight || any_box_weight;
+    if (any_bt_weight && any_box_weight)
     {
-        if (!all_boxes_have_weight)
-        {
-            out.push_back("inconsistent weight: some boxes have weight, some don't");
-        }
+        out.push_back("inconsistent weight: box_types weight and box weight cannot coexist");
+    }
+    if (any_bt_weight && !all_bt_weight)
+    {
+        out.push_back("inconsistent weight: some box_types have weight, some don't");
+    }
+    if (any_box_weight && !all_box_weight)
+    {
+        out.push_back("inconsistent weight: some boxes have weight, some don't");
+    }
+    if (weight_info)
+    {
         for (const auto& ct : problem.container_types)
         {
             if (!ct.max_weight.has_value())
@@ -459,9 +482,9 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                           std::to_string(bt.allowed_orientations.size()));
         }
     }
-    if (any_max_load && !all_boxes_have_weight)
+    if (any_max_load && !weight_info)
     {
-        out.push_back("inconsistent weight: max_load requires all boxes to have weight");
+        out.push_back("inconsistent weight: max_load requires weight info (box_types or boxes)");
     }
 
     // 箱子/已有放置有 platform 就必须有 route 且平台在路线中
@@ -537,19 +560,10 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             }
         }
 
-        // 装托模式强制全重量：所有箱子与容器必须带重量
-        bool all_boxes_have_weight = true;
-        for (const auto& bx : problem.boxes)
+        // 装托模式强制有重量信息（箱型级或箱子级）；容器必须有 max_weight
+        if (!weight_info)
         {
-            if (!bx.weight.has_value())
-            {
-                all_boxes_have_weight = false;
-                break;
-            }
-        }
-        if (!all_boxes_have_weight)
-        {
-            out.push_back("inconsistent weight: pallet mode requires all boxes to have weight");
+            out.push_back("inconsistent weight: pallet mode requires weight info (box_types or boxes)");
         }
         bool all_ct_have_weight = true;
         for (const auto& ct : problem.container_types)
@@ -707,6 +721,30 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     return out;
 }
 
+// 箱型级重量 → 逐箱缺省：箱子未显式给重量时取所属箱型重量
+void resolve_type_weights(Problem& p) noexcept
+{
+    std::map<std::string, double> type_weight;
+    for (const auto& bt : p.box_types)
+    {
+        if (bt.weight.has_value())
+        {
+            type_weight[bt.id] = bt.weight.value();
+        }
+    }
+    for (auto& bx : p.boxes)
+    {
+        if (!bx.weight.has_value())
+        {
+            auto it = type_weight.find(bx.box_type_id);
+            if (it != type_weight.end())
+            {
+                bx.weight = it->second;
+            }
+        }
+    }
+}
+
 ContainerLoad build_load_from_existing(
     const ExistingContainer& ec,
     const std::map<std::string, const ContainerType*>& ct_map,
@@ -741,6 +779,11 @@ ContainerLoad build_load_from_existing(
         pl.platform = ep.platform;
         pl.group = ep.group;
         pl.weight = ep.weight;
+        // 箱型级重量缺省：已有放置未显式给重量时取箱型重量
+        if (!pl.weight.has_value() && bt_it->second.weight.has_value())
+        {
+            pl.weight = bt_it->second.weight;
+        }
 
         // size 字段如果提供，必须与 type+朝向推导一致
         if (ep.size.has_value())
@@ -767,9 +810,9 @@ ContainerLoad build_load_from_existing(
         {
             load.groups.insert(ep.group);
         }
-        if (ep.weight.has_value())
+        if (pl.weight.has_value())
         {
-            load.total_weight += ep.weight.value();
+            load.total_weight += pl.weight.value();
         }
     }
 
@@ -921,6 +964,10 @@ void to_json(json& j, const Solution& sol)
                 ml.push_back(v.has_value() ? json(v.value()) : json(nullptr));
             }
             bj["max_load"] = std::move(ml);
+        }
+        if (bt.weight.has_value())
+        {
+            bj["weight"] = bt.weight.value();
         }
         box_types_json.push_back(std::move(bj));
     }

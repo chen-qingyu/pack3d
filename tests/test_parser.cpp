@@ -90,10 +90,83 @@ TEST_CASE("pre_validate_input 检测 max_load 需要重量", "[parser]")
     bool found = false;
     for (const auto& v : violations)
     {
-        if (v.find("max_load requires all boxes to have weight") != std::string::npos)
+        if (v.find("max_load requires weight info (box_types or boxes)") != std::string::npos)
         {
             found = true;
         }
     }
     REQUIRE(found);
+}
+
+// 箱型级重量：箱型与箱子不能同时有重量
+TEST_CASE("pre_validate_input 重量三选一：箱型与箱子重量互斥", "[parser]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    BoxType bt;
+    bt.id = "bt1";
+    bt.size = {100, 100, 100};
+    bt.allowed_orientations = {Orientation::XYZ};
+    bt.weight = 10.0;
+    p.box_types.push_back(bt);
+    p.boxes.push_back({"box1", "bt1", 5.0, "", ""}); // 箱子也带重量 → 互斥
+
+    auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& v : violations)
+    {
+        if (v.find("cannot coexist") != std::string::npos)
+        {
+            found = true;
+        }
+    }
+    REQUIRE(found);
+}
+
+// 箱型级重量：要么全部箱型有重量，要么全都没有
+TEST_CASE("pre_validate_input 重量三选一：箱型重量必须全部配置", "[parser]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    BoxType bt1;
+    bt1.id = "bt1";
+    bt1.size = {100, 100, 100};
+    bt1.allowed_orientations = {Orientation::XYZ};
+    bt1.weight = 10.0;
+    BoxType bt2;
+    bt2.id = "bt2";
+    bt2.size = {50, 50, 50};
+    bt2.allowed_orientations = {Orientation::XYZ}; // 无重量
+    p.box_types.push_back(bt1);
+    p.box_types.push_back(bt2);
+    p.boxes.push_back({"box1", "bt1", std::nullopt, "", ""});
+    p.boxes.push_back({"box2", "bt2", std::nullopt, "", ""});
+
+    auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& v : violations)
+    {
+        if (v.find("some box_types have weight") != std::string::npos)
+        {
+            found = true;
+        }
+    }
+    REQUIRE(found);
+}
+
+// 箱型级重量模式（全箱型有、箱子无）合法
+TEST_CASE("pre_validate_input 箱型级重量模式通过", "[parser]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    BoxType bt;
+    bt.id = "bt1";
+    bt.size = {100, 100, 100};
+    bt.allowed_orientations = {Orientation::XYZ};
+    bt.weight = 10.0;
+    p.box_types.push_back(bt);
+    p.boxes.push_back({"box1", "bt1", std::nullopt, "", ""});
+
+    auto violations = pre_validate_input(p);
+    REQUIRE(violations.empty());
 }

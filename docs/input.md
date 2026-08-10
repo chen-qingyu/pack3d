@@ -84,6 +84,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下                        |
 | `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限                     |
 | `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限                 |
+| `weight`               | number>0                 |      | 箱型级重量（与箱子重量互斥，见下预校验）    |
 | `palletize`            | boolean                  |      | true=散件（先装托后装车，见下），默认 false |
 
 `max_stack` / `max_load` 为**承重约束**（详见 `docs/constraints.md` 1.8 / 1.9）：
@@ -91,7 +92,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 - 标量：应用到全部朝向。
 - 数组：长度必须等于 `allowed_orientations` 长度，按朝向分别取值（如平放堆 3 层、立放只能堆 2 层）。
 - 任一箱型有非空值即启用对应约束（presence-based）；两者与 `support_rate` 相互独立，可同时开启。
-- `max_load` 启用时要求所有箱子带重量。
+- `max_load` 启用时要求有重量信息（箱型级或箱子级）。
 
 朝向枚举，表示原始尺寸 `sx`/`sy`/`sz` 分别映射到容器坐标轴的 X/Y/Z：
 
@@ -184,7 +185,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | `max_height`   | int>=1 | 是   | 含托盘的总高上限           |
 | `self_weight`  | number |      | 托盘自重，默认 0           |
 
-- 装托模式强制所有箱子带 `weight`、所有容器带 `max_weight`，否则 `invalid`。
+- 装托模式要求有重量信息（箱型级或箱子级）、所有容器带 `max_weight`，否则 `invalid`。
 - 散件箱型用 `box_types.palletize: true` 标记；托盘内箱子底面支撑率用 `constraints.pallet_support_rate`。
 - 散件装不进任何托盘：`constraints.pallet_fallback` 控制降级散装（true）或未装箱报错（false）。
 
@@ -203,8 +204,8 @@ Schema 校验后，代码还会检查：
 - ID 唯一性：`container_types`、`box_types`、`boxes` 中各自的 `id` 必须唯一
 - 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
 - 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）设置了 `platform`，就必须提供 `route`；路线中无重复站点，箱子站点必须在路线中
-- 重量一致性：只要任一个箱子存在重量信息，则所有箱子和容器必须有重量信息
-- 装托合法性：`pallet_types` id 唯一、`max_height > sz`、`palletize: true` 但未配置 `pallet_types` 报错；装托模式要求全部箱子带重量、全部容器带 `max_weight`
+- 重量一致性（**三选一**）：要么全无重量；要么**全部箱型**配置 `weight` 且**所有箱子不带**重量（箱子重量取箱型）；要么**所有箱子**配置 `weight` 且箱型不带。箱型与箱子重量混用、部分配置均报错。任一模式都要求全部容器配置 `max_weight`；`max_load`/装托模式要求有重量信息（箱型级或箱子级）
+- 装托合法性：`pallet_types` id 唯一、`max_height > sz`、`palletize: true` 但未配置 `pallet_types` 报错；装托模式要求有重量信息（箱型级或箱子级）、全部容器带 `max_weight`
 - 障碍物合法性：每个障碍物必须完全在所属容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠
 - 斜面合法性：每个斜面必须恰好两个非零截距、截距不越界、`existing_containers` 已有放置不侵入斜面禁区
 

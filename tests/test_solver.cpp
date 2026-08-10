@@ -398,7 +398,32 @@ TEST_CASE("resume 地板中间放箱不丢对角空间", "[solver][resume]")
         REQUIRE(res["summary"]["unpacked_box_count"] == 0);
     }
 }
-
+// test_box_type_weight.json — 箱型级重量：bx1=10、bx2=20，箱子均无重量
+// 校验通过后箱子重量取自箱型；容器 used_weight = 3×10 + 2×20 = 70
+TEST_CASE("箱型级重量解析与输出回显", "[solver][weight]")
+{
+    auto input = load_data("data/tests/test_box_type_weight.json");
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        input["algorithm"] = algo;
+        auto res = run(input);
+        INFO("algo=" << algo);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["packed_box_count"] == 5);
+        REQUIRE(res["result"]["containers"][0]["used_weight"].get<double>() ==
+                Catch::Approx(70.0));
+        // 输出回显箱型重量
+        bool has_weight = false;
+        for (const auto& bt : res["result"]["box_types"])
+        {
+            if (bt.contains("weight"))
+            {
+                has_weight = true;
+            }
+        }
+        REQUIRE(has_weight);
+    }
+}
 // test_obstacle_step.json — 整宽台阶障碍物 {0,0,0,10,10,5} 占容器 20x10x10 前半
 // 可用空间：地板条带 [10,20]x[0,10]x[0,10]（8 箱）+ 台阶顶 [0,10]x[0,10]x[5,10]（4 箱）
 // support_rate=1：台阶顶箱子靠"障碍物顶面等价地板"支撑

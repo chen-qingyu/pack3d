@@ -96,6 +96,9 @@ json run_impl(const json& j)
         return json(s);
     }
 
+    // 箱型级重量 → 逐箱缺省（校验通过后，箱子重量取自箱型）
+    resolve_type_weights(problem);
+
     // 构建索引表
     std::map<std::string, BoxType> box_type_map;
     std::map<std::string, Box> box_map;
