@@ -29,7 +29,6 @@ class NameRequest(BaseModel):
 
 class CreateRunRequest(BaseModel):
     input_json: dict = Field(description="pack3d 输入 JSON 对象")
-    random_seed: int = 42
     run_name: str | None = None
 
 
@@ -65,6 +64,7 @@ def list_instances():
 @app.get("/api/instances/{instance_id}")
 def get_instance(instance_id: str):
     state = _get_instance_or_404(instance_id)
+    manager.refresh_instance_runs(state)
     return state.to_dict(include_runs=True)
 
 
@@ -88,7 +88,7 @@ def delete_instance(instance_id: str):
 def create_run(instance_id: str, req: CreateRunRequest):
     instance = _get_instance_or_404(instance_id)
     input_str = json.dumps(req.input_json, ensure_ascii=False)
-    state = manager.create_run(instance, input_str, req.random_seed, req.run_name)
+    state = manager.create_run(instance, input_str, req.run_name)
     return state.to_dict(instance.instance_name)
 
 

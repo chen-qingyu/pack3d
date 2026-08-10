@@ -217,6 +217,11 @@ class InstanceManager:
             self._refresh_run(r)
         return sorted(runs, key=lambda r: r.created_at, reverse=True)
 
+    def refresh_instance_runs(self, state: InstanceState):
+        """刷新实例下所有 run 的实时状态（供实例详情返回最新状态）。"""
+        for run in state.runs.values():
+            self._refresh_run(run)
+
     def rename_run(self, state: RunState, run_name: str) -> RunState:
         run_name = re.sub(r'[\\/:*?"<>|]', '_', run_name)
         state.run_name = run_name
