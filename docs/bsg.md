@@ -205,6 +205,12 @@ $$
 
 ## 8. 基准方法
 
+`data/br/`（被 .gitignore）由 `data/convert_br.py` 从 `data/br-origin/` 生成，首次运行前先执行：
+
+```powershell
+python data/convert_br.py   # 生成 data/br/br00_001.json ~ br15_100.json
+```
+
 使用 Release 构建，单例命令如下：
 
 ```powershell
