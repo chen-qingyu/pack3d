@@ -250,6 +250,9 @@ class InstanceManager:
         if state.process and state.process.is_alive():
             state.process.terminate()
             state.process.join(timeout=5)
+            if state.process.is_alive():
+                state.process.kill()
+                state.process.join(timeout=5)
 
     def _refresh_run(self, state: RunState):
         if state.status != "running":
@@ -259,4 +262,10 @@ class InstanceManager:
             state.status = msg["status"]
             state.result = msg["result"]
             db.update_run(self._conn, state.run_id, status=state.status)
+            self._kill_run(state)
+        elif state.process and not state.process.is_alive():
+            # 子进程未发消息即退出（崩溃）→ 标记失败，避免永久 running
+            state.status = "failed"
+            state.error = "worker process exited unexpectedly"
+            db.update_run(self._conn, state.run_id, status="failed", error=state.error)
             self._kill_run(state)
