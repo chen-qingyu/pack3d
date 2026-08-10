@@ -94,6 +94,11 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 - 任一箱型有非空值即启用对应约束（presence-based）；两者与 `support_rate` 相互独立，可同时开启。
 - `max_load` 启用时要求有重量信息（箱型级或箱子级）。
 
+**行业组合语义（朝上 / 易碎，无需专用字段）**：
+
+- **朝上（this side up）**：`allowed_orientations: ["xyz", "yxz"]` —— 仅允许原 z 轴向上（可平面旋转，禁止侧放）。
+- **易碎（fragile）**：`max_stack: 1` + `max_load: 0` —— 上方不可叠箱、不可承重。
+
 朝向枚举，表示原始尺寸 `sx`/`sy`/`sz` 分别映射到容器坐标轴的 X/Y/Z：
 
 - xyz: x->X, y->Y, z->Z
