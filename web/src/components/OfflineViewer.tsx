@@ -16,6 +16,7 @@ type OfflineViewerProps = {
 export function OfflineViewer({ fileName, result, onFile }: OfflineViewerProps) {
     const containers = result?.result?.containers ?? []
     const boxTypes = result?.result?.box_types ?? []
+    const pallets = result?.result?.pallets ?? []
     const summary = result?.summary
 
     return <Container size="xl" py="xl">
@@ -35,7 +36,7 @@ export function OfflineViewer({ fileName, result, onFile }: OfflineViewerProps) 
                 <Metric label="已装 / 未装箱" value={`${summary.packed_box_count} / ${summary.unpacked_box_count}`} icon={<BoxIcon size={17} />} />
                 <Metric label="结果状态" value={result.status} icon={<FileJson size={17} />} />
             </SimpleGrid>}
-            <Suspense fallback={<Paper withBorder p="md"><Group justify="center"><LoaderCircle size={18} /><Text size="sm" c="dimmed">正在加载三维视图</Text></Group></Paper>}><Viewer3D containers={containers} boxTypes={boxTypes} /></Suspense>
+            <Suspense fallback={<Paper withBorder p="md"><Group justify="center"><LoaderCircle size={18} /><Text size="sm" c="dimmed">正在加载三维视图</Text></Group></Paper>}><Viewer3D containers={containers} boxTypes={boxTypes} pallets={pallets} /></Suspense>
             <Paper withBorder p="md" mt="lg"><Text component="pre" size="xs" style={{ overflow: 'auto', maxHeight: 300 }}>{JSON.stringify(result, null, 2)}</Text></Paper>
         </>}
     </Container>

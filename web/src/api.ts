@@ -44,6 +44,22 @@ export interface Placement {
   group?: string | null
 }
 
+export interface PalletResult {
+  pallet_id: string
+  type_id: string
+  sx: number
+  sy: number
+  sz: number
+  max_weight: number
+  max_height: number
+  used_height: number
+  used_weight: number
+  volume_rate: number
+  groups?: string[] | null
+  platforms?: string[] | null
+  placements: Placement[]
+}
+
 export interface Obstacle {
   x: number
   y: number
@@ -83,6 +99,7 @@ export interface ResultData {
   result?: {
     containers: ContainerResult[]
     box_types?: Array<{ id: string; sx: number; sy: number; sz: number }>
+    pallets?: PalletResult[]
     unpacked_boxes?: string[]
   }
   violations?: string[]

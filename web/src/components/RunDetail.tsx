@@ -22,6 +22,7 @@ export function RunDetail({ run, result, onBack, onCancel, onDelete, onNewRun, o
   const summary = result?.summary || run.summary
   const containers = result?.result?.containers || []
   const boxTypes = result?.result?.box_types || []
+  const pallets = result?.result?.pallets || []
   const violations = result?.violations || run.violations || []
   const statusColor = run.status === 'completed' ? 'teal' : run.status === 'running' ? 'orange' : run.status === 'invalid' || run.status === 'failed' ? 'red' : 'gray'
   return <Container size="xl" py="xl">
@@ -33,7 +34,7 @@ export function RunDetail({ run, result, onBack, onCancel, onDelete, onNewRun, o
       <Metric label="已装 / 未装箱" value={`${summary.packed_box_count} / ${summary.unpacked_box_count}`} icon={<Box size={17} />} />
       <Metric label="平台分割数" value={String(summary.platform_split)} icon={<LayoutGrid size={17} />} />
     </SimpleGrid>}
-    <ContainerTable containers={containers} /><Suspense fallback={<Paper withBorder mt="lg" p="md"><Group justify="center"><LoaderCircle size={18} /><Text size="sm" c="dimmed">正在加载三维视图</Text></Group></Paper>}><Viewer3D containers={containers} boxTypes={boxTypes} /></Suspense>
+    <ContainerTable containers={containers} /><Suspense fallback={<Paper withBorder mt="lg" p="md"><Group justify="center"><LoaderCircle size={18} /><Text size="sm" c="dimmed">正在加载三维视图</Text></Group></Paper>}><Viewer3D containers={containers} boxTypes={boxTypes} pallets={pallets} /></Suspense>
     {violations.length > 0 && <Alert color="red" title="违规信息" mt="lg"><Group gap="xs">{violations.map((violation, index) => <Badge key={`${index}-${violation}`} color="red" variant="light">{violation}</Badge>)}</Group></Alert>}
     {result && <Paper withBorder p="md" mt="lg"><Group mb="sm"><FileJson size={16} /><Text fw={600}>原始输出 JSON</Text></Group><Divider mb="sm" /><Text component="pre" size="xs" style={{ overflow: 'auto', maxHeight: 400 }}>{JSON.stringify(result, null, 2)}</Text></Paper>}
     <Button component="a" variant="subtle" mt="md" leftSection={<Download size={14} />} href={api.downloadResult(run.instance_id, run.run_id)} download target="_blank" rel="noopener noreferrer">下载原始输出 JSON</Button>
