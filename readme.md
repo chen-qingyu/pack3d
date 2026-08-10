@@ -21,6 +21,9 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 - 发标限制：每个 tender（容器按共享 group 连通的连通分量）最多包含 `tender_limit` 个容器
 - 堆码层数约束：箱型 `max_stack` 限制堆叠层数（标量或按朝向数组）
 - 单箱承重约束：箱型 `max_load` 限制单箱上方承重（标量或按朝向数组）
+- 障碍物约束：容器内轴对齐障碍物，箱体不得侵入（面贴面允许），障碍物顶面等价地板
+- 斜面约束：容器斜面楔形禁入区，箱体不得侵入
+- 装托（palletizing）：`palletize` 箱型散件先装托，托盘作为装箱单元装车（详见 [docs/palletizing.md](docs/palletizing.md)）
 - 中间状态续装：从已有部分放置继续装箱（详见 [docs/resume.md](docs/resume.md)）
 
 支持的算法：
@@ -136,6 +139,7 @@ cd web && npm install && npm run dev
 | 输出格式       | `docs/output.md`                |
 | 约束条件       | `docs/constraints.md`           |
 | BSG 算法细节   | `docs/bsg.md`                   |
+| 装托           | `docs/palletizing.md`           |
 | 中间状态续装   | `docs/resume.md`                |
 | HTTP API       | `docs/api.md`                   |
 | Web 工作台     | `docs/web.md`                   |
@@ -177,6 +181,8 @@ src/
     constraints.hpp/.cpp      约束模块
     objectives.hpp/.cpp       目标向量
     postprocess.hpp/.cpp      后处理
+    pallet.hpp/.cpp           装托类型与虚拟容器/箱型
+    palletizer.hpp/.cpp       装托流水线（散件→托盘）
     io.hpp/.cpp               输入输出
     select_container.hpp/.cpp 选车模块
     tool.hpp/.cpp             常用工具
