@@ -3,6 +3,7 @@
 #include "core/algorithm/bsg/beam.hpp"
 #include "core/algorithm/bsg/block.hpp"
 #include "core/algorithm/bsg/expand.hpp"
+#include "core/algorithm/bsg/feasibility.hpp"
 #include "core/algorithm/bsg/greedy.hpp"
 #include "core/algorithm/bsg/kpa.hpp"
 #include "core/algorithm/bsg/solver.hpp"
@@ -290,4 +291,87 @@ TEST_CASE("solver respects caller time limit", "[bsg][solver]")
     PackResult pr = solve(ctx, {1}, {{"b1"}});
     CHECK(!pr.success);
     CHECK(pr.placements.empty());
+}
+
+// tender 复合块逐叶 group 检查（回归 H1）：复合块（merge_axis!=None）可含多个不同
+// group 的箱型，每个 group 都要过 check_tender_limit 并记入 next_load.groups。
+// 旧实现用 ctx.blocks[block_idx].type_idx（复合块恒为 -1）取 group，越界 UB 且漏查。
+TEST_CASE("tender: 复合块逐叶 group 检查", "[bsg][tender]")
+{
+    GlobalContext ctx;
+    ctx.container_size = {100, 100, 100};
+    ctx.container_type.id = "ct";
+    ctx.container_type.inner_size = {100, 100, 100};
+
+    BoxType bt_a;
+    bt_a.id = "a";
+    bt_a.size = {50, 50, 50};
+    bt_a.allowed_orientations = {Orientation::XYZ};
+    BoxType bt_b;
+    bt_b.id = "b";
+    bt_b.size = {50, 50, 50};
+    bt_b.allowed_orientations = {Orientation::XYZ};
+    ctx.box_types = {bt_a, bt_b};
+
+    ctx.item_classes = {
+        {"a", "", 0.0, "g1", {}},
+        {"b", "", 0.0, "g2", {}},
+    };
+
+    GeneralBlock ba;
+    ba.id = 1;
+    ba.osize = {50, 50, 50};
+    ba.members = {{0, 1}};
+    ba.total_box_count = 1;
+    ba.single_box_volume = 125000;
+    ba.nx = ba.ny = ba.nz = 1;
+    ba.orientation = Orientation::XYZ;
+    ba.type_idx = 0;
+
+    GeneralBlock bb;
+    bb.id = 2;
+    bb.osize = {50, 50, 50};
+    bb.members = {{1, 1}};
+    bb.total_box_count = 1;
+    bb.single_box_volume = 125000;
+    bb.nx = bb.ny = bb.nz = 1;
+    bb.orientation = Orientation::XYZ;
+    bb.type_idx = 1;
+
+    GeneralBlock cab; // 复合块：A 沿 X 并排 B → 100x50x50
+    cab.id = 3;
+    cab.osize = {100, 50, 50};
+    cab.members = {{0, 1}, {1, 1}};
+    cab.total_box_count = 2;
+    cab.single_box_volume = 250000;
+    cab.merge_axis = GeneralBlock::MergeAxis::X;
+    cab.source_left_id = 1;
+    cab.source_right_id = 2;
+
+    ctx.blocks = {ba, bb, cab};
+    ctx.block_indices = {{1, 0}, {2, 1}, {3, 2}};
+
+    BSGState state;
+    state.constraint_load.type = &ctx.container_type;
+    state.constraint_load.type_id = "ct";
+
+    // 已提交容器 0 含 g1；limit=2 时复合块（g1+g2）可放入当前容器
+    ctx.tender.limit = 2;
+    ctx.tender.sizes = {1};
+    ctx.tender.group_tenders = {{"g1", {0}}};
+
+    ContainerLoad next_load;
+    std::vector<int> next_item_classes;
+    REQUIRE(can_place_block(state, 2, {0, 0, 0}, ctx, next_load, next_item_classes));
+    REQUIRE(next_load.groups.count("g1") == 1);
+    REQUIRE(next_load.groups.count("g2") == 1);
+    REQUIRE(next_load.placements.size() == 2);
+    REQUIRE(next_item_classes.size() == 2);
+
+    // limit=1 且 g1 已占用唯一容器 → 复合块整体拒绝（任一 group 超限即拒）
+    ctx.tender.limit = 1;
+    ContainerLoad next2;
+    std::vector<int> next2_classes;
+    REQUIRE_FALSE(can_place_block(state, 2, {0, 0, 0}, ctx, next2, next2_classes));
+    REQUIRE(next2.groups.empty());
 }
