@@ -110,18 +110,16 @@ std::vector<PalletLoad> palletize(
     }
     int seq = 1;
 
-    // route 启用时按 (platform, group) 分组（整托只能去一个卸货点）
-    const bool use_platform = problem.route.has_value();
-
     std::vector<PalletLoad> result;
 
     while (!remaining.empty() && TimeChecker::check())
     {
         // 分组（同组不拆托：先整组试装，装不下的组退回混合池）
+        // 始终按 (platform, group) 分组：不同站点的货物不能混装一托
         std::map<std::string, std::vector<Box>> groups;
         for (const auto& bx : remaining)
         {
-            std::string key = use_platform ? bx.platform + "\x1f" + bx.group : bx.group;
+            std::string key = bx.platform + "\x1f" + bx.group;
             groups[key].push_back(bx);
         }
         for (auto& [key, boxes] : groups)
@@ -159,19 +157,27 @@ std::vector<PalletLoad> palletize(
             continue;
         }
 
-        // 2) 混合兜底：全部剩余散件装入最优托盘类型
+        // 2) 混合兜底：不同站点的货物不能混装一托 → 按站点分桶，逐桶试装取最优一托
         Candidate best_mixed;
+        std::map<std::string, std::vector<Box>> by_platform;
+        for (const auto& bx : remaining)
+        {
+            by_platform[bx.platform].push_back(bx);
+        }
         for (const auto& pt : problem.pallet_types)
         {
             ContainerType ct = virtual_container(pt);
-            ContainerLoad load = packer.pack_single(remaining, ct, {}, TenderState{});
-            load.type = nullptr; // ct 是栈上临时容器，避免悬挂指针
-            if (!load.placements.empty())
+            for (const auto& [platform, boxes] : by_platform)
             {
-                Candidate cand{std::move(load), &pt};
-                if (best_mixed.type == nullptr || cand.better_than(best_mixed))
+                ContainerLoad load = packer.pack_single(boxes, ct, {}, TenderState{});
+                load.type = nullptr; // ct 是栈上临时容器，避免悬挂指针
+                if (!load.placements.empty())
                 {
-                    best_mixed = std::move(cand);
+                    Candidate cand{std::move(load), &pt};
+                    if (best_mixed.type == nullptr || cand.better_than(best_mixed))
+                    {
+                        best_mixed = std::move(cand);
+                    }
                 }
             }
         }

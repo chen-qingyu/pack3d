@@ -11,7 +11,7 @@ class PackerBase;
 
 /// 装托循环：把散件（loose:true 箱型的箱子）装入托盘。
 /// 同组不拆托（软）：组内 >= 2 箱且整组装得下 → 该组独占一托；否则混合兜底。
-/// route 启用时按 (platform, group) 分组（整托只能去一个卸货点）。
+/// 始终按 (platform, group) 分组，混合兜底也按站点分桶：不同站点的货物不能混装一托。
 /// 装不进的散件收集到 unpalletized，由调用方按 pallet_fallback 决定降级散装或保持未装箱。
 [[nodiscard]] std::vector<PalletLoad> palletize(
     const Problem& problem,

@@ -707,6 +707,22 @@ TEST_CASE("pallet route 同平台单托", "[solver][pallet]")
     }
 }
 
+// test_pallet_platform_split.json — 不同站点的货物不能混装一托（混合兜底也按站点分桶）
+TEST_CASE("pallet 不同站点不混装一托", "[solver][pallet]")
+{
+    auto input = load_data("data/tests/test_pallet_platform_split.json");
+    auto res = run(input);
+    REQUIRE(res["status"] == "complete");
+    REQUIRE(res["summary"]["pallet_count"] == 2); // P1/P2 各一托，不混装
+    std::set<std::string> pallet_platforms;
+    for (const auto& p : res["result"]["pallets"])
+    {
+        REQUIRE(p["platforms"].size() == 1);
+        pallet_platforms.insert(p["platforms"][0].get<std::string>());
+    }
+    REQUIRE(pallet_platforms == std::set<std::string>({"P1", "P2"}));
+}
+
 // test_pallet_no_stack.json — 装车不叠托（单向）：托盘上无任何箱；托盘可架在普通箱子上方
 TEST_CASE("pallet 装车不叠托（单向）", "[solver][pallet]")
 {
