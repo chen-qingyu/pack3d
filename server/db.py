@@ -3,7 +3,9 @@
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path("instances") / "instances.db"
+# 实例数据根目录：相对包位置固定（server/../instances），不依赖启动 CWD
+INSTANCES_ROOT = Path(__file__).resolve().parent.parent / "instances"
+DB_PATH = INSTANCES_ROOT / "instances.db"
 
 
 def init_db() -> sqlite3.Connection:

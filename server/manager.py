@@ -12,7 +12,7 @@ from typing import Any
 
 from . import db
 
-INSTANCES_ROOT = Path("instances")
+INSTANCES_ROOT = db.INSTANCES_ROOT
 
 
 @dataclass
