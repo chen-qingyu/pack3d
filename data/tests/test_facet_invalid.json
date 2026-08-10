@@ -1,11 +1,11 @@
 {
   "container_types": [
     {
-      "id": "big",
+      "id": "flight",
       "sx": 20,
       "sy": 10,
       "sz": 10,
-      "obstacles": [{ "x": 0, "y": 0, "z": 0, "dx": 30, "dy": 10, "dz": 5 }]
+      "facets": [{ "dx": 10, "dz": 10 }]
     }
   ],
   "box_types": [

@@ -28,12 +28,12 @@ static json load_data(const char* path)
 // 确保 4 个目标固定为默认顺序，3 种算法均可完成
 TEST_CASE("fixed_default_objectives", "[solver]")
 {
-    auto base = load_data("data/demo.json");
+    json input = load_data("data/demo.json");
 
     for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
-        base["algorithm"] = algo;
-        auto res = run(base);
+        input["algorithm"] = algo;
+        auto res = run(input);
         REQUIRE(res["status"] == "complete");
         REQUIRE(res["result"]["containers"].size() >= 1);
         // 输出不再包含 objective_keys 字段
@@ -78,12 +78,12 @@ TEST_CASE("run 对畸形输入返回 invalid", "[solver]")
 // 固定目标: min_container_count 优先 → 1 个大容器
 TEST_CASE("min_container_count", "[solver]")
 {
-    auto base = load_data("data/tests/test_min_container.json");
+    json input = load_data("data/tests/test_min_container.json");
 
     for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
-        base["algorithm"] = algo;
-        auto res = run(base);
+        input["algorithm"] = algo;
+        auto res = run(input);
         REQUIRE(res["summary"]["container_count"] == 1);
         REQUIRE(res["summary"]["volume_rate"] < 1.0);
         REQUIRE(res["result"]["containers"].size() == 1);
@@ -95,12 +95,12 @@ TEST_CASE("min_container_count", "[solver]")
 // 固定目标: min_container_count > min_platform_split → 2 大容器，平台不分散
 TEST_CASE("min_platform_split", "[solver]")
 {
-    auto base = load_data("data/tests/test_min_platform.json");
+    json input = load_data("data/tests/test_min_platform.json");
 
     for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
-        base["algorithm"] = algo;
-        auto res = run(base);
+        input["algorithm"] = algo;
+        auto res = run(input);
         REQUIRE(res["summary"]["platform_split"] == 0);
         REQUIRE(res["summary"]["volume_rate"] < 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
@@ -118,12 +118,12 @@ TEST_CASE("min_platform_split", "[solver]")
 // 所有排序准则的确定性 pass 在 route 下统一按深度优先稳定排序（深处平台先放）后恢复通过。
 TEST_CASE("platform_merge_no_new_container", "[solver]")
 {
-    auto base = load_data("data/tests/test_platform_merge.json");
+    json input = load_data("data/tests/test_platform_merge.json");
 
     for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
-        base["algorithm"] = algo;
-        auto res = run(base);
+        input["algorithm"] = algo;
+        auto res = run(input);
 
         // 失败诊断：算法 + 摘要 + 各容器平台分布（INFO 仅在断言失败时输出）
         INFO("algo=" << algo);
@@ -149,12 +149,12 @@ TEST_CASE("platform_merge_no_new_container", "[solver]")
 // 固定目标: min_container_count 优先 → 1 个大容器
 TEST_CASE("max_volume_rate", "[solver]")
 {
-    auto base = load_data("data/tests/test_volume_first.json");
+    json input = load_data("data/tests/test_volume_first.json");
 
     for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
-        base["algorithm"] = algo;
-        auto res = run(base);
+        input["algorithm"] = algo;
+        auto res = run(input);
         REQUIRE(res["summary"]["volume_rate"] < 1.0);
         REQUIRE(res["summary"]["container_count"] == 1);
         REQUIRE(res["result"]["containers"].size() == 1);
@@ -166,12 +166,12 @@ TEST_CASE("max_volume_rate", "[solver]")
 // 固定目标: min_container_count > min_platform_split > max_volume_rate > min_group_split
 TEST_CASE("min_group_split", "[solver]")
 {
-    auto base = load_data("data/tests/test_group_split.json");
+    json input = load_data("data/tests/test_group_split.json");
 
     for (auto algo : {"gep", "glc", "rgs", "bsg"})
     {
-        base["algorithm"] = algo;
-        auto res = run(base);
+        input["algorithm"] = algo;
+        auto res = run(input);
         REQUIRE(res["summary"]["group_split"] == 1);
         REQUIRE(res["summary"]["volume_rate"] == 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
@@ -447,9 +447,15 @@ TEST_CASE("obstacle 台阶可达性与顶面支撑", "[solver][obstacle]")
 }
 
 // 障碍物非法输入：互重叠 / 越界 / 与已有放置冲突 → status=invalid + 具体信息
+// base = 合法障碍物配置，测试内改写触发各自非法条件
 TEST_CASE("obstacle 非法输入返回 invalid", "[solver][obstacle]")
 {
-    auto overlap = load_data("data/tests/test_obstacle_overlap.json");
+    const auto base = load_data("data/tests/test_obstacle_invalid.json");
+
+    // 两个障碍物互重叠
+    auto overlap = base;
+    json obstacle = {{"x", 5}, {"y", 0}, {"z", 0}, {"dx", 10}, {"dy", 10}, {"dz", 5}};
+    overlap["container_types"][0]["obstacles"].push_back(obstacle);
     auto res = run(overlap);
     REQUIRE(res["status"] == "invalid");
     bool has_overlap = false;
@@ -462,7 +468,9 @@ TEST_CASE("obstacle 非法输入返回 invalid", "[solver][obstacle]")
     }
     REQUIRE(has_overlap);
 
-    auto oob = load_data("data/tests/test_obstacle_out_of_bounds.json");
+    // 障碍物越界
+    auto oob = base;
+    oob["container_types"][0]["obstacles"][0]["dx"] = 30;
     res = run(oob);
     REQUIRE(res["status"] == "invalid");
     bool has_oob = false;
@@ -475,7 +483,17 @@ TEST_CASE("obstacle 非法输入返回 invalid", "[solver][obstacle]")
     }
     REQUIRE(has_oob);
 
-    auto resume = load_data("data/tests/test_obstacle_resume_invalid.json");
+    // 已有放置与障碍物冲突
+    auto resume = base;
+    resume["existing_containers"] = {
+        {{"type_id", "big"},
+         {"placements",
+          {{{"box_id", "old0"},
+            {"box_type_id", "cube"},
+            {"x", 0},
+            {"y", 0},
+            {"z", 0},
+            {"orientation", "xyz"}}}}}};
     res = run(resume);
     REQUIRE(res["status"] == "invalid");
     bool has_resume = false;
@@ -520,9 +538,14 @@ TEST_CASE("facet 斜切禁入与填充率", "[solver][facet]")
 }
 
 // 斜面非法输入：截距个数错误 / 越界 / 与已有放置冲突 → status=invalid + 具体信息
+// base = 合法斜面配置，测试内改写触发各自非法条件
 TEST_CASE("facet 非法输入返回 invalid", "[solver][facet]")
 {
-    auto intercepts = load_data("data/tests/test_facet_invalid_intercepts.json");
+    const auto base = load_data("data/tests/test_facet_invalid.json");
+
+    // 截距个数错误（3 个非零）
+    auto intercepts = base;
+    intercepts["container_types"][0]["facets"][0] = {{"dx", 10}, {"dz", 10}, {"dy", 5}};
     auto res = run(intercepts);
     REQUIRE(res["status"] == "invalid");
     bool has_intercepts = false;
@@ -535,7 +558,9 @@ TEST_CASE("facet 非法输入返回 invalid", "[solver][facet]")
     }
     REQUIRE(has_intercepts);
 
-    auto bounds = load_data("data/tests/test_facet_invalid_bounds.json");
+    // 截距越界
+    auto bounds = base;
+    bounds["container_types"][0]["facets"][0]["dx"] = 30;
     res = run(bounds);
     REQUIRE(res["status"] == "invalid");
     bool has_bounds = false;
@@ -548,7 +573,17 @@ TEST_CASE("facet 非法输入返回 invalid", "[solver][facet]")
     }
     REQUIRE(has_bounds);
 
-    auto resume = load_data("data/tests/test_facet_resume_invalid.json");
+    // 已有放置侵入斜面禁区
+    auto resume = base;
+    resume["existing_containers"] = {
+        {{"type_id", "flight"},
+         {"placements",
+          {{{"box_id", "old0"},
+            {"box_type_id", "cube"},
+            {"x", 15},
+            {"y", 0},
+            {"z", 5},
+            {"orientation", "xyz"}}}}}};
     res = run(resume);
     REQUIRE(res["status"] == "invalid");
     bool has_resume = false;
@@ -602,11 +637,14 @@ TEST_CASE("pallet 基本：全部装托 + 计数口径", "[solver][pallet]")
     REQUIRE(res["result"]["containers"][0]["placements"][0]["box_id"] == "pt1200#1");
 }
 
-// test_pallet_oversize.json — 散件装不进任何托盘：默认报错 partial + violation
-TEST_CASE("pallet oversize 默认报错 partial", "[solver][pallet]")
+// test_pallet_oversize.json — 散件装不进任何托盘：默认 partial + violation；
+// 改写 constraints.pallet_fallback=true → 降级散装 complete
+TEST_CASE("pallet oversize/fallback 处理", "[solver][pallet]")
 {
-    auto input = load_data("data/tests/test_pallet_oversize.json");
-    auto res = run(input);
+    const auto base = load_data("data/tests/test_pallet_oversize.json");
+
+    // 默认（fallback=false）：partial + not palletized
+    auto res = run(base);
     REQUIRE(res["status"] == "partial");
     REQUIRE(res["summary"]["pallet_count"] == 1);
     REQUIRE(res["summary"]["palletized_box_count"] == 4);
@@ -623,13 +661,11 @@ TEST_CASE("pallet oversize 默认报错 partial", "[solver][pallet]")
         }
     }
     REQUIRE(found);
-}
 
-// test_pallet_fallback.json — pallet_fallback=true 时未装托散件降级散装
-TEST_CASE("pallet fallback 降级散装", "[solver][pallet]")
-{
-    auto input = load_data("data/tests/test_pallet_fallback.json");
-    auto res = run(input);
+    // pallet_fallback=true：未装托散件降级散装 → complete
+    auto fb = base;
+    fb["constraints"]["pallet_fallback"] = true;
+    res = run(fb);
     REQUIRE(res["status"] == "complete");
     REQUIRE(res["summary"]["pallet_count"] == 1);
     REQUIRE(res["summary"]["palletized_box_count"] == 4);
