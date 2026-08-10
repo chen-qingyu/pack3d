@@ -1,6 +1,10 @@
+#include <algorithm>
+#include <array>
+
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include "core/algorithm/glc/space.hpp"
 #include "core/constraints.hpp"
 #include "core/objectives.hpp"
 #include "core/types.hpp"
@@ -395,4 +399,52 @@ TEST_CASE("recompute_stack_state: 检测违例", "[core][stack]")
         }
     }
     REQUIRE(found);
+}
+
+// 续装兜底路径：地板正中间放箱后，剩余空间必须完整覆盖（旧十字形切割会丢对角空间）
+TEST_CASE("glc carve_out_space 完整覆盖剩余空间", "[core][glc]")
+{
+    using namespace pack3d::glc;
+
+    Space root;
+    root.pos = {0, 0, 0};
+    root.lx = 100;
+    root.ly = 100;
+    root.lz = 50;
+    root.id = 1;
+    root.parent_id = -1;
+    root.kind = SpaceKind::Root;
+
+    // 地板正中间放 20×20×20 箱
+    Placement pl;
+    pl.position = {40, 40, 0};
+    pl.osize = {20, 20, 20};
+
+    std::vector<Space> stack;
+    carve_out_space(root, pl, stack);
+
+    // 体积守恒：互不相交的完整分解，总和 = space - box
+    int64_t total = 0;
+    for (const auto& s : stack)
+    {
+        total += static_cast<int64_t>(s.lx) * s.ly * s.lz;
+    }
+    REQUIRE(total == 100LL * 100 * 50 - 20LL * 20 * 20);
+
+    // 四个对角地板区域（旧十字形切割全部丢失）必须可被某空间完整容纳
+    auto can_hold = [](const Space& s, int32_t x, int32_t y, int32_t z,
+                       int32_t dx, int32_t dy, int32_t dz)
+    {
+        return s.pos.x <= x && s.pos.y <= y && s.pos.z <= z &&
+               s.pos.x + s.lx >= x + dx &&
+               s.pos.y + s.ly >= y + dy &&
+               s.pos.z + s.lz >= z + dz;
+    };
+    const std::array<Position, 4> diag = {Position{0, 0, 0}, Position{60, 0, 0},
+                                          Position{0, 60, 0}, Position{60, 60, 0}};
+    for (const auto& p : diag)
+    {
+        REQUIRE(std::any_of(stack.begin(), stack.end(), [&](const Space& s)
+                            { return can_hold(s, p.x, p.y, p.z, 40, 40, 20); }));
+    }
 }

@@ -381,6 +381,24 @@ TEST_CASE("resume 续塞已有容器成功", "[solver][resume]")
     }
 }
 
+// test_resume_mid_box.json — 已有容器 ct 地板正中间已装 mid0（20³），4 个新 40×40×20 箱
+// 只能装进四个对角地板区域。回归：GLC carve_out_space 旧十字形切割丢失对角空间
+// （4 箱全装不下），现 6-slab 完整分解后 4 箱全装下。
+TEST_CASE("resume 地板中间放箱不丢对角空间", "[solver][resume]")
+{
+    auto input = load_data("data/tests/test_resume_mid_box.json");
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        input["algorithm"] = algo;
+        auto res = run(input);
+        INFO("algo=" << algo);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["container_count"] == 1);
+        REQUIRE(res["summary"]["packed_box_count"] == 5); // mid0 + c1..c4
+        REQUIRE(res["summary"]["unpacked_box_count"] == 0);
+    }
+}
+
 // test_obstacle_step.json — 整宽台阶障碍物 {0,0,0,10,10,5} 占容器 20x10x10 前半
 // 可用空间：地板条带 [10,20]x[0,10]x[0,10]（8 箱）+ 台阶顶 [0,10]x[0,10]x[5,10]（4 箱）
 // support_rate=1：台阶顶箱子靠"障碍物顶面等价地板"支撑

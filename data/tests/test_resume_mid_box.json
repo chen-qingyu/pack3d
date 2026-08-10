@@ -1,0 +1,59 @@
+{
+  "container_types": [
+    {
+      "id": "ct",
+      "sx": 100,
+      "sy": 100,
+      "sz": 50,
+      "max_weight": 100000.0,
+      "quantity_limit": null
+    }
+  ],
+  "box_types": [
+    {
+      "id": "mid",
+      "sx": 20,
+      "sy": 20,
+      "sz": 20,
+      "allowed_orientations": ["xyz"]
+    },
+    {
+      "id": "corner",
+      "sx": 40,
+      "sy": 40,
+      "sz": 20,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [
+    { "id": "c1", "box_type_id": "corner", "weight": 10.0 },
+    { "id": "c2", "box_type_id": "corner", "weight": 10.0 },
+    { "id": "c3", "box_type_id": "corner", "weight": 10.0 },
+    { "id": "c4", "box_type_id": "corner", "weight": 10.0 }
+  ],
+  "existing_containers": [
+    {
+      "type_id": "ct",
+      "placements": [
+        {
+          "box_id": "mid0",
+          "box_type_id": "mid",
+          "x": 40,
+          "y": 40,
+          "z": 0,
+          "orientation": "xyz",
+          "dx": 20,
+          "dy": 20,
+          "dz": 20,
+          "weight": 10.0
+        }
+      ]
+    }
+  ],
+  "constraints": {
+    "time_limit": 120.0,
+    "support_rate": 0.0,
+    "platform_limit": null,
+    "tender_limit": null
+  }
+}
