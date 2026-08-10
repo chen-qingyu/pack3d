@@ -4,6 +4,7 @@
 #include <cassert>
 #include <map>
 #include <set>
+#include <string_view>
 
 #include "../../constraints.hpp"
 #include "../../objectives.hpp"
@@ -15,6 +16,9 @@
 
 namespace pack3d::glc
 {
+
+// 占位 box_id 前缀（回填真实 id 时识别）
+inline constexpr std::string_view kBlockIdPrefix = "__block_";
 
 Heuristic::Heuristic(
     const ContainerType& container,
@@ -266,7 +270,7 @@ void Heuristic::place_block(
                 ++cell;
 
                 Placement pl;
-                pl.box_id = std::string("__block_") + std::to_string(placed++);
+                pl.box_id = std::string(kBlockIdPrefix) + std::to_string(placed++);
                 pl.box_type_id = block.box_type_id;
                 pl.position = pos;
                 pl.orientation = block.orientation;
@@ -680,7 +684,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
     std::map<std::string, size_t> consume_idx;
     for (auto& pl : state.placements)
     {
-        if (pl.box_id.compare(0, 8, "__block_") == 0)
+        if (pl.box_id.compare(0, kBlockIdPrefix.size(), kBlockIdPrefix) == 0)
         {
             auto key = pl.box_type_id + "\t" + pl.platform + "\t" + pl.group;
             auto& ids = real_ids_by_group[key];

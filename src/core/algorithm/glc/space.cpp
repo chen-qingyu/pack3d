@@ -377,10 +377,9 @@ void carve_facets(std::vector<Space>& stack,
                   const std::vector<Facet>& facets) noexcept
 {
     // N 步阶梯近似楔形禁区（只覆盖禁区、永不过挖安全台阶区），逐 slab 雕刻
-    constexpr int kStairSteps = 2;
     for (const auto& f : facets)
     {
-        for (const auto& s : facet_staircase(f, container_size, kStairSteps))
+        for (const auto& s : facet_staircase(f, container_size, FACET_STAIR_STEPS))
         {
             carve_box(stack, s.x, s.y, s.z, s.dx, s.dy, s.dz);
             if (stack.empty())

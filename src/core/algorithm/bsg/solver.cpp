@@ -112,7 +112,7 @@ PackResult solve(const GlobalContext& ctx,
     // 挖掉斜面楔形禁区（N 步阶梯近似，只覆盖禁区）
     for (const auto& f : ctx.container_type.facets)
     {
-        for (const auto& s : facet_staircase(f, ctx.container_size, 2))
+        for (const auto& s : facet_staircase(f, ctx.container_size, FACET_STAIR_STEPS))
         {
             update_residual_space(s0.R, {s.x, s.y, s.z}, {s.dx, s.dy, s.dz});
         }

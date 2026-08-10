@@ -41,6 +41,9 @@ struct FacetSlab
                                                      const Size& csize,
                                                      int steps) noexcept;
 
+// 斜面楔形阶梯近似的步数（GLC/BSG 初始空间雕刻共用）
+inline constexpr int FACET_STAIR_STEPS = 2;
+
 /// 检查放入箱子后是否超重
 [[nodiscard]] bool check_weight(const ContainerLoad& load,
                                 double box_weight) noexcept;
