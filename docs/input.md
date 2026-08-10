@@ -77,13 +77,14 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段                   | 类型                     | 必填 | 说明                        |
-| ---------------------- | ------------------------ | ---- | --------------------------- |
-| `id`                   | string                   | 是   | 唯一标识                    |
-| `sx`/`sy`/`sz`         | int>=1                   | 是   | 原始尺寸（箱体自身坐标）    |
-| `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下        |
-| `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限     |
-| `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限 |
+| 字段                   | 类型                     | 必填 | 说明                                        |
+| ---------------------- | ------------------------ | ---- | ------------------------------------------- |
+| `id`                   | string                   | 是   | 唯一标识                                    |
+| `sx`/`sy`/`sz`         | int>=1                   | 是   | 原始尺寸（箱体自身坐标）                    |
+| `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下                        |
+| `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限                     |
+| `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限                 |
+| `palletize`            | boolean                  |      | true=散件（先装托后装车，见下），默认 false |
 
 `max_stack` / `max_load` 为**承重约束**（详见 `docs/constraints.md` 1.8 / 1.9）：
 
@@ -144,14 +145,48 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段             | 类型       | 默认 | 说明                                                             |
-| ---------------- | ---------- | ---- | ---------------------------------------------------------------- |
-| `time_limit`     | number>0   | 120  | 时限（秒）                                                       |
-| `support_rate`   | number 0-1 | 0    | 底面支撑率阈值，0=跳过                                           |
-| `platform_limit` | int>=1     | null | 单容器最大平台数                                                 |
-| `tender_limit`   | int>=1     | null | 每 tender 最多容器数（tender = 容器按共享 group 连通的连通分量） |
+| 字段                  | 类型       | 默认  | 说明                                                             |
+| --------------------- | ---------- | ----- | ---------------------------------------------------------------- |
+| `time_limit`          | number>0   | 120   | 时限（秒）                                                       |
+| `support_rate`        | number 0-1 | 0     | 底面支撑率阈值，0=跳过                                           |
+| `platform_limit`      | int>=1     | null  | 单容器最大平台数                                                 |
+| `tender_limit`        | int>=1     | null  | 每 tender 最多容器数（tender = 容器按共享 group 连通的连通分量） |
+| `pallet_fallback`     | boolean    | false | 散件装不进任何托盘时降级散装上车；false=未装箱（partial）        |
+| `pallet_support_rate` | number 0-1 | 1     | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立） |
 
 堆码层数 `max_stack` 与单箱承重 `max_load` 不在此处配置，而是**箱型字段**（见上节），有值即启用。
+
+## 托盘类型 `pallet_types`（可选）
+
+启用装托（palletizing）：`palletize: true` 的散件先装入托盘，托盘再作为装箱单元参与装车。任一存在即启用装托模式。详见 [palletizing.md](palletizing.md)。
+
+```json
+{
+  "pallet_types": [
+    {
+      "id": "pt1200",
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 150,
+      "max_weight": 1000,
+      "max_height": 1500,
+      "self_weight": 30
+    }
+  ]
+}
+```
+
+| 字段           | 类型   | 必填 | 说明                       |
+| -------------- | ------ | ---- | -------------------------- |
+| `id`           | string | 是   | 唯一标识                   |
+| `sx`/`sy`/`sz` | int>=1 | 是   | 托盘自身尺寸               |
+| `max_weight`   | number | 是   | 托盘承重上限（含托盘自重） |
+| `max_height`   | int>=1 | 是   | 含托盘的总高上限           |
+| `self_weight`  | number |      | 托盘自重，默认 0           |
+
+- 装托模式强制所有箱子带 `weight`、所有容器带 `max_weight`，否则 `invalid`。
+- 散件箱型用 `box_types.palletize: true` 标记；托盘内箱子底面支撑率用 `constraints.pallet_support_rate`。
+- 散件装不进任何托盘：`constraints.pallet_fallback` 控制降级散装（true）或未装箱报错（false）。
 
 ## 路线 `route`（可选）
 
@@ -169,6 +204,7 @@ Schema 校验后，代码还会检查：
 - 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
 - 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）设置了 `platform`，就必须提供 `route`；路线中无重复平台，箱子平台必须在路线中
 - 重量一致性：只要任一个箱子存在重量信息，则所有箱子和容器必须有重量信息
+- 装托合法性：`pallet_types` id 唯一、`max_height > sz`、`palletize: true` 但未配置 `pallet_types` 报错；装托模式要求全部箱子带重量、全部容器带 `max_weight`
 - 障碍物合法性：每个障碍物必须完全在所属容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠
 - 斜面合法性：每个斜面必须恰好两个非零截距、截距不越界、`existing_containers` 已有放置不侵入斜面禁区
 

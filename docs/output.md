@@ -30,19 +30,25 @@ JSON，顶层四个字段：
   "container_count": 1,
   "platform_split": 0,
   "volume_rate": 0.9274,
-  "group_split": 0
+  "group_split": 0,
+  "pallet_count": 2,
+  "palletized_box_count": 8,
+  "loose_box_count": 4
 }
 ```
 
-| 字段                 | 说明                                       |
-| -------------------- | ------------------------------------------ |
-| `elapsed_second`     | 耗时（秒）                                 |
-| `packed_box_count`   | 已装箱数                                   |
-| `unpacked_box_count` | 未装箱数                                   |
-| `container_count`    | 使用容器数                                 |
-| `platform_split`     | 平台拆分总次数（0=每个平台只在一个容器中） |
-| `volume_rate`        | 各容器平均体积利用率（0-1）                |
-| `group_split`        | 组拆分总次数（0=每组只在一个容器中）       |
+| 字段                   | 说明                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| `elapsed_second`       | 耗时（秒）                                                   |
+| `packed_box_count`     | 已装箱数（装托模式按散箱口径，托盘按内部箱数计）             |
+| `unpacked_box_count`   | 未装箱数                                                     |
+| `container_count`      | 使用容器数                                                   |
+| `platform_split`       | 平台拆分总次数（0=每个平台只在一个容器中）                   |
+| `volume_rate`          | 各容器平均体积利用率（0-1）                                  |
+| `group_split`          | 组拆分总次数（0=每组只在一个容器中）                         |
+| `pallet_count`         | 托盘单元数（未启用装托恒为 0）                               |
+| `palletized_box_count` | 已装托的散件箱数（未启用装托恒为 0）                         |
+| `loose_box_count`      | 直接装车箱数：普通箱 + fallback 降级散件（未启用装托恒为 0） |
 
 ## `result` 装箱结果
 
@@ -83,6 +89,36 @@ JSON，顶层四个字段：
       ]
     }
   ],
+  "pallets": [
+    {
+      "pallet_id": "pt1200#1",
+      "type_id": "pt1200",
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 150,
+      "max_weight": 1000,
+      "max_height": 1500,
+      "used_height": 400,
+      "used_weight": 25.0,
+      "volume_rate": 0.8333,
+      "groups": ["A"],
+      "platforms": ["P1"],
+      "placements": [
+        {
+          "box_id": "l1",
+          "box_type_id": "loose",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "dx": 60,
+          "dy": 40,
+          "dz": 30,
+          "orientation": "xyz",
+          "weight": 10.0
+        }
+      ]
+    }
+  ],
   "box_types": [
     {
       "id": "big_box",
@@ -105,6 +141,24 @@ JSON，顶层四个字段：
 `facets` 为本容器实例的斜面（从容器类型继承，自包含），结构与输入一致（`dx`/`dy`/`dz` 恰好两个）；容器类型未配置斜面时省略。
 
 `tender` 为该容器所属 tender 的序号（1-based）：容器按共享 `group` 连通，每个连通分量即一个 tender，按容器顺序首次出现编号。无 group 的容器为 `null`。如容器 A{g1,g2}、B{g2,g3}、C{g3,g4}、D{g5}，则 A/B/C 的 `tender` 均为 1，D 为 2。
+
+`pallets` 为托盘明细数组，**恒输出**（未启用装托时为空数组 `[]`）。启用装托时，容器 placement 中托盘单元 `box_id` = `pallet_id`，其内部散件在 `pallets` 中展开。每托字段：
+
+| 字段           | 说明                                            |
+| -------------- | ----------------------------------------------- |
+| `pallet_id`    | 托盘实例 ID（形如 `pt1200#1`）                  |
+| `type_id`      | 托盘类型 ID                                     |
+| `sx`/`sy`/`sz` | 托盘自身尺寸                                    |
+| `max_weight`   | 托盘承重上限（含自重）                          |
+| `max_height`   | 含托盘总高上限                                  |
+| `used_height`  | 货物堆高（不含托盘自身）                        |
+| `used_weight`  | 货物总重（不含托盘自重）                        |
+| `volume_rate`  | 体积利用率 = 货物体积 / (sx·sy·(max_height−sz)) |
+| `groups`       | 托盘内去重 group 列表                           |
+| `platforms`    | 托盘内去重 platform 列表                        |
+| `placements`   | 托盘内散件放置列表（同容器 placement 结构）     |
+
+装托输入与行为详见 [palletizing.md](palletizing.md)。
 
 `result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的数组，未配置则省略）。
 
