@@ -8,7 +8,7 @@
 
 ### 核心约束
 
-- **已有放置不可移动**：`ContainerLoad::locked = true`，后处理（`merge_platforms`、`repack_last_smaller`）跳过 locked 容器。
+- **已有放置不可移动**：`ContainerLoad::locked = true`，后处理（`reduce_platform_splits`、`repack_last_smaller`）跳过 locked 容器。
 - **剩余箱子独立输入**：`boxes` 列表只列待装箱子，已放置箱子完全由 `existing_containers` 描述，两不相交。
 - **输入输出格式对齐**：`existing_containers` 的 placement 字段与输出 placement 完全一致（`box_id`、`box_type_id`、`x/y/z`、`dx/dy/dz`、`orientation`、`weight`、`platform`、`group`），上轮输出可直接 copy-paste 为下轮输入。
 
@@ -139,7 +139,7 @@ GLC 的核心难点：已有放置可能不在任何 Space 的角落位置，无
 
 两个后处理步骤均跳过 locked 容器：
 
-- **`merge_platforms`**：遍历容器时 `if (all_loads[ci].locked) continue;`，不会尝试从已有容器中移动平台。
+- **`reduce_platform_splits`**：遍历容器时 `if (all_loads[ci].locked) continue;`，不会尝试从已有容器中移动平台。
 - **`repack_last_smaller`**：`if (cl.placements.empty() || cl.locked) return;`，不会尝试将已有容器换到更小的车型。内部 `pack_single` 调用传空 `existing`（后处理只涉及新容器）。
 
 ---
