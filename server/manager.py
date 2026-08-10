@@ -21,7 +21,6 @@ class RunState:
     instance_id: str
     run_name: str
     status: str          # running | completed | failed | cancelled
-    random_seed: int
     process: mp.Process | None
     run_dir: Path
     created_at: str
@@ -36,7 +35,6 @@ class RunState:
             "instance_name": instance_name,
             "run_name": self.run_name,
             "status": self.status,
-            "random_seed": self.random_seed,
             "error": self.error,
             "created_at": self.created_at,
         }
@@ -75,24 +73,26 @@ class InstanceState:
         return d
 
 
-def _run_worker(input_json: str, run_dir: str, random_seed: int, conn):
+def _run_worker(input_json: str, run_dir: str, conn):
     """子进程入口：加载 pack3d 并运行求解器。"""
-    import random
-    random.seed(random_seed)
+    try:
+        import pack3d
+        input_data = json.loads(input_json)
+        result = pack3d.run(input_data)
 
-    import pack3d
-    input_data = json.loads(input_json)
-    result = pack3d.run(input_data)
+        (Path(run_dir) / "output.json").write_text(
+            json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    (Path(run_dir) / "output.json").write_text(
-        json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
-
-    # core 的 "complete" / "partial" / "timeout" 都是正常完成
-    # 只有 "invalid" 是输入问题
-    core_status = result["status"]
-    run_status = "invalid" if core_status == "invalid" else "completed"
-    conn.send({"status": run_status, "result": result})
-    conn.close()
+        # core 的 "complete" / "partial" / "timeout" 都是正常完成
+        # 只有 "invalid" 是输入问题
+        core_status = result["status"]
+        run_status = "invalid" if core_status == "invalid" else "completed"
+        conn.send({"status": run_status, "result": result})
+    except Exception as exc:
+        # 任何未预期异常：回传错误信息，避免静默失败
+        conn.send({"status": "failed", "error": str(exc)})
+    finally:
+        conn.close()
 
 
 class InstanceManager:
@@ -124,7 +124,6 @@ class InstanceManager:
                 instance_id=row["instance_id"],
                 run_name=row["run_name"],
                 status=row["status"],
-                random_seed=row["random_seed"],
                 process=None,
                 run_dir=INSTANCES_ROOT / row["instance_id"] / "runs" / row["run_id"],
                 created_at=row["created_at"],
@@ -175,7 +174,6 @@ class InstanceManager:
     # runs
 
     def create_run(self, instance: InstanceState, input_json: str,
-                   random_seed: int = 42,
                    run_name: str | None = None) -> RunState:
         run_id = uuid.uuid4().hex[:12]
         if run_name is None:
@@ -186,18 +184,18 @@ class InstanceManager:
 
         (run_dir / "input.json").write_text(input_json, encoding="utf-8")
 
-        db.insert_run(self._conn, run_id, instance.instance_id, run_name, "running", random_seed, created_at)
+        db.insert_run(self._conn, run_id, instance.instance_id, run_name, "running", created_at)
 
         parent_conn, child_conn = mp.Pipe()
         p = mp.Process(
             target=_run_worker,
-            args=(input_json, str(run_dir), random_seed, child_conn)
+            args=(input_json, str(run_dir), child_conn)
         )
         p.start()
 
         state = RunState(
             run_id=run_id, instance_id=instance.instance_id, run_name=run_name,
-            status="running", random_seed=random_seed, process=p,
+            status="running", process=p,
             pipe=parent_conn, run_dir=run_dir, created_at=created_at,
         )
         instance.runs[run_id] = state
@@ -260,8 +258,9 @@ class InstanceManager:
         if state.pipe and state.pipe.poll():
             msg = state.pipe.recv()
             state.status = msg["status"]
-            state.result = msg["result"]
-            db.update_run(self._conn, state.run_id, status=state.status)
+            state.result = msg.get("result")
+            state.error = msg.get("error")
+            db.update_run(self._conn, state.run_id, status=state.status, error=state.error)
             self._kill_run(state)
         elif state.process and not state.process.is_alive():
             # 子进程未发消息即退出（崩溃）→ 标记失败，避免永久 running
