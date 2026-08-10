@@ -456,6 +456,39 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
     }
 
+    // group 一致性：任一箱子（输入或已有放置）有 group → 全部必须有（输出 tender 要么全数字要么全 null）
+    bool any_group = false;
+    bool all_group = true;
+    for (const auto& bx : problem.boxes)
+    {
+        if (!bx.group.empty())
+        {
+            any_group = true;
+        }
+        else
+        {
+            all_group = false;
+        }
+    }
+    for (const auto& ec : problem.existing_containers)
+    {
+        for (const auto& ep : ec.placements)
+        {
+            if (!ep.group.empty())
+            {
+                any_group = true;
+            }
+            else
+            {
+                all_group = false;
+            }
+        }
+    }
+    if (any_group && !all_group)
+    {
+        out.push_back("inconsistent group: some boxes have group, some don't");
+    }
+
     // 承重约束：max_stack/max_load 数组长度与 allowed_orientations 对齐
     bool any_max_stack = false;
     bool any_max_load = false;

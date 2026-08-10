@@ -68,7 +68,13 @@
       "group": "G2",
       "platform": "P2"
     },
-    { "id": "r1", "box_type_id": "reg", "weight": 10, "platform": "P2" }
+    {
+      "id": "r1",
+      "box_type_id": "reg",
+      "weight": 10,
+      "platform": "P2",
+      "group": "R"
+    }
   ],
   "pallet_types": [
     {

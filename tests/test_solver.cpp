@@ -331,8 +331,8 @@ TEST_CASE("tender_limit 限制每 tender 容器数", "[solver][tender]")
     }
 }
 
-// test_tender_output.json — 4 个已有容器：A{g1,g2} B{g2,g3} C{g3,g4} D{g5}
-// 连通分量：A-B-C 一个 tender，D 一个 → tender 序号 [1,1,1,2]；无 group 的新容器为 null
+// test_tender_output.json — 4 个已有容器：A{g1,g2} B{g2,g3} C{g3,g4} D{g5}，新箱子 x1{g6}
+// 连通分量：A-B-C 一个 tender，D 一个，x1 一个 → tender 序号 [1,1,1,2,3]
 TEST_CASE("tender 输出按连通分量编号", "[solver][tender]")
 {
     auto input = load_data("data/tests/test_tender_output.json");
@@ -347,7 +347,7 @@ TEST_CASE("tender 输出按连通分量编号", "[solver][tender]")
         REQUIRE(res["result"]["containers"][1]["tender"].get<int>() == 1);
         REQUIRE(res["result"]["containers"][2]["tender"].get<int>() == 1);
         REQUIRE(res["result"]["containers"][3]["tender"].get<int>() == 2);
-        REQUIRE(res["result"]["containers"][4]["tender"].is_null());
+        REQUIRE(res["result"]["containers"][4]["tender"].get<int>() == 3);
         // 无 group 的容器 platforms/groups 保持 null 语义
         REQUIRE(res["result"]["containers"][0]["groups"].size() == 2);
     }

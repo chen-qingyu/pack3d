@@ -18,7 +18,9 @@
       "allowed_orientations": ["xyz"]
     }
   ],
-  "boxes": [{ "id": "x1", "box_type_id": "big_box", "weight": 10.0 }],
+  "boxes": [
+    { "id": "x1", "box_type_id": "big_box", "weight": 10.0, "group": "g6" }
+  ],
   "existing_containers": [
     {
       "type_id": "big",

@@ -56,8 +56,8 @@
     { "id": "l28", "box_type_id": "loose", "weight": 10, "group": "A" },
     { "id": "l29", "box_type_id": "loose", "weight": 10, "group": "A" },
     { "id": "l30", "box_type_id": "loose", "weight": 10, "group": "A" },
-    { "id": "r1", "box_type_id": "reg", "weight": 10 },
-    { "id": "r2", "box_type_id": "reg", "weight": 10 }
+    { "id": "r1", "box_type_id": "reg", "weight": 10, "group": "R" },
+    { "id": "r2", "box_type_id": "reg", "weight": 10, "group": "R" }
   ],
   "pallet_types": [
     {

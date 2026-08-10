@@ -34,10 +34,10 @@
     { "id": "l6", "box_type_id": "loose", "weight": 5, "group": "B" },
     { "id": "l7", "box_type_id": "loose", "weight": 5, "group": "B" },
     { "id": "l8", "box_type_id": "loose", "weight": 5, "group": "B" },
-    { "id": "r1", "box_type_id": "reg", "weight": 10 },
-    { "id": "r2", "box_type_id": "reg", "weight": 10 },
-    { "id": "r3", "box_type_id": "reg", "weight": 10 },
-    { "id": "r4", "box_type_id": "reg", "weight": 10 }
+    { "id": "r1", "box_type_id": "reg", "weight": 10, "group": "R" },
+    { "id": "r2", "box_type_id": "reg", "weight": 10, "group": "R" },
+    { "id": "r3", "box_type_id": "reg", "weight": 10, "group": "R" },
+    { "id": "r4", "box_type_id": "reg", "weight": 10, "group": "R" }
   ],
   "pallet_types": [
     {

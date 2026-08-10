@@ -115,13 +115,13 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段          | 类型   | 必填 | 说明                                                           |
-| ------------- | ------ | ---- | -------------------------------------------------------------- |
-| `id`          | string | 是   | 唯一标识                                                       |
-| `box_type_id` | string | 是   | 引用 box_types 中的 id                                         |
-| `weight`      | number |      | 单箱重量，null=无重量                                          |
-| `group`       | string |      | 分组 ID（一票运输委托的货物共用同一 group，用于 tender_limit） |
-| `platform`    | string |      | 站点 ID（配送停靠点），用于路线约束                            |
+| 字段          | 类型   | 必填 | 说明                                                                                                   |
+| ------------- | ------ | ---- | ------------------------------------------------------------------------------------------------------ |
+| `id`          | string | 是   | 唯一标识                                                                                               |
+| `box_type_id` | string | 是   | 引用 box_types 中的 id                                                                                 |
+| `weight`      | number |      | 单箱重量，null=无重量                                                                                  |
+| `group`       | string |      | 分组 ID（一票运输委托的货物共用同一 group，用于 tender_limit）。要么所有箱子都有，要么都没有，见预校验 |
+| `platform`    | string |      | 站点 ID（配送停靠点），用于路线约束                                                                    |
 
 ## 算法 `algorithm`（可选）
 
@@ -204,7 +204,8 @@ Schema 校验后，代码还会检查：
 - ID 唯一性：`container_types`、`box_types`、`boxes` 中各自的 `id` 必须唯一
 - 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
 - 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）设置了 `platform`，就必须提供 `route`；路线中无重复站点，箱子站点必须在路线中
-- 重量一致性（**三选一**）：要么全无重量；要么**全部箱型**配置 `weight` 且**所有箱子不带**重量（箱子重量取箱型）；要么**所有箱子**配置 `weight` 且箱型不带。箱型与箱子重量混用、部分配置均报错。任一模式都要求全部容器配置 `max_weight`；`max_load`/装托模式要求有重量信息（箱型级或箱子级）
+- 重量一致性（**三选一**）：要么全无重量；要么**全部箱型**配置 `weight` 且**所有箱子不带**重量（箱子重量取箱型）；要么**所有箱子**配置 `weight` 且箱型不带。箱型与箱子重量混用、部分配置均报错。**有重量信息时**（后两种模式）要求全部容器配置 `max_weight`，全无重量时不要求；`max_load`/装托模式要求有重量信息（箱型级或箱子级）
+- group 一致性（**全有或全无**）：任一箱子（含 `existing_containers` 已有放置）设置了 `group`，则所有箱子必须都设置 `group`。保证输出 `tender` 要么全为数字要么全为 `null`
 - 装托合法性：`pallet_types` id 唯一、`max_height > sz`、`palletize: true` 但未配置 `pallet_types` 报错；装托模式要求有重量信息（箱型级或箱子级）、全部容器带 `max_weight`
 - 障碍物合法性：每个障碍物必须完全在所属容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠
 - 斜面合法性：每个斜面必须恰好两个非零截距、截距不越界、`existing_containers` 已有放置不侵入斜面禁区

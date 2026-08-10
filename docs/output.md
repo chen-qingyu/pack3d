@@ -140,7 +140,7 @@ JSON，顶层四个字段：
 
 `facets` 为本容器实例的斜面（从容器类型继承，自包含），结构与输入一致（`dx`/`dy`/`dz` 恰好两个）；容器类型未配置斜面时省略。
 
-`tender` 为该容器所属 tender 的序号（1-based）：容器按共享 `group` 连通，每个连通分量即一个 tender，按容器顺序首次出现编号。无 group 的容器为 `null`。如容器 A{g1,g2}、B{g2,g3}、C{g3,g4}、D{g5}，则 A/B/C 的 `tender` 均为 1，D 为 2。
+`tender` 为该容器所属 tender 的序号（1-based）：容器按共享 `group` 连通，每个连通分量即一个 tender，按容器顺序首次出现编号。因输入 group 全有或全无（见 input.md 预校验），`tender` 要么全为数字要么全为 `null`。如容器 A{g1,g2}、B{g2,g3}、C{g3,g4}、D{g5}，则 A/B/C 的 `tender` 均为 1，D 为 2。
 
 `pallets` 为托盘明细数组，**恒输出**（未启用装托时为空数组 `[]`）。启用装托时，容器 placement 中托盘单元 `box_id` = `pallet_id`，其内部散件在 `pallets` 中展开。每托字段：
 
