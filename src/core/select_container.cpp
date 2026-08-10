@@ -44,9 +44,9 @@ const ContainerType* select_largest_fitting(
                 auto os = bt_it->second.size.orient(o);
                 if (os.dx <= ct.inner_size.x && os.dy <= ct.inner_size.y && os.dz <= ct.inner_size.z)
                 {
-                    if (ct.max_weight.has_value() && bx.weight.has_value())
+                    if (ct.payload.has_value() && bx.weight.has_value())
                     {
-                        if (bx.weight.value() <= ct.max_weight.value() + 1e-9)
+                        if (bx.weight.value() <= ct.payload.value() + 1e-9)
                         {
                             return &ct;
                         }

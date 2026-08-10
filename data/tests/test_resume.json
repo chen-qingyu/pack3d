@@ -5,7 +5,7 @@
       "sx": 100,
       "sy": 100,
       "sz": 50,
-      "max_weight": 50000.0,
+      "payload": 50000.0,
       "quantity_limit": null
     }
   ],

@@ -138,10 +138,10 @@ struct ContainerType
 {
     std::string id;
     Size inner_size;
-    std::optional<double> max_weight = std::nullopt;
-    std::optional<int> quantity_limit; // null 表示无限制
-    std::vector<Obstacle> obstacles;   // 固定占位实体，箱子不得相交，顶面可承托
-    std::vector<Facet> facets;         // 斜切平面禁区，箱子不得侵入，不参与支撑
+    std::optional<double> payload = std::nullopt; // 装载承重上限（货物总重）
+    std::optional<int> quantity_limit;            // null 表示无限制
+    std::vector<Obstacle> obstacles;              // 固定占位实体，箱子不得相交，顶面可承托
+    std::vector<Facet> facets;                    // 斜切平面禁区，箱子不得侵入，不参与支撑
 
     bool has_remaining(const std::map<std::string, int>& usage) const noexcept
     {
@@ -160,7 +160,7 @@ struct BoxType
     std::vector<std::optional<int>> max_stack;
     std::vector<std::optional<double>> max_load;
     std::optional<double> weight; // 箱型级重量（与 boxes 重量互斥，输入重量三选一）
-    bool palletize = false;       // 该箱型是否需要装托（true=散件，false=普通箱子直接装车）
+    bool loose = false;           // 该箱型是否为散件（true=先装托后装车，false=普通箱子直接装车）
 
     /// 按朝向查堆码层数上限（无此朝向或未配置则返回 nullopt）
     [[nodiscard]] std::optional<int> max_stack_for(Orientation o) const noexcept
@@ -203,8 +203,8 @@ struct PalletType
 {
     std::string id;
     Size size;                // sx, sy, sz（sz = 托盘自身高度）
-    double max_weight = 0.0;  // 货物额定载重（不含自重）
-    int max_height = 0;       // 含托盘的堆高上限（> sz）
+    double payload = 0.0;     // 装载承重上限（货物总重，不含托盘自重）
+    int max_height = 0;       // 装载限高（货物堆高上限，不含托盘自身高度）
     double self_weight = 0.0; // 托盘自重
 };
 
@@ -399,7 +399,7 @@ struct ContainerSummary
     Size inner_size;                 // 容器内部尺寸，绘图所需
     std::vector<Obstacle> obstacles; // 本容器实例的障碍物（类型继承）
     std::vector<Facet> facets;       // 本容器实例的斜面（类型继承）
-    std::optional<double> max_weight = std::nullopt;
+    std::optional<double> payload = std::nullopt;
     int64_t used_volume = 0;
     double volume_rate = 0.0;
     std::optional<double> used_weight = std::nullopt;

@@ -50,7 +50,7 @@ export interface PalletResult {
   sx: number
   sy: number
   sz: number
-  max_weight: number
+  payload: number
   max_height: number
   used_height: number
   used_weight: number
@@ -80,7 +80,7 @@ export interface ContainerResult {
   sx: number
   sy: number
   sz: number
-  max_weight?: number | null
+  payload?: number | null
   used_volume?: number
   used_weight?: number | null
   volume_rate: number

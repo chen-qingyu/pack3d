@@ -146,7 +146,7 @@ BSG 继承项目的容器调度，并在块放置时逐叶校验共享硬约束�
 
 - 方向约束：由 `BoxType::allowed_orientations` 和块生成保证。
 - 边界与重叠：在叶子箱展开后通过 `check_boundary` / `check_overlap` 校验。
-- 重量约束：逐箱累加并通过 `check_weight` 对照容器 `max_weight` 校验。
+- 重量约束：逐箱累加并通过 `check_weight` 对照容器 `payload` 校验。
 - 支撑约束：`support_rate > 0` 时通过项目通用的 `check_support` 校验支撑面积占比和可堆叠性。
 - 站点数量限制：通过 `check_platform_limit` 校验。
 - 路线顺序约束：通过 `check_route_order` 按 Y/Z 重叠门控校验 X 轴通道。

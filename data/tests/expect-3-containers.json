@@ -5,21 +5,21 @@
       "sx": 5890,
       "sy": 2320,
       "sz": 2230,
-      "max_weight": 18000.0
+      "payload": 18000.0
     },
     {
       "id": "40GP",
       "sx": 11960,
       "sy": 2320,
       "sz": 2230,
-      "max_weight": 23000.0
+      "payload": 23000.0
     },
     {
       "id": "40HQ",
       "sx": 11960,
       "sy": 2320,
       "sz": 2600,
-      "max_weight": 23000.0
+      "payload": 23000.0
     }
   ],
   "box_types": [

@@ -6,7 +6,7 @@
       "sx": 100,
       "sy": 100,
       "sz": 50,
-      "max_weight": 10.0,
+      "payload": 10.0,
       "quantity_limit": null
     }
   ],

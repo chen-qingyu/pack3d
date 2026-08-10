@@ -60,7 +60,7 @@ JSON，顶层四个字段：
       "sx": 110,
       "sy": 50,
       "sz": 50,
-      "max_weight": 50000.0,
+      "payload": 50000.0,
       "used_volume": 271000,
       "used_weight": 25.0,
       "volume_rate": 1.0,
@@ -96,7 +96,7 @@ JSON，顶层四个字段：
       "sx": 1200,
       "sy": 1000,
       "sz": 150,
-      "max_weight": 1000,
+      "payload": 1000,
       "max_height": 1500,
       "used_height": 400,
       "used_weight": 25.0,
@@ -144,19 +144,19 @@ JSON，顶层四个字段：
 
 `pallets` 为托盘明细数组，**恒输出**（未启用装托时为空数组 `[]`）。启用装托时，容器 placement 中托盘单元 `box_id` = `pallet_id`，其内部散件在 `pallets` 中展开。每托字段：
 
-| 字段           | 说明                                            |
-| -------------- | ----------------------------------------------- |
-| `pallet_id`    | 托盘实例 ID（形如 `pt1200#1`）                  |
-| `type_id`      | 托盘类型 ID                                     |
-| `sx`/`sy`/`sz` | 托盘自身尺寸                                    |
-| `max_weight`   | 托盘承重上限（含自重）                          |
-| `max_height`   | 含托盘总高上限                                  |
-| `used_height`  | 货物堆高（不含托盘自身）                        |
-| `used_weight`  | 货物总重（不含托盘自重）                        |
-| `volume_rate`  | 体积利用率 = 货物体积 / (sx·sy·(max_height−sz)) |
-| `groups`       | 托盘内去重 group 列表                           |
-| `platforms`    | 托盘内去重 platform 列表                        |
-| `placements`   | 托盘内散件放置列表（同容器 placement 结构）     |
+| 字段           | 说明                                        |
+| -------------- | ------------------------------------------- |
+| `pallet_id`    | 托盘实例 ID（形如 `pt1200#1`）              |
+| `type_id`      | 托盘类型 ID                                 |
+| `sx`/`sy`/`sz` | 托盘自身尺寸                                |
+| `payload`      | 托盘装载承重上限（货物总重，不含托盘自重）  |
+| `max_height`   | 装载限高（货物堆高上限，不含托盘自身高度）  |
+| `used_height`  | 货物堆高（不含托盘自身）                    |
+| `used_weight`  | 货物总重（不含托盘自重）                    |
+| `volume_rate`  | 体积利用率 = 货物体积 / (sx·sy·max_height)  |
+| `groups`       | 托盘内去重 group 列表                       |
+| `platforms`    | 托盘内去重 platform 列表                    |
+| `placements`   | 托盘内散件放置列表（同容器 placement 结构） |
 
 装托输入与行为详见 [palletizing.md](palletizing.md)。
 

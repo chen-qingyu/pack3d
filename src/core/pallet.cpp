@@ -13,7 +13,7 @@ void from_json(const json& j, PalletType& pt)
     j["sx"].get_to(pt.size.x);
     j["sy"].get_to(pt.size.y);
     j["sz"].get_to(pt.size.z);
-    pt.max_weight = j["max_weight"].get<double>();
+    pt.payload = j["payload"].get<double>();
     pt.max_height = j["max_height"].get<int>();
     pt.self_weight = j.value("self_weight", 0.0);
 }
@@ -22,8 +22,8 @@ ContainerType virtual_container(const PalletType& pt) noexcept
 {
     ContainerType ct;
     ct.id = pt.id;
-    ct.inner_size = {pt.size.x, pt.size.y, pt.max_height - pt.size.z};
-    ct.max_weight = pt.max_weight;
+    ct.inner_size = {pt.size.x, pt.size.y, pt.max_height};
+    ct.payload = pt.payload;
     return ct;
 }
 
@@ -82,13 +82,13 @@ void to_json(json& j, const PalletLoad& p)
     j["sx"] = p.type->size.x;
     j["sy"] = p.type->size.y;
     j["sz"] = p.type->size.z;
-    j["max_weight"] = p.type->max_weight;
+    j["payload"] = p.type->payload;
     j["max_height"] = p.type->max_height;
     j["used_height"] = p.loaded_height;
     j["used_weight"] = p.goods_weight;
-    // volume_rate = Σ箱子体积 / (sx·sy·(max_height−sz))，与容器可用容积口径一致
+    // volume_rate = Σ箱子体积 / (sx·sy·max_height)，max_height = 装载限高（不含托盘自身）
     const int64_t usable = static_cast<int64_t>(p.type->size.x) * p.type->size.y *
-                           (p.type->max_height - p.type->size.z);
+                           p.type->max_height;
     int64_t vol = 0;
     for (const auto& pl : p.placements)
     {

@@ -1,6 +1,6 @@
 # 装托（Palletizing）
 
-> 两级流水线：**散件（`palletize:true`）→ 装托 → 装车**；普通箱子直接散装上车。
+> 两级流水线：**散件（`loose:true`）→ 装托 → 装车**；普通箱子直接散装上车。
 > 核心思想：**托盘即装箱单元**。装托阶段把托盘当小容器，用与装车完全相同的算法与约束链（`pack_single`）把散件码上托盘；随后每个托盘改写成一个"不可再叠放、可 90° 平面旋转"的虚拟箱，交给现有求解器装车——**装车零改动**，路线/重量/支撑/tender/后处理等既有约束全部免费生效。
 
 ## 1. 使用
@@ -15,7 +15,7 @@
       "sx": 1200,
       "sy": 1000,
       "sz": 150,
-      "max_weight": 1000,
+      "payload": 1000,
       "max_height": 1500,
       "self_weight": 30
     }
@@ -27,25 +27,25 @@
       "sy": 40,
       "sz": 30,
       "allowed_orientations": ["xyz"],
-      "palletize": true
+      "loose": true
     }
   ]
 }
 ```
 
-| 配置       | 位置                              | 默认  | 说明                                                                                     |
-| ---------- | --------------------------------- | ----- | ---------------------------------------------------------------------------------------- |
-| 启用装托   | 顶层 `pallet_types`               | 无    | 任一存在即启用；`id`/`sx`/`sy`/`sz`/`max_weight`/`max_height` 必填，`self_weight` 默认 0 |
-| 散件标记   | `box_types.palletize`             | false | true = 散件（装托）；false = 普通箱子（直接装车）                                        |
-| 装托支撑率 | `constraints.pallet_support_rate` | 1.0   | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                         |
-| 装托兜底   | `constraints.pallet_fallback`     | false | 散件装不进任何托盘：false = 未装箱报错（partial）；true = 降级散装上车                   |
+| 配置       | 位置                              | 默认  | 说明                                                                                  |
+| ---------- | --------------------------------- | ----- | ------------------------------------------------------------------------------------- |
+| 启用装托   | 顶层 `pallet_types`               | 无    | 任一存在即启用；`id`/`sx`/`sy`/`sz`/`payload`/`max_height` 必填，`self_weight` 默认 0 |
+| 散件标记   | `box_types.loose`                 | false | true = 散件（装托）；false = 普通箱子（直接装车）                                     |
+| 装托支撑率 | `constraints.pallet_support_rate` | 1.0   | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                      |
+| 装托兜底   | `constraints.pallet_fallback`     | false | 散件装不进任何托盘：false = 未装箱报错（partial）；true = 降级散装上车                |
 
-- **重量**：装托模式强制所有箱子带 `weight`、所有容器带 `max_weight`，否则 `invalid`。
-- **校验**：`pallet_types` id 唯一、`max_height > sz`、`palletize: true` 但无 `pallet_types` → `invalid`；有 `pallet_types` 但无散件 → 等价普通装箱。
+- **重量**：装托模式强制所有箱子带 `weight`、所有容器带 `payload`，否则 `invalid`。
+- **校验**：`pallet_types` id 唯一、`loose: true` 但无 `pallet_types` → `invalid`；有 `pallet_types` 但无散件 → 等价普通装箱。
 
 ### 1.2 行为
 
-- **装托**：每轮对所有托盘类型试装，按（体积, 箱数）取优；同 `group` 优先整组独占一托（route 启用时按 `platform+group`），装不下的退混合托。托盘即小容器——不许悬挑、堆高 ≤ `max_height`、每托承重 ≤ `max_weight` 自动满足。
+- **装托**：每轮对所有托盘类型试装，按（体积, 箱数）取优；同 `group` 优先整组独占一托（route 启用时按 `platform+group`），装不下的退混合托。托盘即小容器——不许悬挑、堆高 ≤ `max_height`（装载限高，不含托盘自身）、每托承重 ≤ `payload` 自动满足。
 - **装车**：托盘改写为虚拟箱——`max_stack=[1,1]`（其上不可放箱，单向不叠托）、仅 XY 平面 90° 旋转、重量含托盘自重；与普通箱子一起走现有求解器，主目标仍是用车数最少。
 - **时间**：装托分走 `min(20%×time_limit, 15s)`，剩余归装车。
 

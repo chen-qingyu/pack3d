@@ -5,7 +5,7 @@
       "sx": 6000,
       "sy": 2500,
       "sz": 2500,
-      "max_weight": 20000
+      "payload": 20000
     }
   ],
   "box_types": [
@@ -15,7 +15,7 @@
       "sy": 40,
       "sz": 30,
       "allowed_orientations": ["xyz"],
-      "palletize": true
+      "loose": true
     },
     {
       "id": "reg",
@@ -82,7 +82,7 @@
       "sx": 1200,
       "sy": 1000,
       "sz": 150,
-      "max_weight": 1000,
+      "payload": 1000,
       "max_height": 1500,
       "self_weight": 30
     }

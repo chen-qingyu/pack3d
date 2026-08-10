@@ -107,7 +107,7 @@ void from_json(const json& j, ContainerType& ct)
     j["sx"].get_to(ct.inner_size.x);
     j["sy"].get_to(ct.inner_size.y);
     j["sz"].get_to(ct.inner_size.z);
-    ct.max_weight = json_opt_double(j, "max_weight");
+    ct.payload = json_opt_double(j, "payload");
     ct.quantity_limit = json_opt_int(j, "quantity_limit");
     if (j.contains("obstacles"))
     {
@@ -149,7 +149,7 @@ void from_json(const json& j, BoxType& bt)
     parse_optional_vector<int>(j, "max_stack", bt.max_stack, bt.allowed_orientations.size());
     parse_optional_vector<double>(j, "max_load", bt.max_load, bt.allowed_orientations.size());
     bt.weight = json_opt_double(j, "weight");
-    bt.palletize = j.value("palletize", false);
+    bt.loose = j.value("loose", false);
 }
 
 void from_json(const json& j, Box& bx)
@@ -449,9 +449,9 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     {
         for (const auto& ct : problem.container_types)
         {
-            if (!ct.max_weight.has_value())
+            if (!ct.payload.has_value())
             {
-                out.push_back("inconsistent weight: container_type " + ct.id + " missing max_weight");
+                out.push_back("inconsistent weight: container_type " + ct.id + " missing payload");
             }
         }
     }
@@ -585,15 +585,9 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             {
                 out.push_back("duplicate pallet_type id: " + pt.id);
             }
-            if (pt.max_height <= pt.size.z)
-            {
-                out.push_back("pallet_type " + pt.id + ": max_height " +
-                              std::to_string(pt.max_height) + " must be > sz " +
-                              std::to_string(pt.size.z));
-            }
         }
 
-        // 装托模式强制有重量信息（箱型级或箱子级）；容器必须有 max_weight
+        // 装托模式强制有重量信息（箱型级或箱子级）；容器必须有 payload（max_height 下限由 schema 保证）
         if (!weight_info)
         {
             out.push_back("inconsistent weight: pallet mode requires weight info (box_types or boxes)");
@@ -601,7 +595,7 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         bool all_ct_have_weight = true;
         for (const auto& ct : problem.container_types)
         {
-            if (!ct.max_weight.has_value())
+            if (!ct.payload.has_value())
             {
                 all_ct_have_weight = false;
                 break;
@@ -609,19 +603,19 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
         if (!all_ct_have_weight)
         {
-            out.push_back("inconsistent weight: pallet mode requires all container_types to have max_weight");
+            out.push_back("inconsistent weight: pallet mode requires all container_types to have payload");
         }
     }
 
-    // 任一箱型声明 palletize:true 但未提供 pallet_types → 配置错误
-    bool any_palletize = false;
+    // 任一箱型声明 loose:true 但未提供 pallet_types → 配置错误
+    bool any_loose = false;
     for (const auto& bt : problem.box_types)
     {
-        any_palletize |= bt.palletize;
+        any_loose |= bt.loose;
     }
-    if (any_palletize && problem.pallet_types.empty())
+    if (any_loose && problem.pallet_types.empty())
     {
-        out.push_back("palletize declared but no pallet_types");
+        out.push_back("loose declared but no pallet_types");
     }
 
     // 已有容器校验
@@ -743,10 +737,10 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             }
 
             // 校验重量
-            if (ct.max_weight.has_value() && load.total_weight > ct.max_weight.value() + 1e-9)
+            if (ct.payload.has_value() && load.total_weight > ct.payload.value() + 1e-9)
             {
                 out.push_back(prefix + ": total weight " + std::to_string(load.total_weight) +
-                              " exceeds max_weight " + std::to_string(ct.max_weight.value()));
+                              " exceeds payload " + std::to_string(ct.payload.value()));
             }
         }
     }
@@ -939,7 +933,7 @@ void to_json(json& j, const Solution& sol)
             }
             cj["facets"] = std::move(fac_json);
         }
-        cj["max_weight"] = opt_json(cs.max_weight);
+        cj["payload"] = opt_json(cs.payload);
         cj["used_volume"] = cs.used_volume;
         cj["used_weight"] = opt_json(cs.used_weight);
         cj["volume_rate"] = cs.volume_rate;

@@ -63,7 +63,7 @@ TEST_CASE("run 对畸形输入返回 invalid", "[solver]")
     bad_inputs.push_back(unknown);
 
     auto no_weight_meta = base;
-    no_weight_meta["boxes"] = {{{"id", "x"}, {"box_type_id", "b"}, {"weight", 5.0}}}; // 有重量但容器无 max_weight
+    no_weight_meta["boxes"] = {{{"id", "x"}, {"box_type_id", "b"}, {"weight", 5.0}}}; // 有重量但容器无 payload
     bad_inputs.push_back(no_weight_meta);
 
     for (const auto& input : bad_inputs)
@@ -640,7 +640,7 @@ TEST_CASE("pallet fallback 降级散装", "[solver][pallet]")
 }
 
 // test_pallet_weight.json — 每托不超托盘额定载重
-TEST_CASE("pallet 承重不超 max_weight", "[solver][pallet]")
+TEST_CASE("pallet 承重不超 payload", "[solver][pallet]")
 {
     auto input = load_data("data/tests/test_pallet_weight.json");
     auto res = run(input);
@@ -663,7 +663,7 @@ TEST_CASE("pallet 堆高不超 max_height", "[solver][pallet]")
     REQUIRE(res["summary"]["palletized_box_count"] == 30);
     for (const auto& p : res["result"]["pallets"])
     {
-        // 货物空间高度 = max_height(600) - sz(150) = 450
+        // 装载限高 max_height(450)（不含托盘自身高度）= 450
         REQUIRE(p["used_height"].get<int>() <= 450);
     }
     REQUIRE(res["result"]["pallets"][0]["used_height"] == 400); // 2 层 × 200
@@ -743,9 +743,9 @@ TEST_CASE("pallet 非法输入返回 invalid", "[solver][pallet]")
 {
     const auto base = load_data("data/tests/test_pallet_invalid.json");
 
-    // max_height <= sz：货物空间高度为 0
+    // max_height 非法（0，低于 schema 下限 1）
     auto h = base;
-    h["pallet_types"][0]["max_height"] = 150;
+    h["pallet_types"][0]["max_height"] = 0;
     REQUIRE(run(h)["status"] == "invalid");
 
     // 装托模式强制全重量：箱子缺重量
@@ -753,12 +753,12 @@ TEST_CASE("pallet 非法输入返回 invalid", "[solver][pallet]")
     w["boxes"][0].erase("weight");
     REQUIRE(run(w)["status"] == "invalid");
 
-    // 装托模式强制全重量：容器缺 max_weight
+    // 装托模式强制全重量：容器缺 payload
     auto cw = base;
-    cw["container_types"][0].erase("max_weight");
+    cw["container_types"][0].erase("payload");
     REQUIRE(run(cw)["status"] == "invalid");
 
-    // palletize 声明但无 pallet_types
+    // loose 声明但无 pallet_types
     auto np = base;
     np.erase("pallet_types");
     REQUIRE(run(np)["status"] == "invalid");

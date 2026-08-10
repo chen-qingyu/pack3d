@@ -174,11 +174,11 @@ std::vector<FacetSlab> facet_staircase(const Facet& f, const Size& csize, int st
 bool check_weight(const ContainerLoad& load,
                   double box_weight) noexcept
 {
-    if (!load.type->max_weight.has_value())
+    if (!load.type->payload.has_value())
     {
         return true;
     }
-    return load.total_weight + box_weight <= load.type->max_weight.value() + 1e-9;
+    return load.total_weight + box_weight <= load.type->payload.value() + 1e-9;
 }
 
 bool check_support(const Position& pos, const OrientedSize& osize,

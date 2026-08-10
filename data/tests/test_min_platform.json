@@ -5,7 +5,7 @@
       "sx": 110,
       "sy": 50,
       "sz": 50,
-      "max_weight": 50000.0,
+      "payload": 50000.0,
       "quantity_limit": null
     },
     {
@@ -13,7 +13,7 @@
       "sx": 10,
       "sy": 50,
       "sz": 50,
-      "max_weight": 50000.0,
+      "payload": 50000.0,
       "quantity_limit": null
     }
   ],

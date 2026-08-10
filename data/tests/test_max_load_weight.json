@@ -5,7 +5,7 @@
       "sx": 300,
       "sy": 100,
       "sz": 220,
-      "max_weight": 1000.0
+      "payload": 1000.0
     }
   ],
   "box_types": [

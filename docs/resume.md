@@ -48,7 +48,7 @@ pack()
 | 支撑率         | `check_support`                                                    |
 | 站点限制       | `check_platform_limit`                                             |
 | 路线顺序       | `check_route_order`                                                |
-| 重量上限       | `total_weight` vs `max_weight`                                     |
+| 重量上限       | `total_weight` vs `payload`                                        |
 | size 一致性    | 若提供 `dx`/`dy`/`dz`，必须与 `box_type_id`+`orientation` 推导一致 |
 
 ---

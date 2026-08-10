@@ -35,7 +35,7 @@ TEST_CASE("check_boundary 拒绝越界", "[core]")
 {
     ContainerType ct;
     ct.inner_size = {1000, 1000, 1000};
-    ct.max_weight = 1000.0;
+    ct.payload = 1000.0;
 
     REQUIRE(check_boundary(ct, {0, 0, 0}, {500, 500, 500}));
     REQUIRE(check_boundary(ct, {500, 500, 500}, {500, 500, 500}));
@@ -110,7 +110,7 @@ TEST_CASE("平台数量限制约束", "[core]")
     load.type_id = "test";
     ContainerType ct{};
     ct.inner_size = {1000, 1000, 1000};
-    ct.max_weight = 10000.0;
+    ct.payload = 10000.0;
     load.type = &ct;
     load.platforms.insert("A");
 

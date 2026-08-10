@@ -23,7 +23,7 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 - 单箱承重约束：箱型 `max_load` 限制单箱上方承重（标量或按朝向数组）
 - 障碍物约束：容器内轴对齐障碍物，箱体不得侵入（面贴面允许），障碍物顶面等价地板
 - 斜面约束：容器斜面楔形禁入区，箱体不得侵入
-- 装托（palletizing）：`palletize` 箱型散件先装托，托盘作为装箱单元装车（详见 [docs/palletizing.md](docs/palletizing.md)）
+- 装托（palletizing）：`loose` 箱型散件先装托，托盘作为装箱单元装车（详见 [docs/palletizing.md](docs/palletizing.md)）
 - 中间状态续装：从已有部分放置继续装箱（详见 [docs/resume.md](docs/resume.md)）
 
 支持的算法：

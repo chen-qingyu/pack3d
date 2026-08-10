@@ -18,7 +18,7 @@ namespace
 bool is_palletize(const Box& bx, const std::map<std::string, BoxType>& bt_map)
 {
     auto it = bt_map.find(bx.box_type_id);
-    return it != bt_map.end() && it->second.palletize;
+    return it != bt_map.end() && it->second.loose;
 }
 
 // 候选按（装入体积, 装入箱数）字典序取优（天然倾向大托盘装满，托数最少）
@@ -88,7 +88,7 @@ std::vector<PalletLoad> palletize(
         bt_map[bt.id] = bt;
     }
 
-    // 散件 = palletize:true 箱型的箱子；已有容器中的箱子不参与装托
+    // 散件 = loose:true 箱型的箱子；已有容器中的箱子不参与装托
     std::vector<Box> remaining;
     for (const auto& bx : problem.boxes)
     {
@@ -220,7 +220,7 @@ Problem transform_pallet(
     std::map<std::string, bool> is_loose;
     for (const auto& bt : problem.box_types)
     {
-        is_loose[bt.id] = bt.palletize;
+        is_loose[bt.id] = bt.loose;
     }
     std::vector<Box> new_boxes;
     for (const auto& p : pallet_loads)

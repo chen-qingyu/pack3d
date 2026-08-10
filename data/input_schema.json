@@ -17,7 +17,7 @@
           "sx": { "type": "integer", "minimum": 1 },
           "sy": { "type": "integer", "minimum": 1 },
           "sz": { "type": "integer", "minimum": 1 },
-          "max_weight": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+          "payload": { "type": ["number", "null"], "exclusiveMinimum": 0 },
           "quantity_limit": { "type": ["integer", "null"], "minimum": 1 },
           "obstacles": {
             "type": "array",
@@ -89,7 +89,7 @@
             ]
           },
           "weight": { "type": ["number", "null"], "exclusiveMinimum": 0 },
-          "palletize": { "type": "boolean", "default": false }
+          "loose": { "type": "boolean", "default": false }
         }
       }
     },
@@ -118,14 +118,14 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "sx", "sy", "sz", "max_weight", "max_height"],
+        "required": ["id", "sx", "sy", "sz", "payload", "max_height"],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
           "sx": { "type": "integer", "minimum": 1 },
           "sy": { "type": "integer", "minimum": 1 },
           "sz": { "type": "integer", "minimum": 1 },
-          "max_weight": { "type": "number", "exclusiveMinimum": 0 },
+          "payload": { "type": "number", "exclusiveMinimum": 0 },
           "max_height": { "type": "integer", "minimum": 1 },
           "self_weight": { "type": "number", "minimum": 0, "default": 0 }
         }

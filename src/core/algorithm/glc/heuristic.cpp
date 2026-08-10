@@ -113,7 +113,7 @@ bool Heuristic::check_block_feasible(
     }
 
     // 重量：按该组平均重量检查块总重量
-    if (has_weight_info_ && container_.max_weight.has_value())
+    if (has_weight_info_ && container_.payload.has_value())
     {
         auto it = type_avg_weight_.find(block.box_type_id + "\t" + block.platform + "\t" + block.group);
         if (it != type_avg_weight_.end() &&
