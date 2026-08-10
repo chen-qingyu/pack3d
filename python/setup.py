@@ -31,7 +31,7 @@ class sdist(_sdist):
     def make_release_tree(self, base_dir: str, files: list[str]):
         super().make_release_tree(base_dir, files)
         root = _project_root()
-        for name in ("readme.md", "xmake.lua", "data", "src", "tests"):
+        for name in ("readme.md", "xmake.lua", "LICENSE", "data", "src", "tests"):
             source = root / name
             target = Path(base_dir) / name
             if source.is_dir():
