@@ -143,6 +143,7 @@ std::vector<PalletLoad> palletize(
                     continue;
                 }
                 ContainerLoad load = packer.pack_single(boxes, ct, {}, TenderState{});
+                load.type = nullptr; // ct 是栈上临时容器，避免悬挂指针
                 if (load.placements.size() == boxes.size())
                 {
                     Candidate cand{std::move(load), &pt};
@@ -164,6 +165,7 @@ std::vector<PalletLoad> palletize(
         {
             ContainerType ct = virtual_container(pt);
             ContainerLoad load = packer.pack_single(remaining, ct, {}, TenderState{});
+            load.type = nullptr; // ct 是栈上临时容器，避免悬挂指针
             if (!load.placements.empty())
             {
                 Candidate cand{std::move(load), &pt};
