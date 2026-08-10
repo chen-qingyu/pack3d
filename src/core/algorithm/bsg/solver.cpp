@@ -168,6 +168,8 @@ PackResult solve(const GlobalContext& ctx,
     {
         total_box_volume += static_cast<int64_t>(ctx.box_types[ti].size.volume()) * initial_counts[ti];
     }
+    // 理论上界 = 已有放置体积 + 全部新箱体积（s_best_volume 含已有体积，须对齐）
+    const int64_t volume_upper_bound = s0.used_volume + total_box_volume;
 
     spdlog::debug("BSG-CLP start: {} boxes ({} types), {} blocks, container {}x{}x{}",
                   total_boxes, n_types, ctx.blocks.size(),
@@ -181,10 +183,10 @@ PackResult solve(const GlobalContext& ctx,
                       w, round_best, s_best_volume, s_best.placements.size());
 
         // 已达理论上界 → 提前停止
-        if (s_best_volume >= total_box_volume)
+        if (s_best_volume >= volume_upper_bound)
         {
             spdlog::debug("BSG-CLP: optimal reached ({} / {}), stopping early",
-                          s_best_volume, total_box_volume);
+                          s_best_volume, volume_upper_bound);
             break;
         }
 
