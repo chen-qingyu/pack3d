@@ -807,12 +807,10 @@ void to_json(json& j, const Solution& sol)
     summary["platform_split"] = sol.objective.platform_split;
     summary["volume_rate"] = sol.objective.avg_volume_rate;
     summary["group_split"] = sol.objective.group_split_sum;
-    if (sol.pallet_mode)
-    {
-        summary["pallet_count"] = sol.pallet_count;
-        summary["palletized_box_count"] = sol.palletized_box_count;
-        summary["loose_box_count"] = sol.loose_box_count;
-    }
+    // 装托字段恒输出：未启用装托时全为 0 / 空数组
+    summary["pallet_count"] = sol.pallet_count;
+    summary["palletized_box_count"] = sol.palletized_box_count;
+    summary["loose_box_count"] = sol.loose_box_count;
 
     j["summary"] = std::move(summary);
 
@@ -889,10 +887,8 @@ void to_json(json& j, const Solution& sol)
     }
     result["containers"] = std::move(containers_json);
 
-    if (sol.pallet_mode)
-    {
-        result["pallets"] = sol.pallets;
-    }
+    // 恒输出（未启用装托为空数组）
+    result["pallets"] = sol.pallets;
 
     json box_types_json = json::array();
     for (const auto& bt : sol.box_types)

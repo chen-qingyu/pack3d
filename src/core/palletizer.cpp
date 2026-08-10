@@ -250,7 +250,6 @@ void expand_pallet_solution(Solution& sol,
                             const std::vector<Box>& unpalletized,
                             bool pallet_fallback) noexcept
 {
-    sol.pallet_mode = true;
     sol.pallets = pallet_loads;
     sol.pallet_count = static_cast<int>(pallet_loads.size());
 
