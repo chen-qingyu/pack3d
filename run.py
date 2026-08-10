@@ -79,7 +79,8 @@ if __name__ == "__main__":
 
     out_dir = Path(args.output)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_file = out_dir / f"{Path(args.file).stem}_result.json"
+    # 与 C++ CLI 一致：输出 {stem}.json
+    out_file = out_dir / f"{Path(args.file).stem}.json"
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(result, f, indent=2, ensure_ascii=False)
     print(f"Result written to: {out_file}")
