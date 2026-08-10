@@ -340,7 +340,8 @@ PackResult Heuristic::make_result(
             r.unpacked_box_ids.push_back(bx.id);
         }
     }
-    r.success = (r.placements.size() == all_boxes.size());
+    // 全部请求的箱子都已装箱即成功（placements 可能含已有放置，不能按数量比较）
+    r.success = r.unpacked_box_ids.empty();
     return r;
 }
 
