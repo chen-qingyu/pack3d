@@ -148,10 +148,10 @@ BSG 继承项目的容器调度，并在块放置时逐叶校验共享硬约束�
 - 边界与重叠：在叶子箱展开后通过 `check_boundary` / `check_overlap` 校验。
 - 重量约束：逐箱累加并通过 `check_weight` 对照容器 `max_weight` 校验。
 - 支撑约束：`support_rate > 0` 时通过项目通用的 `check_support` 校验支撑面积占比和可堆叠性。
-- 平台数量限制：通过 `check_platform_limit` 校验。
+- 站点数量限制：通过 `check_platform_limit` 校验。
 - 路线顺序约束：通过 `check_route_order` 按 Y/Z 重叠门控校验 X 轴通道。
 - 堆码层数 / 单箱承重：逐叶增量预检 + 放置后整体 `recompute_stack_state` 校验（`max_stack` / `max_load`）。
-- 发标限制：逐叶通过 `check_tender_limit` 校验（tender 启用时 `group` 进入库存类键）。
+- 运输委托限制：逐叶通过 `check_tender_limit` 校验（tender 启用时 `group` 进入库存类键）。
 
 约束校验仅在 `PackerBase` 传入项目约束时启用。纯几何 BSG 单元测试（无约束上下文）仍走原有的 `is_supported` 路径，不受影响。
 

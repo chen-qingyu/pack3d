@@ -16,9 +16,9 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 
 - 重量约束：容器内总重不超过容器限重
 - 支撑率约束：箱子底面被支撑的比例
-- 路线顺序约束：平台按装卸货通道的 X 轴位置约束
-- 平台数量限制：单容器最多 `platform_limit` 个不同平台
-- 发标限制：每个 tender（容器按共享 group 连通的连通分量）最多包含 `tender_limit` 个容器
+- 路线顺序约束：站点（配送停靠点）按装卸货通道的 X 轴位置约束
+- 站点数量限制：单容器最多 `platform_limit` 个不同站点
+- 运输委托限制：每个 tender（运输委托 = 同 group 货物连通的容器连通分量）最多包含 `tender_limit` 个容器
 - 堆码层数约束：箱型 `max_stack` 限制堆叠层数（标量或按朝向数组）
 - 单箱承重约束：箱型 `max_load` 限制单箱上方承重（标量或按朝向数组）
 - 障碍物约束：容器内轴对齐障碍物，箱体不得侵入（面贴面允许），障碍物顶面等价地板
@@ -154,7 +154,7 @@ data/
   input_schema.json  输入 JSON Schema（构建时嵌入为 C++ 头文件）
   convert_br.py      BR 格式 benchmark 转 JSON
   br-origin/         BR 格式 benchmark 数据
-  tests/             测试数据（含续装、承重、平台合并等专项场景）
+  tests/             测试数据（含续装、承重、站点合并等专项场景）
 docs/                文档说明
 python/
   README.md          Python SDK 说明

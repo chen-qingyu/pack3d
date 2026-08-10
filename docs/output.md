@@ -43,7 +43,7 @@ JSON，顶层四个字段：
 | `packed_box_count`     | 已装箱数（装托模式按散箱口径，托盘按内部箱数计）             |
 | `unpacked_box_count`   | 未装箱数                                                     |
 | `container_count`      | 使用容器数                                                   |
-| `platform_split`       | 平台拆分总次数（0=每个平台只在一个容器中）                   |
+| `platform_split`       | 站点拆分总次数（0=每个站点只在一个容器中）                   |
 | `volume_rate`          | 各容器平均体积利用率（0-1）                                  |
 | `group_split`          | 组拆分总次数（0=每组只在一个容器中）                         |
 | `pallet_count`         | 托盘单元数（未启用装托恒为 0）                               |
@@ -134,7 +134,7 @@ JSON，顶层四个字段：
 }
 ```
 
-容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置平台/分组时 `platform`/`group` 为 null）。
+容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置站点/分组时 `platform`/`group` 为 null）。
 
 `obstacles` 为本容器实例的障碍物（从容器类型继承，自包含），结构与输入一致；容器类型未配置障碍物时省略。
 
@@ -164,16 +164,16 @@ JSON，顶层四个字段：
 
 placement 字段说明：
 
-| 字段           | 说明                           |
-| -------------- | ------------------------------ |
-| `box_id`       | 箱子实例 ID                    |
-| `box_type_id`  | 箱子类型 ID                    |
-| `x`/`y`/`z`    | 放置位置（min corner）         |
-| `dx`/`dy`/`dz` | 朝向后的实际尺寸（沿容器轴向） |
-| `orientation`  | 朝向（`xyz`/`xzy`/...）        |
-| `weight`       | 箱子重量，未设置时为 null      |
-| `platform`     | 平台 ID，未设置时为 null       |
-| `group`        | 分组 ID，未设置时为 null       |
+| 字段           | 说明                                   |
+| -------------- | -------------------------------------- |
+| `box_id`       | 箱子实例 ID                            |
+| `box_type_id`  | 箱子类型 ID                            |
+| `x`/`y`/`z`    | 放置位置（min corner）                 |
+| `dx`/`dy`/`dz` | 朝向后的实际尺寸（沿容器轴向）         |
+| `orientation`  | 朝向（`xyz`/`xzy`/...）                |
+| `weight`       | 箱子重量，未设置时为 null              |
+| `platform`     | 站点 ID（配送停靠点），未设置时为 null |
+| `group`        | 分组 ID，未设置时为 null               |
 
 ## `violations` 说明（非 `complete` 时可能出现）
 

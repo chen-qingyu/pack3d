@@ -114,13 +114,13 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段          | 类型   | 必填 | 说明                       |
-| ------------- | ------ | ---- | -------------------------- |
-| `id`          | string | 是   | 唯一标识                   |
-| `box_type_id` | string | 是   | 引用 box_types 中的 id     |
-| `weight`      | number |      | 单箱重量，null=无重量      |
-| `group`       | string |      | 分组 ID，用于 tender_limit |
-| `platform`    | string |      | 平台 ID，用于路线约束      |
+| 字段          | 类型   | 必填 | 说明                                                           |
+| ------------- | ------ | ---- | -------------------------------------------------------------- |
+| `id`          | string | 是   | 唯一标识                                                       |
+| `box_type_id` | string | 是   | 引用 box_types 中的 id                                         |
+| `weight`      | number |      | 单箱重量，null=无重量                                          |
+| `group`       | string |      | 分组 ID（一票运输委托的货物共用同一 group，用于 tender_limit） |
+| `platform`    | string |      | 站点 ID（配送停靠点），用于路线约束                            |
 
 ## 算法 `algorithm`（可选）
 
@@ -145,14 +145,14 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段                  | 类型       | 默认  | 说明                                                             |
-| --------------------- | ---------- | ----- | ---------------------------------------------------------------- |
-| `time_limit`          | number>0   | 120   | 时限（秒）                                                       |
-| `support_rate`        | number 0-1 | 0     | 底面支撑率阈值，0=跳过                                           |
-| `platform_limit`      | int>=1     | null  | 单容器最大平台数                                                 |
-| `tender_limit`        | int>=1     | null  | 每 tender 最多容器数（tender = 容器按共享 group 连通的连通分量） |
-| `pallet_fallback`     | boolean    | false | 散件装不进任何托盘时降级散装上车；false=未装箱（partial）        |
-| `pallet_support_rate` | number 0-1 | 1     | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立） |
+| 字段                  | 类型       | 默认  | 说明                                                                       |
+| --------------------- | ---------- | ----- | -------------------------------------------------------------------------- |
+| `time_limit`          | number>0   | 120   | 时限（秒）                                                                 |
+| `support_rate`        | number 0-1 | 0     | 底面支撑率阈值，0=跳过                                                     |
+| `platform_limit`      | int>=1     | null  | 单容器最大站点数                                                           |
+| `tender_limit`        | int>=1     | null  | 每运输委托（tender）最多容器数（tender = 同 group 货物连通的容器连通分量） |
+| `pallet_fallback`     | boolean    | false | 散件装不进任何托盘时降级散装上车；false=未装箱（partial）                  |
+| `pallet_support_rate` | number 0-1 | 1     | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）           |
 
 堆码层数 `max_stack` 与单箱承重 `max_load` 不在此处配置，而是**箱型字段**（见上节），有值即启用。
 
@@ -194,7 +194,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 ["P0", "P1", "P2"]
 ```
 
-按卸货顺序排列的平台 ID 列表（即配送顺序）：`route[0]` 先卸在近门处（X 大），末尾后卸在深处（X 小）。装货为反向：先装（最深处）的货最后卸，后装（近门处）的货最先卸。
+按卸货顺序排列的站点 ID 列表（即配送顺序）：`route[0]` 先卸在近门处（X 大），末尾后卸在深处（X 小）。装货为反向：先装（最深处）的货最后卸，后装（近门处）的货最先卸。
 
 ## 预校验
 
@@ -202,7 +202,7 @@ Schema 校验后，代码还会检查：
 
 - ID 唯一性：`container_types`、`box_types`、`boxes` 中各自的 `id` 必须唯一
 - 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
-- 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）设置了 `platform`，就必须提供 `route`；路线中无重复平台，箱子平台必须在路线中
+- 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）设置了 `platform`，就必须提供 `route`；路线中无重复站点，箱子站点必须在路线中
 - 重量一致性：只要任一个箱子存在重量信息，则所有箱子和容器必须有重量信息
 - 装托合法性：`pallet_types` id 唯一、`max_height > sz`、`palletize: true` 但未配置 `pallet_types` 报错；装托模式要求全部箱子带重量、全部容器带 `max_weight`
 - 障碍物合法性：每个障碍物必须完全在所属容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠
@@ -247,9 +247,9 @@ Schema 校验后，代码还会检查：
 | `placements[].orientation` | string | 是   | 朝向，同 box_types 朝向枚举                    |
 | `placements[].dx/dy/dz`    | int>=1 |      | 朝向后的实际尺寸（可从 type+朝向推导，可省略） |
 | `placements[].weight`      | number |      | 箱子重量，未设置时为 null                      |
-| `placements[].platform`    | string |      | 平台 ID，未设置时为 null                       |
+| `placements[].platform`    | string |      | 站点 ID（配送停靠点），未设置时为 null         |
 | `placements[].group`       | string |      | 分组 ID，未设置时为 null                       |
 
 已有容器中的箱子不会出现在 `boxes` 列表中。求解器会先尝试在已有容器中继续塞入剩余箱子（未满则继续），再开新容器。已有放置被锁定，后处理不会移动它们。
 
-预校验会额外检查已有放置的边界、重叠、重量、支撑率、平台限制和路线顺序。
+预校验会额外检查已有放置的边界、重叠、重量、支撑率、站点限制和路线顺序。

@@ -67,7 +67,7 @@
 
 - **代码**：`pallet.hpp/cpp`（类型 io + 虚拟容器/箱型生成）、`palletizer.hpp/cpp`（装托循环 / 问题改写 / 输出展开）；入口 `app.cpp` 两级流水线；`io.cpp` 与 `input_schema.json` 负责解析/校验。
 - **关键点**：
-  1. 装托 packer 绑定 problem 副本：`support_rate = pallet_support_rate`，**清除 `route`/`platform_limit`**——否则小托盘内被强加车厢卸货顺序/平台数约束。
+  1. 装托 packer 绑定 problem 副本：`support_rate = pallet_support_rate`，**清除 `route`/`platform_limit`**——否则小托盘内被强加车厢卸货顺序/站点数约束。
   2. 改写后**重建 `has_max_stack`/`has_max_load`**——虚拟箱自带 `max_stack`，解析时算出的标志不含它，"不叠托"会失效。
   3. `pack_single` 返回的 `load.type` 指向传入的临时容器，须在析构前消费。
   4. 无 `pallet_types` 分支**零新增求解调用**（RGS `s_call_id` 静态计数，防既有测试漂移）。
@@ -75,4 +75,4 @@
 ## 3. 测试与限制
 
 - **测试**：`data/tests/test_pallet_*.json` + `tests/test_solver.cpp` 的 `[pallet]` 用例，`xmake run test "[pallet]"`（GEP 确定性断言）。已知 BSG 对超小场景可能多开一车（固有次优），测试只对 GEP 严格断言。
-- **限制**：resume 装托不支持；托盘数量上限未实现；混合平台托不参与路线；托盘装不进车厢则该托未装箱。
+- **限制**：resume 装托不支持；托盘数量上限未实现；混合站点托不参与路线；托盘装不进车厢则该托未装箱。

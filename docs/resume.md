@@ -46,7 +46,7 @@ pack()
 | 边界           | `check_boundary`                                                   |
 | 重叠           | `check_overlap`（仅与同容器已校验放置）                            |
 | 支撑率         | `check_support`                                                    |
-| 平台限制       | `check_platform_limit`                                             |
+| 站点限制       | `check_platform_limit`                                             |
 | 路线顺序       | `check_route_order`                                                |
 | 重量上限       | `total_weight` vs `max_weight`                                     |
 | size 一致性    | 若提供 `dx`/`dy`/`dz`，必须与 `box_type_id`+`orientation` 推导一致 |
@@ -139,7 +139,7 @@ GLC 的核心难点：已有放置可能不在任何 Space 的角落位置，无
 
 两个后处理步骤均跳过 locked 容器：
 
-- **`reduce_platform_splits`**：遍历容器时 `if (all_loads[ci].locked) continue;`，不会尝试从已有容器中移动平台。
+- **`reduce_platform_splits`**：遍历容器时 `if (all_loads[ci].locked) continue;`，不会尝试从已有容器中移动站点。
 - **`repack_last_smaller`**：`if (cl.placements.empty() || cl.locked) return;`，不会尝试将已有容器换到更小的车型。内部 `pack_single` 调用传空 `existing`（后处理只涉及新容器）。
 
 ---
