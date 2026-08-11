@@ -1,5 +1,7 @@
 #include "test_common.hpp"
 
+// 承重（max_stack / max_load，含非均匀重量）与重量解析（箱型级/箱子级）约束场景
+
 // 3 个 100 立方体，限堆 2 层 + support_rate=1（禁止悬空）→ 第 3 个无法堆叠 → 需要第 2 个容器
 TEST_CASE("max_stack 限制堆码层数", "[solver][stack]")
 {

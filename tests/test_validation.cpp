@@ -1,3 +1,5 @@
+// 输入预校验（pre_validate_input）规则单测：重复 ID、路线、承重、重量三选一、
+// group 一致性、tender、装托模式等非法输入的检测与合法输入的放行
 #include <catch2/catch_test_macros.hpp>
 
 #include "core/io.hpp"
@@ -5,7 +7,7 @@
 
 using namespace pack3d;
 
-TEST_CASE("pre_validate_input 检测重复 ID", "[parser]")
+TEST_CASE("pre_validate_input 检测重复 ID", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -25,7 +27,7 @@ TEST_CASE("pre_validate_input 检测重复 ID", "[parser]")
     REQUIRE(found_dup);
 }
 
-TEST_CASE("pre_validate_input 检测路线缺失平台", "[parser]")
+TEST_CASE("pre_validate_input 检测路线缺失平台", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -50,7 +52,7 @@ TEST_CASE("pre_validate_input 检测路线缺失平台", "[parser]")
     REQUIRE(found_route);
 }
 
-TEST_CASE("pre_validate_input 检测 max_stack 数组长度不匹配", "[parser]")
+TEST_CASE("pre_validate_input 检测 max_stack 数组长度不匹配", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, std::nullopt, std::nullopt});
@@ -74,7 +76,7 @@ TEST_CASE("pre_validate_input 检测 max_stack 数组长度不匹配", "[parser]
     REQUIRE(found);
 }
 
-TEST_CASE("pre_validate_input 检测 max_load 需要重量", "[parser]")
+TEST_CASE("pre_validate_input 检测 max_load 需要重量", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -98,7 +100,7 @@ TEST_CASE("pre_validate_input 检测 max_load 需要重量", "[parser]")
     REQUIRE(found);
 }
 
-TEST_CASE("pre_validate_input 检测 max_stack/max_load 需要 support_rate", "[parser]")
+TEST_CASE("pre_validate_input 检测 max_stack/max_load 需要 support_rate", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -133,7 +135,7 @@ TEST_CASE("pre_validate_input 检测 max_stack/max_load 需要 support_rate", "[
 }
 
 // 箱型级重量：箱型与箱子不能同时有重量
-TEST_CASE("pre_validate_input 重量三选一：箱型与箱子重量互斥", "[parser]")
+TEST_CASE("pre_validate_input 重量三选一：箱型与箱子重量互斥", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -158,7 +160,7 @@ TEST_CASE("pre_validate_input 重量三选一：箱型与箱子重量互斥", "[
 }
 
 // 箱型级重量：要么全部箱型有重量，要么全都没有
-TEST_CASE("pre_validate_input 重量三选一：箱型重量必须全部配置", "[parser]")
+TEST_CASE("pre_validate_input 重量三选一：箱型重量必须全部配置", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -189,7 +191,7 @@ TEST_CASE("pre_validate_input 重量三选一：箱型重量必须全部配置",
 }
 
 // 箱型级重量模式（全箱型有、箱子无）合法
-TEST_CASE("pre_validate_input 箱型级重量模式通过", "[parser]")
+TEST_CASE("pre_validate_input 箱型级重量模式通过", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -206,7 +208,7 @@ TEST_CASE("pre_validate_input 箱型级重量模式通过", "[parser]")
 }
 
 // group 一致性：任一箱子有 group → 全部必须有（否则输出 tender 语义不一致）
-TEST_CASE("pre_validate_input group 一致性：部分箱子缺 group 非法", "[parser]")
+TEST_CASE("pre_validate_input group 一致性：部分箱子缺 group 非法", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -231,7 +233,7 @@ TEST_CASE("pre_validate_input group 一致性：部分箱子缺 group 非法", "
 }
 
 // group 一致性：全有或全无均合法
-TEST_CASE("pre_validate_input group 一致性：全有或全无均合法", "[parser]")
+TEST_CASE("pre_validate_input group 一致性：全有或全无均合法", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -253,7 +255,7 @@ TEST_CASE("pre_validate_input group 一致性：全有或全无均合法", "[par
 }
 
 // group 一致性：已有放置缺 group 也判定非法
-TEST_CASE("pre_validate_input group 一致性：已有放置缺 group 非法", "[parser]")
+TEST_CASE("pre_validate_input group 一致性：已有放置缺 group 非法", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -282,7 +284,7 @@ TEST_CASE("pre_validate_input group 一致性：已有放置缺 group 非法", "
     REQUIRE(found);
 }
 
-TEST_CASE("pre_validate_input 检测 tender_limit 需要 group", "[parser]")
+TEST_CASE("pre_validate_input 检测 tender_limit 需要 group", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
@@ -311,7 +313,7 @@ TEST_CASE("pre_validate_input 检测 tender_limit 需要 group", "[parser]")
     }
 }
 
-TEST_CASE("pre_validate_input 检测装托模式需要 support_rate", "[parser]")
+TEST_CASE("pre_validate_input 检测装托模式需要 support_rate", "[validation]")
 {
     Problem p;
     p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
