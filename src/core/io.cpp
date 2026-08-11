@@ -489,6 +489,12 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         out.push_back("inconsistent group: some boxes have group, some don't");
     }
 
+    // tender_limit 需要 group：无 group 时 check_tender_limit 对空 group 恒真，约束静默失效
+    if (problem.tender_limit > 0 && !any_group)
+    {
+        out.push_back("tender_limit requires group (no box or existing placement has group)");
+    }
+
     // 承重约束：max_stack/max_load 数组长度与 allowed_orientations 对齐
     bool any_max_stack = false;
     bool any_max_load = false;

@@ -281,3 +281,32 @@ TEST_CASE("pre_validate_input group 一致性：已有放置缺 group 非法", "
     }
     REQUIRE(found);
 }
+
+TEST_CASE("pre_validate_input 检测 tender_limit 需要 group", "[parser]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
+    p.boxes.push_back({"box1", "bt1", std::nullopt, "", ""}); // 无 group
+    p.tender_limit = 2;
+
+    // tender_limit 但无 group → 报错（否则约束静默失效）
+    auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& v : violations)
+    {
+        if (v.find("tender_limit requires group") != std::string::npos)
+        {
+            found = true;
+        }
+    }
+    REQUIRE(found);
+
+    // 有 group → 不再报错
+    p.boxes[0].group = "A";
+    violations = pre_validate_input(p);
+    for (const auto& v : violations)
+    {
+        REQUIRE(v.find("tender_limit requires group") == std::string::npos);
+    }
+}
