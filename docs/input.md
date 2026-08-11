@@ -152,14 +152,14 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段                  | 类型       | 默认  | 说明                                                                       |
-| --------------------- | ---------- | ----- | -------------------------------------------------------------------------- |
-| `time_limit`          | number>0   | 120   | 时限（秒）                                                                 |
-| `support_rate`        | number 0-1 | 0     | 底面支撑率阈值，0=跳过                                                     |
-| `platform_limit`      | int>=1     | null  | 单容器最大站点数                                                           |
-| `tender_limit`        | int>=1     | null  | 每运输委托（tender）最多容器数（tender = 同 group 货物连通的容器连通分量） |
-| `pallet_fallback`     | boolean    | false | 散件装不进任何托盘时降级散装上车；false=未装箱（partial）                  |
-| `pallet_support_rate` | number 0-1 | 1     | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）           |
+| 字段                  | 类型       | 默认  | 说明                                                                             |
+| --------------------- | ---------- | ----- | -------------------------------------------------------------------------------- |
+| `time_limit`          | number>0   | 120   | 时限（秒）                                                                       |
+| `support_rate`        | number 0-1 | 0     | 底面支撑率阈值，0=跳过；装托模式下必须 > 0（预校验强制，否则托盘可在车厢内悬空） |
+| `platform_limit`      | int>=1     | null  | 单容器最大站点数                                                                 |
+| `tender_limit`        | int>=1     | null  | 每运输委托（tender）最多容器数（tender = 同 group 货物连通的容器连通分量）       |
+| `pallet_fallback`     | boolean    | false | 散件装不进任何托盘时降级散装上车；false=未装箱（partial）                        |
+| `pallet_support_rate` | number 0-1 | 1     | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                 |
 
 堆码层数 `max_stack` 与单箱承重 `max_load` 不在此处配置，而是**箱型字段**（见上节），有值即启用。
 
@@ -213,7 +213,7 @@ Schema 校验后，代码还会检查：
 - 重量一致性（**三选一**）：要么全无重量；要么**全部箱型**配置 `weight` 且**所有箱子不带**重量（箱子重量取箱型）；要么**所有箱子**配置 `weight` 且箱型不带。箱型与箱子重量混用、部分配置均报错。**有重量信息时**（后两种模式）要求全部容器配置 `payload`，全无重量时不要求；`max_load`/装托模式要求有重量信息（箱型级或箱子级）
 - group 一致性（**全有或全无**）：任一箱子（含 `existing_containers` 已有放置）设置了 `group`，则所有箱子必须都设置 `group`。保证输出 `tender` 要么全为数字要么全为 `null`
 - `tender_limit` 配置但无任何 `group` → 报错（无 group 时该约束静默失效）
-- 装托合法性：`pallet_types` id 唯一、`loose: true` 但未配置 `pallet_types` 报错；装托模式要求有重量信息（箱型级或箱子级）、全部容器带 `payload`
+- 装托合法性：`pallet_types` id 唯一、`loose: true` 但未配置 `pallet_types` 报错；装托模式要求有重量信息（箱型级或箱子级）、全部容器带 `payload`、装车 `support_rate > 0`
 - 障碍物合法性：每个障碍物必须完全在所属容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠
 - 斜面合法性：每个斜面必须恰好两个非零截距、截距不越界、`existing_containers` 已有放置不侵入斜面禁区
 

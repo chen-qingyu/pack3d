@@ -618,6 +618,12 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         {
             out.push_back("inconsistent weight: pallet mode requires all container_types to have payload");
         }
+
+        // 装托模式要求装车支撑率 > 0：support_rate=0 时托盘可在车厢内悬空，物理不合理
+        if (problem.support_rate == 0.0)
+        {
+            out.push_back("pallet mode requires support_rate > 0");
+        }
     }
 
     // 任一箱型声明 loose:true 但未提供 pallet_types → 配置错误

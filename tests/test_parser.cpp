@@ -310,3 +310,33 @@ TEST_CASE("pre_validate_input 检测 tender_limit 需要 group", "[parser]")
         REQUIRE(v.find("tender_limit requires group") == std::string::npos);
     }
 }
+
+TEST_CASE("pre_validate_input 检测装托模式需要 support_rate", "[parser]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
+    p.boxes.push_back({"box1", "bt1", 10.0, "", ""});
+    p.pallet_types.push_back({"pt", {100, 100, 10}, 100.0, 100, 0.0});
+    p.support_rate = 0.0; // 默认即 0
+
+    // 装托 + support_rate=0 → 报错（托盘可在车厢内悬空）
+    auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& v : violations)
+    {
+        if (v.find("pallet mode requires support_rate > 0") != std::string::npos)
+        {
+            found = true;
+        }
+    }
+    REQUIRE(found);
+
+    // support_rate>0 → 不再报错
+    p.support_rate = 0.6;
+    violations = pre_validate_input(p);
+    for (const auto& v : violations)
+    {
+        REQUIRE(v.find("pallet mode requires support_rate > 0") == std::string::npos);
+    }
+}
