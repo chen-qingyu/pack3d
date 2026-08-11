@@ -47,10 +47,10 @@ flowchart TD
   E --> F[build_solution]
 ```
 
-- **选车**：`select_largest_fitting` 从可用容器类型中选能装下最多剩余箱子的"大优先"车；`quantity_limit` 限制每种类型可用数量。
+- **选车**：`select_largest_fitting` 从可用容器类型中选能装下剩余箱子的最大车型（大优先）；`quantity_limit` 限制每种类型可用数量。
 - **单容器填充**：`pack_single(items, ct, existing, tender)` —— existing 为已有放置（续装时非空），tender 为已提交容器的运输委托分解。
 - **主循环保护**：阶段 C 若 `packed.empty()` 立即 break（tender 拒绝是几何无关的，继续开空容器只会死循环到超时）。
-- **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。`time_limit` 为软限制：超时后返回当前最优，已全装完 `status=complete`，否则 `status=timeout`。
+- **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。`time_limit` 为软限制：超时即返回当前最优并标记 `status=timeout`（即使已全部装完）；未超时且全部装完 → `complete`，否则 → `partial`。
 
 ## 3. 装托（Palletizing）
 

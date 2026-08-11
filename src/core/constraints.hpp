@@ -31,7 +31,7 @@ namespace pack3d
                                const Size& container_size,
                                const std::vector<Facet>& facets) noexcept;
 
-// 斜面楔形的 N 步阶梯 AABB 近似（只覆盖禁区、永不过挖安全台阶区，过挖≈楔形/N）
+// 斜面楔形的 N 步阶梯 AABB 近似（覆盖整个楔形禁区，过挖≈楔形/N，远小于 AABB 的楔形过挖）
 struct FacetSlab
 {
     int32_t x = 0, y = 0, z = 0;

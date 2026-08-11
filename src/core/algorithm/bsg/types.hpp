@@ -192,7 +192,7 @@ struct GlobalContext
     /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重/tender）。
     /// 支撑由 is_supported 在块级处理；障碍物在 support_rate>0 时强制逐叶（快路径的
     /// is_supported 不认障碍物顶面支撑）；support_rate==0 时雕刻已保证空间无禁区，快路径即可。
-    /// 斜面由阶梯雕刻保证（覆盖禁区、永不过挖），从不强制逐叶。
+    /// 斜面由阶梯雕刻保证覆盖禁区（过挖≈楔形/N），从不强制逐叶。
     [[nodiscard]] bool needs_leaf_validation() const noexcept
     {
         return (!container_type.obstacles.empty() && support_rate > 0.0) ||
