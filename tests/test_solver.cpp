@@ -41,6 +41,59 @@ TEST_CASE("fixed_default_objectives", "[solver]")
     }
 }
 
+// 输出字段恒存在：未启用的功能给合理默认值（null / 空数组 / false）
+TEST_CASE("输出字段恒存在", "[solver][output]")
+{
+    auto res = run(load_data("data/demo.json"));
+    REQUIRE(res["status"] == "complete");
+
+    // 顶层
+    REQUIRE(res.contains("violations"));
+    REQUIRE(res["violations"].is_array());
+    REQUIRE(res["result"].contains("pallets"));
+    REQUIRE(res["result"]["pallets"].is_array());
+    REQUIRE(res["result"].contains("unpacked_boxes"));
+    REQUIRE(res["result"]["unpacked_boxes"].is_array());
+
+    // 容器级（demo 无障碍/斜面/站点/tender）
+    for (const auto& c : res["result"]["containers"])
+    {
+        REQUIRE(c.contains("obstacles"));
+        REQUIRE(c["obstacles"].is_array());
+        REQUIRE(c.contains("facets"));
+        REQUIRE(c["facets"].is_array());
+        REQUIRE(c.contains("tender"));
+        REQUIRE(c["tender"].is_null());
+        REQUIRE(c.contains("payload"));
+        REQUIRE(c.contains("used_weight"));
+        REQUIRE(c.contains("weight_rate"));
+        REQUIRE(c.contains("platforms"));
+        REQUIRE(c.contains("groups"));
+    }
+
+    // 箱型级（demo 无承重/重量/散件）
+    for (const auto& bt : res["result"]["box_types"])
+    {
+        REQUIRE(bt.contains("max_stack"));
+        REQUIRE((bt["max_stack"].is_null() || bt["max_stack"].is_array()));
+        REQUIRE(bt.contains("max_load"));
+        REQUIRE((bt["max_load"].is_null() || bt["max_load"].is_array()));
+        REQUIRE(bt.contains("weight"));
+        REQUIRE(bt.contains("loose"));
+    }
+
+    // 放置级
+    for (const auto& c : res["result"]["containers"])
+    {
+        for (const auto& pl : c["placements"])
+        {
+            REQUIRE(pl.contains("platform"));
+            REQUIRE(pl.contains("group"));
+            REQUIRE(pl.contains("weight"));
+        }
+    }
+}
+
 // run() 对任何非法输入都返回 status=invalid 的 JSON，而不是抛异常/崩溃
 TEST_CASE("run 对畸形输入返回 invalid", "[solver]")
 {

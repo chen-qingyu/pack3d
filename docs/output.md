@@ -11,6 +11,8 @@ JSON，顶层四个字段：
 }
 ```
 
+> **字段恒存在**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`max_stack`/`max_load`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）、`false`（`loose`）。
+
 ## `status` 状态枚举
 
 | 值           | 含义                     |

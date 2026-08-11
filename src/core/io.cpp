@@ -914,7 +914,7 @@ void to_json(json& j, const Solution& sol)
         cj["sx"] = cs.inner_size.x;
         cj["sy"] = cs.inner_size.y;
         cj["sz"] = cs.inner_size.z;
-        if (!cs.obstacles.empty())
+        // obstacles/facets 恒输出（未启用为空数组）
         {
             json obs_json = json::array();
             for (const auto& o : cs.obstacles)
@@ -930,7 +930,6 @@ void to_json(json& j, const Solution& sol)
             }
             cj["obstacles"] = std::move(obs_json);
         }
-        if (!cs.facets.empty())
         {
             json fac_json = json::array();
             for (const auto& f : cs.facets)
@@ -993,7 +992,13 @@ void to_json(json& j, const Solution& sol)
             orients.push_back(orientation_to_string(o));
         }
         bj["allowed_orientations"] = std::move(orients);
-        if (!bt.max_stack.empty())
+        bj["loose"] = bt.loose;
+        // max_stack/max_load/weight 恒输出（未配置为 null）
+        if (bt.max_stack.empty())
+        {
+            bj["max_stack"] = nullptr;
+        }
+        else
         {
             json ms = json::array();
             for (const auto& v : bt.max_stack)
@@ -1002,7 +1007,11 @@ void to_json(json& j, const Solution& sol)
             }
             bj["max_stack"] = std::move(ms);
         }
-        if (!bt.max_load.empty())
+        if (bt.max_load.empty())
+        {
+            bj["max_load"] = nullptr;
+        }
+        else
         {
             json ml = json::array();
             for (const auto& v : bt.max_load)
@@ -1011,10 +1020,7 @@ void to_json(json& j, const Solution& sol)
             }
             bj["max_load"] = std::move(ml);
         }
-        if (bt.weight.has_value())
-        {
-            bj["weight"] = bt.weight.value();
-        }
+        bj["weight"] = opt_json(bt.weight);
         box_types_json.push_back(std::move(bj));
     }
     result["box_types"] = std::move(box_types_json);
@@ -1023,10 +1029,8 @@ void to_json(json& j, const Solution& sol)
 
     j["result"] = std::move(result);
 
-    if (!sol.violations.empty())
-    {
-        j["violations"] = sol.violations;
-    }
+    // violations 恒输出（无违规为空数组）
+    j["violations"] = sol.violations;
 }
 
 } // namespace pack3d
