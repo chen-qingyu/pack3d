@@ -35,7 +35,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 
 ### 障碍物 `obstacles`
 
-容器内固定的轴对齐长方体占位（如门框包边、台阶、轮拱凸起），所有该类型实例共享。箱子不得与障碍物**空间相交**（面贴面允许）；障碍物顶面**等价于地板**，可承托箱子（计入支撑率检查，放在其上的箱子堆码层号=1）。障碍物计入体积率分母：`volume_rate = 装箱体积 / 可用容积`，其中可用容积 = 物理总容积 − 障碍物体积 − 斜面楔形体积。
+容器内固定的轴对齐长方体占位（如门框包边、台阶、轮拱凸起），所有该类型实例共享。语义（禁入、顶面等价地板、计入体积率分母）见 [constraints.md](constraints.md) 1.10。
 
 | 字段           | 类型   | 必填 | 说明                         |
 | -------------- | ------ | ---- | ---------------------------- |
@@ -59,7 +59,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | -------------- | ------ | -------- | ---------------------------------------------------------- |
 | `dx`/`dy`/`dz` | int!=0 | 恰好两个 | 沿该轴的截距：`+` = 从 max 侧向内进深，`-` = 从 min 侧向内 |
 
-斜面切掉的角附近**楔形禁区**箱子不得侵入（面贴面允许）；斜面**不参与支撑**（`support_rate`/`max_stack`/`max_load` 均不交互）。斜面计入体积率分母（可用容积 = 物理总容积 − 障碍物 − 斜面楔形）。斜面之间允许重叠（独立禁区，重叠只是更禁）。
+斜面切掉的角附近**楔形禁区**箱子不得侵入（面贴面允许）。语义（禁入、不参与支撑、计入体积率分母）详见 [constraints.md](constraints.md) 1.11；斜面之间允许重叠（独立禁区，重叠只是更禁）。
 
 预校验：恰好两个非零截距、`1 <= |截距| <= 容器该轴尺寸`、`existing_containers` 已有放置不侵入斜面禁区。
 
@@ -87,13 +87,11 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | `weight`               | number>0                 |      | 箱型级重量（与箱子重量互斥，见下预校验） |
 | `loose`                | boolean                  |      | true=散件（先装托后装车），默认 false    |
 
-`max_stack` / `max_load` 为**承重约束**（详见 `docs/constraints.md` 1.8 / 1.9）：
+`max_stack` / `max_load` 为**承重约束**（机制与启用前提见 `docs/constraints.md` 1.8 / 1.9）：
 
 - 标量：应用到全部朝向。
 - 数组：长度必须等于 `allowed_orientations` 长度，按朝向分别取值（如平放堆 3 层、立放只能堆 2 层）。
-- 任一箱型有非空值即启用对应约束（presence-based）；两者与 `support_rate` 相互独立，可同时开启。
-- `max_load` 启用时要求有重量信息（箱型级或箱子级）。
-- 两者启用时要求 `constraints.support_rate > 0`（预校验强制，否则悬空箱可绕过承重约束，报 `invalid`）。
+- 任一箱型有非空值即启用对应约束（presence-based）。
 
 **行业组合语义（朝上 / 易碎，无需专用字段）**：
 
@@ -139,7 +137,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 
 算法相关常量配置集中在 `src/core/algorithm/config.hpp`（编译期确定）。
 
-目标为固定的四个维度，字典序：`min_container_count → min_platform_split → max_volume_rate → min_group_split`，不可配置。
+目标为固定字典序的四维目标，不可配置，定义见 [architecture.md](architecture.md) §1.1。
 
 ## 约束 `constraints`（可选）
 

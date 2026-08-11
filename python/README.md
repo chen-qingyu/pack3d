@@ -36,7 +36,7 @@ result = pack3d.run({
 | ------- | ---- | -------------------------- |
 | `input` | dict | 输入数据，格式与 JSON 一致 |
 
-返回值是一个 dict，顶层包含 `status`、`summary`、`result`、`violations` 四个字段（`violations` 仅在非 `complete` 时出现）。详见 [docs/output.md](../docs/output.md)。
+返回值是一个 dict，顶层包含 `status`、`summary`、`result`、`violations` 四个字段（`violations` 恒存在，非 `complete` 时可能非空）。详见 [docs/output.md](../docs/output.md)。
 
 ## 命令行脚本
 

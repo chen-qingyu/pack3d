@@ -1,6 +1,6 @@
 # 求解器架构
 
-> 本文讲**整体架构与流程**：输入如何被解析校验、求解如何被调度、装托/续装两级流水线、共享后处理。四种算法的单容器装载核心见 [algorithms.md](algorithms.md)；约束定义见 [constraints.md](constraints.md)。
+> 本文讲**整体架构与流程**：输入如何被解析校验、求解如何被调度、装托/续装两级流水线、共享后处理。输入/输出格式见 [input.md](input.md) / [output.md](output.md)，四种算法的单容器装载核心见 [algorithms.md](algorithms.md)，硬约束定义见 [constraints.md](constraints.md)。
 
 ## 1. 整体流程
 
@@ -22,11 +22,10 @@ flowchart LR
 - **schema 校验**：编译时嵌入的 JSON Schema（`data/input_schema.json` → `input_schema.h`），保证结构合法。
 - **预校验**：`pre_validate_input()` 检查引用完整性、重量三选一、group 全有或全无、路线/站点、障碍物/斜面合法性，以及约束之间的**级联前提**（如 `max_stack`/`max_load`/装托要求 `support_rate > 0`、`tender_limit` 要求 `group`）。
 - **异常兜底**：任何未预见异常返回 `status=invalid`（带 `internal error`），任意输入都有完整 JSON 输出。
-- **坐标系**：右手系——X 轴（长度，向右）、Y 轴（宽度，向后）、Z 轴（高度，向上），地板 Z=0。
 
 ### 1.1 目标向量
 
-目标不是加权和，而是固定字典序，优先级高的维度先比，打平才看下一维：
+目标不是加权和，而是固定字典序（优先级高的维度先比，打平才看下一维）：
 
 1. `min_container_count` — 容器数最少
 2. `min_platform_split` — 站点拆分次数最少
@@ -51,7 +50,7 @@ flowchart TD
 - **选车**：`select_largest_fitting` 从可用容器类型中选能装下最多剩余箱子的"大优先"车；`quantity_limit` 限制每种类型可用数量。
 - **单容器填充**：`pack_single(items, ct, existing, tender)` —— existing 为已有放置（续装时非空），tender 为已提交容器的运输委托分解。
 - **主循环保护**：阶段 C 若 `packed.empty()` 立即 break（tender 拒绝是几何无关的，继续开空容器只会死循环到超时）。
-- **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。
+- **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。`time_limit` 为软限制：超时后返回当前最优，已全装完 `status=complete`，否则 `status=timeout`。
 
 ## 3. 装托（Palletizing）
 
@@ -104,11 +103,11 @@ flowchart LR
 ### 3.5 实现关键点（维护者）
 
 - **代码**：`pallet.hpp/cpp`（类型 io + 虚拟容器/箱型生成）、`palletizer.hpp/cpp`（装托循环 / 问题改写 / 输出展开）；入口 `app.cpp` 两级流水线；`io.cpp` 与 `input_schema.json` 负责解析/校验。
-
-1. 装托 packer 绑定 problem 副本：`support_rate = pallet_support_rate`，**清除 `route`/`platform_limit`**——否则小托盘内被强加车厢卸货顺序/站点数约束。
-2. 改写后**重建 `has_max_stack`/`has_max_load`**——虚拟箱自带 `max_stack`，解析时算出的标志不含它，"不叠托"会失效。
-3. `pack_single` 返回的 `load.type` 指向传入的临时容器，须在析构前消费。
-4. 无 `pallet_types` 分支**零新增求解调用**（RGS `s_call_id` 静态计数，防既有测试漂移）。
+- **关键点**：
+  1. 装托 packer 绑定 problem 副本：`support_rate = pallet_support_rate`，**清除 `route`/`platform_limit`**——否则小托盘内被强加车厢卸货顺序/站点数约束。
+  2. 改写后**重建 `has_max_stack`/`has_max_load`**——虚拟箱自带 `max_stack`，解析时算出的标志不含它，"不叠托"会失效。
+  3. `pack_single` 返回的 `load.type` 指向传入的临时容器，须在析构前消费。
+  4. 无 `pallet_types` 分支**零新增求解调用**（RGS `s_call_id` 静态计数，防既有测试漂移）。
 
 - **限制**：托盘数量上限未实现；托盘装不进车厢则该托未装箱。
 

@@ -88,12 +88,16 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
       "error": null,
       "created_at": "...",
       "summary": {
-        "container_count": 2,
-        "volume_rate": 0.468,
-        "platform_split": 0,
-        "group_split": 0,
+        "elapsed_second": 0.75,
         "packed_box_count": 5,
-        "unpacked_box_count": 0
+        "unpacked_box_count": 0,
+        "container_count": 2,
+        "platform_split": 0,
+        "volume_rate": 0.468,
+        "group_split": 0,
+        "pallet_count": 0,
+        "palletized_box_count": 0,
+        "loose_box_count": 0
       }
     }
   ]

@@ -39,18 +39,18 @@ JSON，顶层四个字段：
 }
 ```
 
-| 字段                   | 说明                                                         |
-| ---------------------- | ------------------------------------------------------------ |
-| `elapsed_second`       | 耗时（秒）                                                   |
-| `packed_box_count`     | 已装箱数（装托模式按散箱口径，托盘按内部箱数计）             |
-| `unpacked_box_count`   | 未装箱数                                                     |
-| `container_count`      | 使用容器数                                                   |
-| `platform_split`       | 站点拆分总次数（0=每个站点只在一个容器中）                   |
-| `volume_rate`          | 各容器平均体积利用率（0-1）                                  |
-| `group_split`          | 组拆分总次数（0=每组只在一个容器中）                         |
-| `pallet_count`         | 托盘单元数（未启用装托恒为 0）                               |
-| `palletized_box_count` | 已装托的散件箱数（未启用装托恒为 0）                         |
-| `loose_box_count`      | 直接装车箱数：普通箱 + fallback 降级散件（未启用装托恒为 0） |
+| 字段                   | 说明                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------------------------- |
+| `elapsed_second`       | 耗时（秒）                                                                                |
+| `packed_box_count`     | 已装箱数（装托模式按散箱口径，托盘按内部箱数计）                                          |
+| `unpacked_box_count`   | 未装箱数                                                                                  |
+| `container_count`      | 使用容器数                                                                                |
+| `platform_split`       | 站点拆分总次数（0=每个站点只在一个容器中）                                                |
+| `volume_rate`          | 各容器平均体积利用率（0-1），口径 = 装箱体积 / 可用容积（物理总容积 − 障碍物 − 斜面楔形） |
+| `group_split`          | 组拆分总次数（0=每组只在一个容器中）                                                      |
+| `pallet_count`         | 托盘单元数（未启用装托恒为 0）                                                            |
+| `palletized_box_count` | 已装托的散件箱数（未启用装托恒为 0）                                                      |
+| `loose_box_count`      | 直接装车箱数：普通箱 + fallback 降级散件（未启用装托恒为 0）                              |
 
 ## `result` 装箱结果
 
@@ -138,9 +138,9 @@ JSON，顶层四个字段：
 
 容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置站点/分组时 `platform`/`group` 为 null）。
 
-`obstacles` 为本容器实例的障碍物（从容器类型继承，自包含），结构与输入一致；容器类型未配置障碍物时省略。
+`obstacles` 为本容器实例的障碍物（从容器类型继承，自包含），结构与输入一致；未配置时为 `[]`。
 
-`facets` 为本容器实例的斜面（从容器类型继承，自包含），结构与输入一致（`dx`/`dy`/`dz` 恰好两个）；容器类型未配置斜面时省略。
+`facets` 为本容器实例的斜面（从容器类型继承，自包含），结构与输入一致（`dx`/`dy`/`dz` 恰好两个非零截距）；未配置时为 `[]`。
 
 `tender` 为该容器所属 tender 的序号（1-based）：容器按共享 `group` 连通，每个连通分量即一个 tender，按容器顺序首次出现编号。因输入 group 全有或全无（见 input.md 预校验），`tender` 要么全为数字要么全为 `null`。如容器 A{g1,g2}、B{g2,g3}、C{g3,g4}、D{g5}，则 A/B/C 的 `tender` 均为 1，D 为 2。
 
@@ -162,7 +162,7 @@ JSON，顶层四个字段：
 
 装托输入与行为详见 [architecture.md](architecture.md) §3。
 
-`result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的数组，未配置为 `null`，字段恒存在）。
+`result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的数组，未配置为 `null`，字段恒存在）；装托模式下额外包含虚拟托盘箱型。
 
 placement 字段说明：
 

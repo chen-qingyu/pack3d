@@ -24,7 +24,7 @@
 | GLC       | 块内逐箱模拟 | 块放置前对整个块逐箱模拟检查                                                   |
 | BSG       | 复合块逐叶   | `can_place_block` 递归展开叶子逐箱检查；无约束场景走块级 `is_supported` 快路径 |
 
-`support_rate` / `max_stack` / `max_load` 三者相互独立（见 constraints.md）。`max_stack` / `max_load` 的堆叠状态由共享的 `check_stack_constraints`（只读预检）+ `apply_stack_state`（放置后副作用）+ `recompute_stack_state`（任意顺序重建）维护。GEP/GLC/RGS 自底向上放置，用增量预检 + apply；BSG 通块可能带 z 间隙（先放悬空箱再放下方箱），逐叶增量会漏判，放置后整体 `recompute_stack_state` 校验。
+承重状态（`stack_level` / `supported_load`）由共享的 `check_stack_constraints` / `apply_stack_state` / `recompute_stack_state` 维护（机制见 [architecture.md](architecture.md) §6）。GEP/GLC/RGS 自底向上放置，用增量预检 + apply；BSG 通块可能带 z 间隙（先放悬空箱再放下方箱），逐叶增量会漏判，放置后整体 `recompute_stack_state` 校验。
 
 ---
 
@@ -117,6 +117,7 @@ flowchart TD
 
 - **简单块**：同箱型同朝向的 nx×ny×nz 致密长方体；块内所有箱子的 platform、group 必须一致。仅实现简单块，未做论文的复合块（复杂约束下复合块生成/评估成本高，简单块已够用）。
 - **空间栈**：放置一个块后，未填充空间确定性切成至多 3 个子空间（上方、右方、后方）入栈。`parent_id` 追踪来源，支持 `TransferSpace` 碎片回收——栈顶无可行块时尝试合并给同次划分的兄弟空间。
+- **障碍物/斜面雕刻**：初始空间用 6-slab 完整分解挖掉障碍物，斜面楔形用 N=2 阶梯雕刻（只覆盖禁区、永不过挖安全台阶区），保证周边空间可达。
 - **beam 精炼**（`pack_beam`）：每步对候选块做多轮精炼——模拟放置 + 贪心完成评估 + 多目标排序，裁半保留。前瞻分两级：`greedy_complete` 对前几个候选做一步前瞻选最优（`pick_best_block`，eval_width=4）；`complete_largest` 纯贪心填到底，用于最终得分。
 - **多目标评分**：`compare_local_scores` 按 (体积率, 剩余站点数) 等维度字典序比较候选，倾向站点聚拢。
 
@@ -200,6 +201,7 @@ flowchart TD
 - **路线顺序**：`route` 存在时，每个策略的**确定性 pass（ρ=0）**追加一趟稳定排序，按站点 route 深度（索引越大越深处）降序——深处站点先放、占满 X 小侧；**Shaw 迭代（ρ>0）保持各策略原排序**，配合硬门 `check_route_order` 输出恒合法。这条多样性是平台合并/最少站点等场景稳定通过的关键，因此无需独立路线策略。
 - **Shaw 随机化**：`第 j 个位置 = ceil(y_j^(1/ρ) × (n − j + 1))`；ρ→0 接近原序，ρ=0.5 中等扰动，ρ=1 完全随机。每次调用用原子计数器生成不同种子。
 - **插入启发式（Alg1/3/4）**：EP first-fit，**四道门**——边界 → 网格碰撞 → 支撑/堆叠性 → 重量/站点/路线。
+- **障碍物角点**：初始化时把每个障碍物的 8 角点（4 顶角可上到顶面、4 底角可贴侧）加入极点集（同 GEP），保证障碍物周边可达。
 - **EP 生成（Alg3/4）**：每次放置后对每个投影方向 j 和每个第二方向 d2≠j 生成种子 `p_j = pos[j]+size[j]`、`p_d2 = pos[d2]+size[d2]`，沿 d2 向 −d2 投影找第一个未被阴影遮挡的已放物品后表面为 EP（无则取箱壁）；另在顶部中心 `(pos.x, pos.y, pos.z+dz)` 无条件加一个 EP（能否堆叠由 `can_place` 判定）。
 - **网格加速**：以所有箱子平均边长为 cell_size，已放物品注册到 3D 网格，碰撞只查候选位置覆盖的单元。
 - **评分**：`(volume_rate, remaining_platforms)` 字典序——体积率优先，并列时剩余站点数更少者优（倾向站点聚拢，降低后处理救不回的拆分概率）。
@@ -279,6 +281,7 @@ flowchart TD
 - **状态**：`BSGState` 含残余空间 cover `R`（**允许重叠**）、剩余箱型计数、可构造块索引、已放置块、`used_volume`、三轴 KPA 表。`GeneralBlock` 保存外包尺寸 `osize`、内部箱子清单、真实箱体积 `single_box_volume` 和二叉合并树；求解结束递归展开合并树输出独立放置。
 - **两个体积不能混用**：$V_{\text{box}}(b)$（真实装载体积，用于评分/统计）与 $V_{\text{bound}}(b)$（外包体积，仅表示占据空间）。允许空隙的通用块两者不等。
 - **块预处理**：先枚举致密 simple block，再迭代合并（X/Y/Z 方向，外包取 max），最多 `max_bl` 个。合并要求外包不超容器、成员需求不超库存、填充率 ≥ `max_fr`。BR 分组：BR0–7（1–20 箱型）`max_fr=1.00`，BR8–15（30–100 箱型）`max_fr=0.98`。
+- **障碍物/斜面雕刻**：初始空间/残差 cover 挖障碍物与斜面楔形；`support_rate > 0` 时障碍物强制逐叶（快路径 `is_supported` 不认障碍物顶面支撑），`support_rate = 0` 时雕刻已保证空间无禁区、走快路径。斜面由阶梯雕刻保证、从不强制逐叶。
 - **残余空间**：overlapping cover，**不能改成互不重叠 partition**。一个块放入后，对选中空间生成右/前/上 cover cuboid，对其他重叠残余生成最多 6 个投影 cuboid，删除被完全包含的 non-maximal cuboid。互不重叠的碎片化表达会严重损害强异构实例。
 - **anchor 与评分**：每个残余 cuboid 的 8 角与容器对应角算 Manhattan 距离，最小者为 anchor，优先 anchor 距离小的空间（并列取体积大者）。候选块用 $f(b,r)=V_{\text{box}}(b)-V_{\text{loss}}(b,r)$ 排序，`V_loss` 由三轴 KPA 估计块边缘可继续填补的最大范围。KPA 对每件箱建模"至多选一个允许朝向尺寸"的多选背包——不能只取该轴最大尺寸，否则最大尺寸不适配而较小朝向可适配时会错误排除可用箱。
 - **beam search**：根层最多扩展 $\min(w^2,|B|)$ 个块，后续层每状态最多 w 个；每个后继做一次 greedy rollout 评分；用 rollout 最终装入的箱型计数去相似状态（相似时保留已装体积更小者）；保留评分最高 w 个。外层从 w=1 开始，每次结束后 $w \leftarrow \lceil\sqrt{2}\,w\rceil$（相邻轮次搜索投入约翻倍），根层候选数自然限制并做 int 溢出保护。

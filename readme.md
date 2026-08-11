@@ -12,19 +12,19 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 
 ## 支持范围
 
-支持的功能：
+支持的功能（约束定义见 [docs/constraints.md](docs/constraints.md)）：
 
 - 重量约束：容器内总重不超过容器限重
 - 支撑率约束：箱子底面被支撑的比例
 - 路线顺序约束：站点（配送停靠点）按装卸货通道的 X 轴位置约束
 - 站点数量限制：单容器最多 `platform_limit` 个不同站点
-- 运输委托限制：每个 tender（运输委托 = 同 group 货物连通的容器连通分量）最多包含 `tender_limit` 个容器
-- 堆码层数约束：箱型 `max_stack` 限制堆叠层数（标量或按朝向数组）
-- 单箱承重约束：箱型 `max_load` 限制单箱上方承重（标量或按朝向数组）
-- 障碍物约束：容器内轴对齐障碍物，箱体不得侵入（面贴面允许），障碍物顶面等价地板
+- 运输委托限制：每个 tender（同 group 货物连通的容器连通分量）最多 `tender_limit` 个容器
+- 堆码层数约束：箱型 `max_stack`（标量或按朝向数组）
+- 单箱承重约束：箱型 `max_load`（标量或按朝向数组）
+- 障碍物约束：容器内轴对齐障碍物，箱体不得侵入，顶面等价地板
 - 斜面约束：容器斜面楔形禁入区，箱体不得侵入
-- 装托（palletizing）：`loose` 箱型散件先装托，托盘作为装箱单元装车（详见 [docs/architecture.md](docs/architecture.md) §3）
-- 中间状态续装：从已有部分放置继续装箱（详见 [docs/architecture.md](docs/architecture.md) §4）
+- 装托（palletizing）：`loose` 散件先装托，托盘作为装箱单元装车（见 [docs/architecture.md](docs/architecture.md) §3）
+- 中间状态续装：从已有部分放置继续装箱（见 [docs/architecture.md](docs/architecture.md) §4）
 
 支持的算法：
 
@@ -68,24 +68,22 @@ xmake build
 xmake run cli data/demo.json -a gep -t 30 -s 0.6
 ```
 
-输入文件路径必填；`-o` 输出目录默认 `output/`；`-a` 默认 `gep`；`-t` 默认 `120`；`-s` 默认 `0`；另支持 `--platform-limit`、`--tender-limit` 覆盖 JSON 中的约束值（与 JSON 显式指定冲突时报错）。
+输入文件路径必填；`-o` 输出目录默认 `output/`；`-a` 默认 `gep`；`-t`/`-s` 不传时用输入默认（120 秒 / 0）；另支持 `--platform-limit`、`--tender-limit` 覆盖 JSON 中的约束值（与 JSON 显式指定冲突时报错）。
 
 #### SDK
 
-需要 Python 3.9+。作为 Python 包供上层代码调用。
-
-```bash
-pip install python/dist/xxx.whl
-```
+需要 Python 3.9+。作为 Python 包供上层代码调用，也提供命令行脚本：
 
 ```python
 import pack3d
-result = pack3d.run({"container_types": [...], "box_types": [...], "boxes": [...]})
+result = pack3d.run({...})   # 输入为与 JSON 同构的 dict
 ```
 
-也提供命令行脚本：`python run.py data/demo.json`
+```bash
+python run.py data/demo.json
+```
 
-详见 [python/README.md](python/README.md)
+安装与完整用法见 [python/README.md](python/README.md)
 
 #### API
 
