@@ -1,0 +1,62 @@
+{
+  "container_types": [
+    {
+      "id": "flight",
+      "sx": 20,
+      "sy": 10,
+      "sz": 10,
+      "facets": [{ "dx": 10, "dz": 10 }]
+    }
+  ],
+  "box_types": [
+    {
+      "id": "cube",
+      "sx": 5,
+      "sy": 5,
+      "sz": 5,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [
+    { "id": "c2", "box_type_id": "cube" },
+    { "id": "c3", "box_type_id": "cube" },
+    { "id": "c4", "box_type_id": "cube" },
+    { "id": "c5", "box_type_id": "cube" },
+    { "id": "c6", "box_type_id": "cube" },
+    { "id": "c7", "box_type_id": "cube" },
+    { "id": "c8", "box_type_id": "cube" },
+    { "id": "c9", "box_type_id": "cube" }
+  ],
+  "existing_containers": [
+    {
+      "type_id": "flight",
+      "placements": [
+        {
+          "box_id": "c0",
+          "box_type_id": "cube",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "dx": 5,
+          "dy": 5,
+          "dz": 5,
+          "orientation": "xyz"
+        },
+        {
+          "box_id": "c1",
+          "box_type_id": "cube",
+          "x": 5,
+          "y": 0,
+          "z": 0,
+          "dx": 5,
+          "dy": 5,
+          "dz": 5,
+          "orientation": "xyz"
+        }
+      ]
+    }
+  ],
+  "constraints": {
+    "time_limit": 30.0
+  }
+}
