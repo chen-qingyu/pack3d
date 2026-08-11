@@ -35,19 +35,6 @@ Heuristic::Heuristic(
     , tender_(tender)
     , block_gen_(box_type_map)
 {
-    std::map<std::string, std::pair<int, double>> weight_accum;
-    for (const auto& [id, bx] : box_map_)
-    {
-        if (!bx.weight.has_value())
-            continue;
-        auto pk = bx.box_type_id + "\t" + bx.platform + "\t" + bx.group;
-        weight_accum[pk].first++;
-        weight_accum[pk].second += bx.weight.value();
-    }
-    for (const auto& [pk, acc] : weight_accum)
-    {
-        type_avg_weight_[pk] = acc.second / acc.first;
-    }
 }
 
 std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
@@ -112,17 +99,6 @@ bool Heuristic::check_block_feasible(
         return false;
     }
 
-    // 重量：按该组平均重量检查块总重量
-    if (has_weight_info_ && container_.payload.has_value())
-    {
-        auto it = type_avg_weight_.find(block.box_type_id + "\t" + block.platform + "\t" + block.group);
-        if (it != type_avg_weight_.end() &&
-            !check_weight(state, it->second * static_cast<double>(block.box_count)))
-        {
-            return false;
-        }
-    }
-
     // 平台限制：块内箱子同平台，只查一次
     bool need_route = false;
     if (!block.platform.empty())
@@ -151,6 +127,20 @@ bool Heuristic::check_block_feasible(
         return false;
     }
     const auto* w = &avail_it->second;
+
+    // 重量：块总重量按精确单箱重量（队首 box_count 件，与 place_block 一致）
+    if (has_weight_info_ && container_.payload.has_value())
+    {
+        double block_weight = 0.0;
+        for (size_t i = 0; i < static_cast<size_t>(block.box_count) && i < w->size(); ++i)
+        {
+            block_weight += (*w)[i];
+        }
+        if (!check_weight(state, block_weight))
+        {
+            return false;
+        }
+    }
 
     int cell = 0;
     for (int iz = 0; iz < block.nz; ++iz)

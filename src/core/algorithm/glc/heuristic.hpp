@@ -67,7 +67,6 @@ private:
     TenderState tender_; // 已提交容器的 tender 分解（本容器装载期间不可变）
 
     BlockGenerator block_gen_;
-    std::map<std::string, double> type_avg_weight_;
 
     /// dx 维度索引：(block.dx, index into all_blocks)，按 dx 升序排列。
     /// filter_viable_blocks 利用此索引避免 O(B) 全量扫描，仅检查 dx ≤ space.lx 的块。
