@@ -160,9 +160,9 @@ JSON，顶层四个字段：
 | `platforms`    | 托盘内去重 platform 列表                    |
 | `placements`   | 托盘内散件放置列表（同容器 placement 结构） |
 
-装托输入与行为详见 [palletizing.md](palletizing.md)。
+装托输入与行为详见 [architecture.md](architecture.md) §3。
 
-`result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的数组，未配置则省略）。
+`result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的数组，未配置为 `null`，字段恒存在）。
 
 placement 字段说明：
 

@@ -23,8 +23,8 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 - 单箱承重约束：箱型 `max_load` 限制单箱上方承重（标量或按朝向数组）
 - 障碍物约束：容器内轴对齐障碍物，箱体不得侵入（面贴面允许），障碍物顶面等价地板
 - 斜面约束：容器斜面楔形禁入区，箱体不得侵入
-- 装托（palletizing）：`loose` 箱型散件先装托，托盘作为装箱单元装车（详见 [docs/palletizing.md](docs/palletizing.md)）
-- 中间状态续装：从已有部分放置继续装箱（详见 [docs/resume.md](docs/resume.md)）
+- 装托（palletizing）：`loose` 箱型散件先装托，托盘作为装箱单元装车（详见 [docs/architecture.md](docs/architecture.md) §3）
+- 中间状态续装：从已有部分放置继续装箱（详见 [docs/architecture.md](docs/architecture.md) §4）
 
 支持的算法：
 
@@ -132,19 +132,17 @@ cd web && npm install && npm run dev
 
 ## 文档索引
 
-| 主题           | 位置                            |
-| -------------- | ------------------------------- |
-| 整体架构与流程 | `docs/architecture.md`          |
-| 输入格式       | `docs/input.md`                 |
-| 输出格式       | `docs/output.md`                |
-| 约束条件       | `docs/constraints.md`           |
-| BSG 算法细节   | `docs/bsg.md`                   |
-| 装托           | `docs/palletizing.md`           |
-| 中间状态续装   | `docs/resume.md`                |
-| HTTP API       | `docs/api.md`                   |
-| Web 工作台     | `docs/web.md`                   |
-| Python SDK     | `python/README.md`              |
-| 编译期配置常量 | `src/core/algorithm/config.hpp` |
+| 主题           | 位置                                    |
+| -------------- | --------------------------------------- |
+| 整体架构与流程 | `docs/architecture.md`（含装托、续装）  |
+| 算法细节       | `docs/algorithms.md`（GEP/GLC/RGS/BSG） |
+| 输入格式       | `docs/input.md`                         |
+| 输出格式       | `docs/output.md`                        |
+| 约束条件       | `docs/constraints.md`                   |
+| HTTP API       | `docs/api.md`                           |
+| Web 工作台     | `docs/web.md`                           |
+| Python SDK     | `python/README.md`                      |
+| 编译期配置常量 | `src/core/algorithm/config.hpp`         |
 
 ## 代码结构
 

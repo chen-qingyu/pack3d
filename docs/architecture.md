@@ -1,304 +1,181 @@
 # 求解器架构
 
-## 1. 算法总览
+> 本文讲**整体架构与流程**：输入如何被解析校验、求解如何被调度、装托/续装两级流水线、共享后处理。四种算法的单容器装载核心见 [algorithms.md](algorithms.md)；约束定义见 [constraints.md](constraints.md)。
 
-统一入口 `app::run()` 解析并校验输入后，由 `PackerBase::pack()` 模板方法驱动整个求解流程：`select_largest_fitting` 选车 → 调用虚函数 `pack_single()` 填充单容器 → 收箱 → `postprocess()` 后处理。四种算法只需实现各自的 `pack_single()`，由 `make_packer()` 按 `problem.algorithm` 选择：
+## 1. 整体流程
 
-- **`GEP`**（默认）— 极点贪心法：体积降序 + EP 优先填充。见 §3。
-- **`GLC`** — 贪心前瞻构造：块装载 + beam 搜索。见 §4。
-- **`RGS`** — 随机贪心搜索：EP-first-fit + 多策略排序 + Shaw 随机化，多起点采样择优。见 §5。
-- **`BSG`** — 束搜索：宽度限制的启发式树搜索 + KPA 块合并。见 §6。
+统一入口 `app::run()`：
 
-### 坐标系
+```mermaid
+flowchart LR
+  A[JSON 输入] --> B[schema 校验]
+  B --> C[pre_validate 预校验]
+  C --> D[resolve_type_weights]
+  D --> E{有 pallet_types?}
+  E -->|否| F[make_packer → pack]
+  E -->|是| G[装托流水线<br/>见 §3]
+  F --> H[postprocess 后处理]
+  G --> H
+  H --> I[JSON 输出]
+```
 
-右手坐标系：X 轴（长度，向右为正）、Y 轴（宽度，向后为正）、Z 轴（高度，向上为正），地板 Z=0。
+- **schema 校验**：编译时嵌入的 JSON Schema（`data/input_schema.json` → `input_schema.h`），保证结构合法。
+- **预校验**：`pre_validate_input()` 检查引用完整性、重量三选一、group 全有或全无、路线/站点、障碍物/斜面合法性，以及约束之间的**级联前提**（如 `max_stack`/`max_load`/装托要求 `support_rate > 0`、`tender_limit` 要求 `group`）。
+- **异常兜底**：任何未预见异常返回 `status=invalid`（带 `internal error`），任意输入都有完整 JSON 输出。
+- **坐标系**：右手系——X 轴（长度，向右）、Y 轴（宽度，向后）、Z 轴（高度，向上），地板 Z=0。
 
----
+### 1.1 目标向量
 
-## 2. 目标向量优化
-
-### 2.1 字典序比较
-
-目标不是加权和，而是字典序。优先级高的维度先比，打平才看下一维。四个维度固定为：
+目标不是加权和，而是固定字典序，优先级高的维度先比，打平才看下一维：
 
 1. `min_container_count` — 容器数最少
 2. `min_platform_split` — 站点拆分次数最少
 3. `max_volume_rate` — 体积利用率最高
 4. `min_group_split` — 组拆分次数最少
 
-站点优化部分在线进行：BSG 的 beam 排序与 RGS 的评分以（体积, 剩余站点数）字典序倾向站点聚拢；其余站点与分组优化通过统一共享后处理完成（见 §8）。
+站点/组优化部分在线进行（RGS/BSG 的评分倾向站点聚拢），其余通过统一共享后处理完成（见 §5）。
 
----
+## 2. PackerBase 模板方法
 
-## 3. GEP 极点贪心法
+`PackerBase::pack()` 是求解调度模板，四种算法只需实现虚函数 `pack_single()`（单容器装载，见 [algorithms.md](algorithms.md)），由 `make_packer()` 按 `problem.algorithm` 选择。
 
-### 3.1 核心思想
-
-箱子按体积降序排序，维护候选极点集合（初始为原点），逐个箱子尝试所有允许朝向在极点上放置，首 fit 即放，放置后生成 3 个新极点（右方、后方、上方）。
-
-约束检查复用 `constraints.hpp`：边界、重叠、重量、支撑率、站点限制、路线顺序。
-
-### 3.2 实现
-
-`GepPacker::pack_single()` — 实现 `PackerBase` 虚函数，~130 行。选车和调度由 `PackerBase::pack()` 模板方法统一处理。
-
----
-
-## 4. GLC 贪心前瞻构造
-
-> 来源：求解三维装箱问题的多层启发式搜索算法. 计算机学报, 2012, 35(12):2553–2561
-
-### 4.1 解决什么问题
-
-原始 MLHS 瞄准**单容器三维装箱**：给定容器和箱子集合，正交放置、不重叠，最大化填充率，只有方向约束（C1）和稳定性约束（C2）。
-
-本项目将其扩展为**多容器、多约束**场景。
-
-### 4.2 整体架构：三层分解
-
-- **调度层（Layer 1）** — `Packer`：多容器分配，对每种容器类型尝试装载所有剩余箱子，选最优者，反复迭代。
-- **装载层（Layer 2）** — `Heuristic`：对单个容器内的箱子子集运行 GLC 块装载算法（简单块 + 空间栈 + 前瞻评估）。
-- **数据层** — `SimpleBlock` (block.hpp), `Space`/`SpaceKind` (space.hpp) 为 GLC 专属类型，不在共用 types.hpp 中。
-- **约束层（Layer 3）** — `constraints.hpp`：所有硬约束的纯函数实现，为装载层提供实时可行性判断。
-
-### 4.3 论文原始 MLHS 核心思想
-
-#### CLTRS 的痛点
-
-前置工作 CLTRS 用整数拆分做树状搜索选块，两个问题：（1）浅层错选后无法挽回；（2）不同拆分路径重复计算。
-
-#### MLHS 的思想转折
-
-> **与其每层只保 1 个局部最优，不如每层保住一批 Top‑N 候选（beam），并对候选块做浅层前瞻评估，用"最终能填满多少"反选当前块。**
-
-本质是 beam-style 多层展开 + 受限深度评估：第 i 层不只扩展 1 个节点，而是用堆留住最多 MaxHeap 个最优部分解，往前探 d 步后回填到目标层。
-
-#### 论文参数
-
-| 参数        |    值 | 作用               |
-| ----------- | ----: | ------------------ |
-| N           |    16 | 候选裁到前 N       |
-| maxD        |     2 | 最大前瞻深度       |
-| MaxDepth    |     6 | 分层搜索总次数     |
-| MaxHeap     |     6 | 每层堆容量         |
-| MinFillRate |  0.98 | 复合块填充率门槛   |
-| MaxTimes    |     5 | 复合块迭代轮次上限 |
-| MaxBlocks   | 10000 | 块表上限           |
-
-使用渐进参数档：MaxDepth 2->7，Effort 1->243，受 120s 总时间限制。
-
-### 4.4 简单块与剩余空间栈
-
-#### 简单块
-
-用**同种箱子 + 同朝向**堆叠成 nx×ny×nz 的致密长方体作为基本投放单元。块内所有箱子的 platform、group 必须一致。仅实现了简单块，未做论文中的复合块，因为复杂约束下复合块的生成和评估都非常麻烦，且简单块已能提供足够的候选多样性。
-
-#### 剩余空间栈
-
-放置一个块后，将未填充空间确定性切成至多 3 个子空间（上方、右方、后方），按固定规则入栈。通过 parent_id 追踪空间来源，支持 TransferSpace 碎片回收——当栈顶空间无可行块时，尝试将其合并给同次划分的兄弟空间。
-
-### 4.5 容器内装载
-
-统一使用 **Beam 模式（`pack_beam`）**：每步对候选块做多轮精炼——模拟放置后用贪心完成（`greedy_complete`）评估最终状态作为 fitness（通过 `compare_local_scores` 多目标比较），排序后裁半/截断。最后直接取 beam 精炼胜出块 `candidates.front()`，放置前做多目标提前停止检查。
-
-前瞻评估分两级：`greedy_complete` 对前几个候选做一步前瞻后选最优（通过 `pick_best_block`, eval_width=4）；`complete_largest` 纯贪心填充到底，用于评估最终得分。
-
-不再保留贪心基线——beam 精炼自给自足。
-
-### 4.6 调度与约束
-
-调度层已提取到 `PackerBase::pack()` 模板方法中（统一大优先选车 + 单容器循环 + 后处理），GLC 仅实现 `pack_single()` 单容器填充。
-
-约束检查在块放置时逐箱模拟检查：边界、重叠、重量、支撑率、站点数量限制、路线顺序、堆码层数（max_stack）、单箱承重（max_load）、运输委托限制（tender_limit）。所有检查复用现有的纯函数约束实现（constraints.hpp）。
-
-### 4.7 当前实现 vs 论文原始方案
-
-| 维度     | 原始 MLHS           | 当前实现（GLC）                                  |
-| -------- | ------------------- | ------------------------------------------------ |
-| 块类型   | 简单块 + 复合块     | 仅简单块                                         |
-| 块选择   | 多层搜索 + 前瞻 d≤2 | greedy_complete + beam 精炼                      |
-| 渐进参数 | 6 档逐步加深        | 单次运行                                         |
-| 约束     | C1 + C2             | 方向+支撑+重量+站点+路线+堆码+承重+运输委托+时限 |
-| 容器     | 单容器              | 多容器统一调度                                   |
-| 目标     | 最大化填充率        | 字典序多目标（全部 4 维）                        |
-
----
-
-## 5. RGS 随机贪心搜索
-
-> 来源：Heßler, Hintsch, Wienkamp. _A Fast Optimization Approach For A Complex Real-Life 3D Multiple Bin Size Bin Packing Problem_. arXiv:2410.01445v1, 2024.
-> 算法对应论文 §4（插入启发式）、§5（RGS 框架）、§6（多 ULD 策略）。
-
-### 5.1 论文概览
-
-| 项目     | 内容                                                             |
-| -------- | ---------------------------------------------------------------- |
-| 英文标题 | A Fast Optimization Approach For A Complex Real-Life 3D MBSBPP   |
-| 中文译名 | 复杂真实场景三维多箱型装箱问题快速优化方法                       |
-| 作者     | Katrin Heßler, Timo Hintsch, Lukas Wienkamp（德铁信可/Schenker） |
-| arXiv    | 2410.01445v1, 2024-10-02                                         |
-| 应用场景 | 航空货运 ULD（航空托盘/集装箱）装载                              |
-| 核心贡献 | 边缘禁放+底托+垫料等真实约束；网格加速+RGS；非长方体ULD支持      |
-
-**本实现的简化**：不做斜面 ULD、边缘禁放、底托、垫料、重心优化、倾斜物品。仅保留长方体 ULD + 支撑/堆叠/重量/站点/路线约束。
-
-### 5.2 核心思想
-
-> **单次插入用 first-fit 贪心，通过多策略排序 + Shaw 随机化产生多样化布局，多起点采样后择优。**
-
-RGS 不是局部搜索——不需要邻域算子。它本质是构造式搜索（constructive search）：每次用不同顺序构造解，保留最佳。
-
-### 5.3 整体架构
-
-调度层已提取到 `PackerBase::pack()`（统一大优先选车 + 单容器循环 + 后处理）。RGS 仅实现 `pack_single()`：
-
-````
-RgsPacker::pack_single(items, ct)
-  │
-  ├─ 5 种排序策略 × M 次迭代
-  ├─ 首次 ρ=0（确定性），后续 ρ=0.5（Shaw 随机化）
-  └─ 评分 (体积率, 剩余站点数) 字典序择优
+```mermaid
+flowchart TD
+  A[pack 开始] --> B[阶段 A: 预填充已有容器<br/>build_load_from_existing → all_loads locked]
+  B --> C[阶段 B: 继续塞已有容器<br/>pack_single remaining, ct, existing]
+  C --> D[阶段 C: 开新容器<br/>select_largest_fitting 选车 → pack_single]
+  D --> E[postprocess 后处理]
+  E --> F[build_solution]
 ```
 
-### 5.4 排序策略（§4.2）
+- **选车**：`select_largest_fitting` 从可用容器类型中选能装下最多剩余箱子的"大优先"车；`quantity_limit` 限制每种类型可用数量。
+- **单容器填充**：`pack_single(items, ct, existing, tender)` —— existing 为已有放置（续装时非空），tender 为已提交容器的运输委托分解。
+- **主循环保护**：阶段 C 若 `packed.empty()` 立即 break（tender 拒绝是几何无关的，继续开空容器只会死循环到超时）。
+- **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。
 
-| 策略                        | 含义                  | 特点              |
-| --------------------------- | --------------------- | ----------------- |
-| StackabilityCumulatedVolume | 可堆叠优先 + 总体积   | 论文最强 baseline |
-| StackabilityHighestVolume   | 可堆叠优先 + 最大单件 | 也稳定            |
-| CumulatedVolume             | 按总体积              | 偏利用率          |
-| HighestVolume               | 按最大单件            | 先放大件          |
-| Random                      | 完全随机              | 救极少数死局      |
+## 3. 装托（Palletizing）
 
-相同箱型归入 IdenticalGroup；z 高度相交 + 同堆叠性的归入 SimilarGroup，合并后取交集为组目标高度。组间按策略排序，组内按体积降序。
+> 两级流水线：**散件（`loose:true`）→ 装托 → 装车**；普通箱子直接散装上车。
+> 核心思想：**托盘即装箱单元**。装托阶段把托盘当小容器，用与装车完全相同的算法与约束链（`pack_single`）把散件码上托盘；随后每个托盘改写成一个"不可再叠放、可 90° 平面旋转"的虚拟箱，交给现有求解器装车——**装车零改动**，路线/重量/支撑/tender/后处理等既有约束全部免费生效。
 
-**路线顺序**：`route` 存在时，每个策略的**确定性 pass（ρ=0，首次迭代）**追加一趟稳定排序，按站点 route 深度（route 索引，越大越深处）降序——深处站点先放、占满 X 小侧，等深度内保持各策略原顺序。这保证深重负载（如 `6p2+4p3` 单容器）能被确定性装入（10/10），且任何策略下近门箱都不会先占死深处。**Shaw 迭代（ρ>0）保持各策略原排序**，配合硬门 `check_route_order` 输出恒合法——这条多样性（体积优先的容器分配、可合并布局）是 platform_merge / min_platform 等场景稳定通过的关键，因此无需独立的路线策略。
+### 3.1 流程
 
-展开到加载序列时，朝向锁定到组高度（§4.2.3）：只保留 `dz ∈ 组目标高度集合` 的朝向，确保同组物品以相同高度放置，形成连续支撑层。
-
-### 5.5 Shaw 随机化（§4.2.2）
-
-```text
-第 j 个位置 = ceil( y_j^(1/ρ) × (n − j + 1) )
-````
-
-- ρ → 0：几乎不动（接近原排序）
-- ρ = 0.5：中等扰动
-- ρ = 1：完全随机
-
-每次调用使用原子计数器生成不同种子，确保不同 RGS 迭代产生不同序列。
-
-### 5.6 插入启发式（Alg1 + Alg3 + Alg4）
-
-```
-insertion_heuristic(items, ctype, criterion, rho):
-  EP = {(0,0,0)}
-  order = BuildOrder(items, criterion, rho)
-  for (box, orients) in order:
-    for ep in EP sorted by (z,y,x):
-      for orient in orients:
-        if can_place(box, orient, ep):   // 四道门检查
-          commit_placement(box, orient, ep)
-          break
+```mermaid
+flowchart LR
+  A[problem] --> B[pallet_problem<br/>support_rate = pallet_support_rate<br/>清 route/platform_limit]
+  B --> C[packer1 装托循环]
+  C --> D[PalletLoad 列表 + 未装托散件]
+  D --> E[transform_pallet 改写<br/>追加虚拟托盘箱型]
+  E --> F[packer2 装车]
+  F --> G[expand_pallet_solution 输出展开]
 ```
 
-**四道门**：边界 → 网格碰撞 → 支撑/堆叠性 → 重量/站点/路线。
+### 3.2 输入与校验
 
-### 5.7 EP 生成（Alg3 + Alg4）
+| 配置       | 位置                              | 默认  | 说明                                                                                  |
+| ---------- | --------------------------------- | ----- | ------------------------------------------------------------------------------------- |
+| 启用装托   | 顶层 `pallet_types`               | 无    | 任一存在即启用；`id`/`sx`/`sy`/`sz`/`payload`/`max_height` 必填，`self_weight` 默认 0 |
+| 散件标记   | `box_types.loose`                 | false | true = 散件（装托）；false = 普通箱子（直接装车）                                     |
+| 装托支撑率 | `constraints.pallet_support_rate` | 1.0   | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                      |
+| 装托兜底   | `constraints.pallet_fallback`     | false | 散件装不进任何托盘：false = 未装箱报错（partial）；true = 降级散装上车                |
 
-每次放置后，对每个投影方向 j ∈ {x, y, z} 和每个第二方向 d2 ≠ j，生成种子点：
+预校验：装托模式强制有重量信息、全部容器带 `payload`、装车 `support_rate > 0`；`loose: true` 但无 `pallet_types` → `invalid`；有 `pallet_types` 但无散件 → 等价普通装箱。
 
-```text
-p_j = pos[j] + size[j]
-p_d2 = pos[d2] + size[d2]
+### 3.3 行为
+
+- **装托**：每轮对所有托盘类型试装，按（体积, 箱数）取优；同 `group` 优先整组独占一托（始终按 `platform+group` 分组），装不下的退混合托（混合兜底也按站点分桶）。**不同站点的货物不能混装一托**：托盘恒为单站点（或全无站点），托盘单元带站点参与路线约束。托盘即小容器——不许悬挑、堆高 ≤ `max_height`（装载限高，不含托盘自身）、每托承重 ≤ `payload` 自动满足。
+- **装车**：托盘改写为虚拟箱——`max_stack=[1,1]`（其上不可放箱，单向不叠托）、仅 XY 平面 90° 旋转、重量含托盘自重；与普通箱子一起走现有求解器，主目标仍是用车数最少。
+- **时间**：装托分走 `min(20%×time_limit, 15s)`，剩余归装车。
+
+| 结果                                    | 情形                                  |
+| --------------------------------------- | ------------------------------------- |
+| `complete`                              | 全部散件装托 + 装车完成               |
+| `partial` + violations "not palletized" | 有散件装不进任何托盘且 fallback=false |
+| 降级散装进入装车阶段                    | 有散件装不进任何托盘且 fallback=true  |
+| `partial`（该托盘未装箱）               | 托盘单元装不进任何车厢                |
+| `timeout`（已装部分保留）               | 超时                                  |
+
+### 3.4 输出
+
+- `summary` 新增 `pallet_count` / `palletized_box_count` / `loose_box_count`；`packed_box_count` 保持散箱口径（托盘按内部箱数计）。
+- `result.pallets`：每托含 `pallet_id` / `used_height` / `used_weight` / `volume_rate` / `groups` / `platforms` / `placements`；容器中托盘单元 `box_id` = `pallet_id`，可在 `pallets` 展开内部明细。
+- 装不进托的散件（fallback=false）：`partial` + violations 说明。
+
+### 3.5 实现关键点（维护者）
+
+- **代码**：`pallet.hpp/cpp`（类型 io + 虚拟容器/箱型生成）、`palletizer.hpp/cpp`（装托循环 / 问题改写 / 输出展开）；入口 `app.cpp` 两级流水线；`io.cpp` 与 `input_schema.json` 负责解析/校验。
+
+1. 装托 packer 绑定 problem 副本：`support_rate = pallet_support_rate`，**清除 `route`/`platform_limit`**——否则小托盘内被强加车厢卸货顺序/站点数约束。
+2. 改写后**重建 `has_max_stack`/`has_max_load`**——虚拟箱自带 `max_stack`，解析时算出的标志不含它，"不叠托"会失效。
+3. `pack_single` 返回的 `load.type` 指向传入的临时容器，须在析构前消费。
+4. 无 `pallet_types` 分支**零新增求解调用**（RGS `s_call_id` 静态计数，防既有测试漂移）。
+
+- **限制**：托盘数量上限未实现；托盘装不进车厢则该托未装箱。
+
+## 4. 中间状态续装（Resume Packing）
+
+从已有部分放置继续装箱——输入通过 `existing_containers` 描述已放置的容器和箱子，求解器在此基础上继续放置剩余箱子。
+
+### 4.1 设计原理
+
+- **已有放置不可移动**：`ContainerLoad::locked = true`，后处理跳过 locked 容器。
+- **剩余箱子独立输入**：`boxes` 列表只列待装箱子，已放置箱子完全由 `existing_containers` 描述，两不相交。
+- **输入输出格式对齐**：`existing_containers` 的 placement 字段与输出 placement 完全一致，上轮输出可直接 copy-paste 为下轮输入。
+
+### 4.2 三阶段主循环
+
+```
+pack()
+  ├─ 阶段 A: 预填充已有容器
+  │   build_load_from_existing() → all_loads（locked=true）
+  ├─ 阶段 B: 继续塞已有容器
+  │   for each cl in all_loads:
+  │     extra = pack_single(remaining, ct, cl.placements)
+  │     用 extra 覆盖 cl 的可变字段（volume/weight/platforms/groups）
+  └─ 阶段 C: 开新容器
+      pack_single(remaining, ct, {})  // existing 为空
 ```
 
-然后沿 d2 方向投影（Alg4）：向 −d2 扫描，找第一个未被阴影遮挡的已放物品，取其后表面为 EP；若无物品阻挡则取箱壁。
+阶段 B 将已有 `placements` 作为 `existing` 参数传入 `pack_single`，各算法基于已有空间占用搜索新箱子（各算法的"已有放置处理"见 [algorithms.md](algorithms.md) 对应章节）。新增箱子合并回原容器后，累计值直接用 `extra` 覆盖，避免逐 placement 重复累加。
 
-另外在顶部中心 `(pos.x, pos.y, pos.z + dz)` 生成一个 EP（能否堆叠由 `can_place` 判定）。
+### 4.3 预校验
 
-### 5.8 ULD 评分
+`pre_validate_input()` 对已有容器做完整校验：容器/箱型存在性、`quantity_limit` 超限、重复 `box_id`、边界、重叠、支撑率、站点限制、路线顺序、重量上限（`total_weight` vs `payload`）、`size` 一致性（若提供 `dx/dy/dz` 必须与 type+朝向推导一致）。
 
-```text
-score = (volume_rate, remaining_platforms)   // 字典序
-```
+### 4.4 与装托的组合
 
-体积率优先，并列时剩余站点数更少者优（对齐目标 `min_platform_split`，倾向站点聚拢，降低后处理救不回的拆分概率）。
+`existing_containers` 与装托可同时使用（已支持）——装托阶段只处理新散件（已有放置不参与装托），已有容器锁定不动，新散件装托后与普通箱一起续塞进已有容器剩余空间（或开新容器）。
 
-### 5.9 网格加速（§4.4.4）
+### 4.5 后处理兼容
 
-以所有箱子平均边长为 cell_size，将已放物品注册到 3D 网格。碰撞检测时只查候选位置覆盖的网格单元内的物品，避免 O(N) 全量扫描。
+两个后处理步骤均跳过 locked 容器：`reduce_platform_splits` 不会从已有容器移动站点；`repack_last_smaller` 不会把已有容器换到更小车型（内部 `pack_single` 传空 `existing`，只涉及新容器）。
 
-### 5.10 数据结构
-
-```
-EpContext（rgs:: 内部）
-  ├─ grid_cell_size        网格单元大小
-  ├─ grid                  3D 网格 (cell → placement indices)
-  └─ extreme_points        EP 集合（按 z,y,x 升序）
-
-ContainerLoad（共享）
-  ├─ placements            放置列表（含 osize 预计算尺寸）
-  ├─ used_volume / total_weight
-  ├─ platforms / groups     去重的站点/组 ID
-  └─ type                  指向 ContainerType
-```
-
-### 5.11 参数
-
-| 参数       |  值 | 作用                                |
-| ---------- | --: | ----------------------------------- |
-| Mmin       |  10 | 总迭代下限                          |
-| Mmax       | 500 | 总迭代上限                          |
-| 每策略下限 |   2 | 每策略最低迭代（含 1 次确定性 ρ=0） |
-| ρ          | 0.5 | Shaw 扰动强度                       |
-
----
-
-## 6. BSG 束搜索
-
-BSG（Beam Search Greedy）是宽度受限的启发式树搜索 + KPA 块合并，面向单容器高填充率场景：块表生成 → 束搜索（beam）逐层加宽 → 贪心 rollout 剪枝 → KPA 上界。实现位于 `src/core/algorithm/bsg/`（packer/solver/beam/block/expand/greedy/kpa/space/types），算法细节与基准方法见 [bsg.md](bsg.md)。
-
----
-
-## 7. 四算法对比
-
-| 维度     | GEP                     | GLC                                | RGS                                     | BSG                       |
-| -------- | ----------------------- | ---------------------------------- | --------------------------------------- | ------------------------- |
-| 核心策略 | 体积降序 + EP 优先填充  | 块装载 + beam 搜索 + 前瞻评估      | EP-first-fit + 多策略排序 + Shaw 随机化 | 束搜索 + KPA 块合并       |
-| 搜索粒度 | 单箱级                  | 块级（多箱一次放置）               | 单箱级                                  | 块级（多箱一次放置）      |
-| 容器分配 | 统一大优先调度 + 后处理 | 统一大优先调度 + 后处理            | 统一大优先调度 + 后处理                 | 统一大优先调度 + 后处理   |
-| 目标优化 | 后处理完成              | 装载层多目标打分 + 后处理完成      | 体积率+剩余站点数评分 + 后处理完成      | 体积率最大化 + 后处理完成 |
-| 时限检查 | 基类主循环 check_time   | 基类主循环 + 装载层双重 check_time | 每迭代 check_time                       | 单容器内 check_time       |
-| 复杂度   | O(n·p)，n=箱子，p=极点  | 较高（beam 展开 + 前瞻评估）       | O(M·n·e)，M=迭代数，e=EP 数             | 高（beam 展开 + 块表）    |
-| 适用场景 | 通用、快速、简单场景    | 填充率要求高、可接受更长计算时间   | 多箱型场景，需要探索多样化布局          | 单容器填充率极高场景      |
-
----
-
-## 8. 共享后处理
+## 5. 共享后处理
 
 `postprocess.cpp` 提供两个后处理阶段，所有算法共享，通过 `pack_single()` 回调重装：
 
-1. **`repack_last_smaller`**：把最后一个容器尝试用更小容器类型重装（等价于 downsize）
+1. **`repack_last_smaller`**：把最后一个容器尝试用更小容器类型重装（等价于 downsize）。
 2. **`reduce_platform_splits`**：把分散在多个容器中的同站点箱子并入某个已有容器（不新增容器，优先并入剩余空间最大的尾车），减少站点拆分。合并 trial 先尝试把捐献箱插入目标现有布局，失败则重排整个目标容器（目标自身箱子 + 捐献箱一起重新装载，碎片化布局也能容纳）。
 
-后处理在 `PackerBase::pack()` 末尾统一调用。
+后处理在 `PackerBase::pack()` 末尾统一调用，目标必为非锁定容器（锁定容器已在候选排除）。
 
----
-
-## 9. 共享数据结构优化
+## 6. 共享数据结构优化
 
 ### Placement.osize
 
-`Placement` 新增 `OrientedSize osize` 字段，放置时预计算朝向后的实际尺寸。消除了 `check_overlap`、`check_support` 中反复的 `box_type_map.at().size.orient()` 调用。
+`Placement` 新增 `OrientedSize osize` 字段，放置时预计算朝向后的实际尺寸。消除了 `check_overlap`、`check_support` 中反复的 `box_type_map.at().size.orient()` 调用：
 
 - `check_overlap` 签名简化为 `(pos, osize, existing)`，不再需要 `box_type_map` 参数。
 - `check_support` 中支撑矩形检测使用 `pl.osize`，不再需要 `box_type_map` 参数。
 
-### 承重约束（max_stack / max_load）
+### 承重约束状态（max_stack / max_load）
 
-`BoxType` 新增 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的 optional 向量，标量输入广播到全部朝向），任一箱型有非空值即启用对应约束（presence-based）。
+`BoxType` 的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的 optional 向量），任一箱型有非空值即启用（presence-based）：
 
-- `Placement` 新增内部字段 `stack_level` / `supported_load`（不序列化到输出），由 `constraints.cpp` 的 `check_stack_constraints`（只读预检）、`apply_stack_state`（放置后副作用）、`recompute_stack_state`（任意顺序重建 + 校验，用于 resume / 后处理合并 / 预校验）维护。
-- 三个承重约束（`support_rate` / `max_stack` / `max_load`）相互独立、可同时开启。`support_rate = 0` 时允许悬空放置，悬空箱不计入堆叠柱，可能绕过 `max_stack` / `max_load`。
-- BSG 因通块可能带 z 间隙（先放悬空箱再放下方箱），逐叶增量检查会漏判，`can_place_block` 在放置叶子后整体 `recompute_stack_state` 校验；GEP / GLC / RGS 自底向上放置，使用增量预检 + 提交后 `apply_stack_state`。
+- `Placement` 新增内部字段 `stack_level` / `supported_load`（不序列化到输出），由 `constraints.cpp` 的 `check_stack_constraints`（只读预检）、`apply_stack_state`（放置后副作用）、`recompute_stack_state`（任意顺序重建 + 校验，用于续装 / 后处理合并 / 预校验）维护。
+- `support_rate` / `max_stack` / `max_load` 相互独立；`support_rate = 0` 时允许悬空放置，悬空箱不计入堆叠柱。预校验强制：声明 `max_stack`/`max_load` 或启用装托时 `support_rate` 必须 > 0。
+
+### 其他
+
+- `ContainerLoad::type` 只指向 `problem_.container_types`（生命周期覆盖整个求解过程），`ct_map` 与 `build_load_from_existing` 用 `const ContainerType*` 索引。
+- 输出**字段恒存在**（未启用功能给 null/空数组/false），消费契约见 [output.md](output.md)。

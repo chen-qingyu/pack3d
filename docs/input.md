@@ -165,7 +165,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 
 ## 托盘类型 `pallet_types`（可选）
 
-启用装托（palletizing）：`loose: true` 的散件先装入托盘，托盘再作为装箱单元参与装车。任一存在即启用装托模式。详见 [palletizing.md](palletizing.md)。
+启用装托（palletizing）：`loose: true` 的散件先装入托盘，托盘再作为装箱单元参与装车。任一存在即启用装托模式。装托流程与行为详见 [architecture.md](architecture.md) §3。
 
 ```json
 {
