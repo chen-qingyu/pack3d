@@ -378,6 +378,9 @@ TEST_CASE("resume 续塞已有容器成功", "[solver][resume]")
         REQUIRE(ids.count("a1") == 1);
         REQUIRE(ids.count("b1") == 1);
         REQUIRE(ids.count("b2") == 1);
+        // 重量口径回归：已有 a1(10) + b1(10) + b2(10) = 30（prefill_load 曾丢失已有放置重量）
+        REQUIRE(res["result"]["containers"][0]["used_weight"].get<double>() ==
+                Catch::Approx(30.0));
     }
 }
 
@@ -635,6 +638,33 @@ TEST_CASE("pallet 基本：全部装托 + 计数口径", "[solver][pallet]")
     REQUIRE(res["result"]["pallets"][0]["used_weight"] == 25.0);
     // 容器内托盘单元 box_id == pallet_id
     REQUIRE(res["result"]["containers"][0]["placements"][0]["box_id"] == "pt1200#1");
+}
+
+// test_pallet_resume.json — 装托 + 续装：已有 truck 已装 e1（reg 40³），新散件 l1 装托成
+// pt#1，与 r1 一起续塞进已有容器；重量口径必须含已有放置（回归 prefill_load 丢重量）
+TEST_CASE("pallet 续装：已有放置兼容 + 重量口径", "[solver][pallet][resume]")
+{
+    auto input = load_data("data/tests/test_pallet_resume.json");
+    auto res = run(input);
+    REQUIRE(res["status"] == "complete");
+    REQUIRE(res["summary"]["container_count"] == 1);
+    REQUIRE(res["summary"]["pallet_count"] == 1);
+    REQUIRE(res["summary"]["palletized_box_count"] == 1);
+    REQUIRE(res["summary"]["packed_box_count"] == 3); // e1 + pt#1(内 l1) + r1
+    REQUIRE(res["summary"]["unpacked_box_count"] == 0);
+    const auto& containers = res["result"]["containers"];
+    REQUIRE(containers.size() == 1);
+    // 已有 e1 保留，托盘与 r1 进入同一容器
+    std::set<std::string> ids;
+    for (const auto& pl : containers[0]["placements"])
+    {
+        ids.insert(pl["box_id"].get<std::string>());
+    }
+    REQUIRE(ids.count("e1") == 1);
+    REQUIRE(ids.count("pt#1") == 1);
+    REQUIRE(ids.count("r1") == 1);
+    // 重量口径：e1(20) + 托盘单元(10) + r1(20) = 50
+    REQUIRE(containers[0]["used_weight"].get<double>() == Catch::Approx(50.0));
 }
 
 // test_pallet_oversize.json — 散件装不进任何托盘：默认 partial + violation；

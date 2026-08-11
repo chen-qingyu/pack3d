@@ -1,0 +1,57 @@
+{
+  "container_types": [
+    { "id": "truck", "sx": 200, "sy": 100, "sz": 100, "payload": 5000.0 }
+  ],
+  "pallet_types": [
+    {
+      "id": "pt",
+      "sx": 100,
+      "sy": 100,
+      "sz": 10,
+      "payload": 1000.0,
+      "max_height": 100
+    }
+  ],
+  "box_types": [
+    {
+      "id": "loose",
+      "sx": 50,
+      "sy": 50,
+      "sz": 50,
+      "allowed_orientations": ["xyz"],
+      "weight": 10.0,
+      "loose": true
+    },
+    {
+      "id": "reg",
+      "sx": 40,
+      "sy": 40,
+      "sz": 40,
+      "allowed_orientations": ["xyz"],
+      "weight": 20.0
+    }
+  ],
+  "boxes": [
+    { "id": "l1", "box_type_id": "loose", "group": "A" },
+    { "id": "r1", "box_type_id": "reg", "group": "A" }
+  ],
+  "existing_containers": [
+    {
+      "type_id": "truck",
+      "placements": [
+        {
+          "box_id": "e1",
+          "box_type_id": "reg",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "orientation": "xyz",
+          "weight": 20.0,
+          "group": "A"
+        }
+      ]
+    }
+  ],
+  "algorithm": "gep",
+  "constraints": { "support_rate": 0.6 }
+}

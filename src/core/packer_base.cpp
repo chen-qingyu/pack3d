@@ -32,6 +32,11 @@ void prefill_load(ContainerLoad& load,
         {
             load.total_weight += bx_it->second.weight.value();
         }
+        else if (pl.weight.has_value())
+        {
+            // 已有放置的箱子不在 boxes（box_map 查不到），用已解析的放置重量
+            load.total_weight += pl.weight.value();
+        }
     }
 }
 
