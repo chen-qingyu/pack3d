@@ -176,7 +176,7 @@ npm run preview -- --host 127.0.0.1 --port 4173
 4. 点击“格式化”检查并整理 JSON。
 5. 点击“开始运行”。
 
-提交前，页面会检查 JSON 语法。输入的结构和业务规则由引擎在校验。
+提交前，页面会检查 JSON 语法。输入的结构和业务规则由引擎校验。
 
 ### 5.3 查看运行状态
 
@@ -217,27 +217,7 @@ npm run preview -- --host 127.0.0.1 --port 4173
 
 ## 6. 输入 JSON
 
-输入必须包含以下三个顶层字段：
-
-```json
-{
-  "container_types": [],
-  "box_types": [],
-  "boxes": []
-}
-```
-
-常用字段如下：
-
-- `container_types`：容器类型、内部尺寸、最大重量和数量限制。
-- `box_types`：箱子类型、原始尺寸和允许朝向。
-- `boxes`：箱子实例、箱型引用、重量、站点和分组。
-- `algorithm`：`gep`、`glc`、`rgs` 或 `bsg`，默认使用 `gep`。
-- `constraints.time_limit`：求解时间限制，默认 120 秒。
-- `constraints.support_rate`：底面支撑率，范围为 0 到 1，默认 0。
-- `route`：站点装载顺序。
-
-完整字段、朝向枚举和约束说明见 [input.md](input.md)。可以直接使用仓库中的 [demo.json](../data/demo.json) 作为测试输入。
+“输入 JSON”区域的内容与 CLI/SDK 使用同一输入格式（完整字段、朝向枚举与约束见 [input.md](input.md)）。可以直接使用仓库中的 [demo.json](../data/demo.json) 作为测试输入。
 
 ## 7. 结果说明
 

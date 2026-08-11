@@ -1,6 +1,6 @@
 # pack3d Python SDK
 
-Python bindings for the pack3d 3D bin packing solver.
+pack3d 求解器的 Python 绑定，输入输出与 JSON 格式一致。
 
 ## 安装
 
@@ -36,7 +36,7 @@ result = pack3d.run({
 | ------- | ---- | -------------------------- |
 | `input` | dict | 输入数据，格式与 JSON 一致 |
 
-返回值是一个 dict，顶层包含 `status`、`summary`、`result`、`violations` 四个字段（`violations` 恒存在，非 `complete` 时可能非空）。详见 [docs/output.md](../docs/output.md)。
+返回值是一个 dict，顶层包含 `status`、`summary`、`result`、`violations` 四个字段（`violations` 恒存在，非 `complete` 时可能非空）。`run()` 不抛异常——非法输入或内部错误返回 `status=invalid` 的 dict，调用方按 `status` 判断成败。详见 [docs/output.md](../docs/output.md)。
 
 ## 命令行脚本
 

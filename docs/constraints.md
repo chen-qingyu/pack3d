@@ -54,7 +54,7 @@
 
 层号模型：每个已放置箱记录 `stack_level`（所在堆柱层号，地板层 = 1）。放置新箱 B 时：
 
-- `B.stack_level = max(直接支撑箱.stack_level) + 1`（无支撑 → 1）。
+- `B.stack_level = max(直接支撑箱.stack_level) + 1`（无支撑 -> 1）。
 - 对**每个直接支撑箱 S**，要求 `B.stack_level ≤ S.max_stack_for(S.orientation)`。
 
 直接支撑箱 = 底面贴合（`S.top == B.bottom`）且投影相交（面积 > 0）。异构柱高受"最弱箱"限制；"限堆 N 层"= 柱含自身 N 层；同层并排不增层。
@@ -74,7 +74,7 @@ $$\text{增量}(S) = w \times \frac{A_S}{\sum_i A_i}$$
 - 若 S 在该朝向上声明了 `max_load`，要求 `S.supported_load + 增量(S) ≤ S.max_load_for(S.orientation)`。
 - 放置成功后：每个直接支撑箱 `S.supported_load += 增量(S)`；B 自身 `supported_load = 0`。
 
-只累加**直接**放置在 S 顶面的箱子（不沿柱递归累计）。单支撑半面积 + 半悬空 → 100% 重量给该支撑；两支撑各半（无悬空）→ 各 50%。
+只累加**直接**放置在 S 顶面的箱子（不沿柱递归累计）。单支撑半面积 + 半悬空 -> 100% 重量给该支撑；两支撑各半（无悬空）-> 各 50%。
 
 > 与 `max_stack` 相同，`max_load` 只约束有直接支撑的箱子；`support_rate > 0` 是其物理有效的前提（预校验强制，同 `max_stack`）。
 
@@ -87,7 +87,7 @@ $$\text{增量}(S) = w \times \frac{A_S}{\sum_i A_i}$$
 
 体积口径：障碍物计入 `volume_rate` 分母（可用容积定义见 [output.md](output.md)）。
 
-预校验（违反 → `invalid`）：障碍物完全在容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠。
+预校验（违反 -> `invalid`）：障碍物完全在容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠。
 
 实现：共享 `check_obstacle`（相交）与 `check_support`（顶面支撑）为四个算法统一兜底；各算法的候选点/空间雕刻策略见 [algorithms.md](algorithms.md)。
 
@@ -100,6 +100,6 @@ $$\text{增量}(S) = w \times \frac{A_S}{\sum_i A_i}$$
 - **体积口径**：斜面计入 `volume_rate` 分母（可用容积定义见 [output.md](output.md)）；楔形占的空间已从分母扣除，可用空间装满即 100%。
 - 斜面之间允许重叠（独立禁区，重叠只是更禁）；与障碍物相互独立、无交叉校验。
 
-预校验（违反 → `invalid`）：恰好两个非零截距、`1 <= |截距| <= 容器该轴尺寸`、`existing_containers` 已有放置不侵入斜面禁区。
+预校验（违反 -> `invalid`）：恰好两个非零截距、`1 <= |截距| <= 容器该轴尺寸`、`existing_containers` 已有放置不侵入斜面禁区。
 
 实现：共享 `check_facet`（箱子极角点 vs 平面单次点积）为四个算法统一兜底；各算法的空间雕刻策略见 [algorithms.md](algorithms.md)。

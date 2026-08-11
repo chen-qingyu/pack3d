@@ -37,7 +37,7 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 
 目标字典序：`min_container_count -> min_platform_split -> max_volume_rate -> min_group_split`
 
-支持的箱子朝向：XYZ、XZY、YXZ、YZX、ZXY、ZYX（6 种旋转），每种箱子类型可配置允许的朝向子集。
+支持六种箱子朝向，每种箱子类型可配置允许的朝向子集。
 
 ## 构建运行
 
@@ -178,7 +178,7 @@ src/
     objectives.hpp/.cpp       目标向量
     postprocess.hpp/.cpp      后处理
     pallet.hpp/.cpp           装托类型与虚拟容器/箱型
-    palletizer.hpp/.cpp       装托流水线（散件→托盘）
+    palletizer.hpp/.cpp       装托流水线（散件->托盘）
     io.hpp/.cpp               输入输出
     select_container.hpp/.cpp 选车模块
     tool.hpp/.cpp             常用工具

@@ -177,6 +177,8 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
 
 返回单个 run 状态：
 
+> 注意：run 的 `status` 是**任务生命周期状态**（running/completed/...），与求解结果 JSON 里的 `status`（`complete`/`partial`/`timeout`/`invalid`，见 [output.md](output.md)）是两套枚举，勿混淆。
+
 | status      | 说明                                |
 | ----------- | ----------------------------------- |
 | `running`   | 求解执行中，`summary` 为 null       |
@@ -214,6 +216,17 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
 ### `DELETE /api/instances/{instance_id}/runs/{run_id}`
 
 删除运行及其所有文件。
+
+## 错误响应
+
+非 2xx 响应使用 FastAPI 标准格式：
+
+```json
+{ "detail": "run is running, result not ready" }
+```
+
+- `404`：实例/运行/结果/输入不存在（`instance not found` 等）
+- `409`：状态不满足操作前提（结果未就绪、运行不可取消等）
 
 ## 启动
 

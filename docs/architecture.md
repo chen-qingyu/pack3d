@@ -12,14 +12,14 @@ flowchart LR
   B --> C[pre_validate 预校验]
   C --> D[resolve_type_weights]
   D --> E{有 pallet_types?}
-  E -->|否| F[make_packer → pack]
+  E -->|否| F[make_packer -> pack]
   E -->|是| G[装托流水线<br/>见 §3]
   F --> H[postprocess 后处理]
   G --> H
   H --> I[JSON 输出]
 ```
 
-- **schema 校验**：编译时嵌入的 JSON Schema（`data/input_schema.json` → `input_schema.h`），保证结构合法。
+- **schema 校验**：编译时嵌入的 JSON Schema（`data/input_schema.json` -> `input_schema.h`），保证结构合法。
 - **预校验**：`pre_validate_input()` 检查引用完整性、重量三选一、group 全有或全无、路线/站点、障碍物/斜面合法性，以及约束之间的**级联前提**（如 `max_stack`/`max_load`/装托要求 `support_rate > 0`、`tender_limit` 要求 `group`）。
 - **异常兜底**：任何未预见异常返回 `status=invalid`（带 `internal error`），任意输入都有完整 JSON 输出。
 
@@ -40,9 +40,9 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  A[pack 开始] --> B[阶段 A: 预填充已有容器<br/>build_load_from_existing → all_loads locked]
+  A[pack 开始] --> B[阶段 A: 预填充已有容器<br/>build_load_from_existing -> all_loads locked]
   B --> C[阶段 B: 继续塞已有容器<br/>pack_single remaining, ct, existing]
-  C --> D[阶段 C: 开新容器<br/>select_largest_fitting 选车 → pack_single]
+  C --> D[阶段 C: 开新容器<br/>select_largest_fitting 选车 -> pack_single]
   D --> E[postprocess 后处理]
   E --> F[build_solution]
 ```
@@ -50,11 +50,11 @@ flowchart TD
 - **选车**：`select_largest_fitting` 从可用容器类型中选能装下剩余箱子的最大车型（大优先）；`quantity_limit` 限制每种类型可用数量。
 - **单容器填充**：`pack_single(items, ct, existing, tender)` —— existing 为已有放置（续装时非空），tender 为已提交容器的运输委托分解。
 - **主循环保护**：阶段 C 若 `packed.empty()` 立即 break（tender 拒绝是几何无关的，继续开空容器只会死循环到超时）。
-- **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。`time_limit` 为软限制：超时即返回当前最优并标记 `status=timeout`（即使已全部装完）；未超时且全部装完 → `complete`，否则 → `partial`。
+- **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。`time_limit` 为软限制：超时即返回当前最优并标记 `status=timeout`（即使已全部装完）；未超时且全部装完 -> `complete`，否则 -> `partial`。
 
 ## 3. 装托（Palletizing）
 
-> 两级流水线：**散件（`loose:true`）→ 装托 → 装车**；普通箱子直接散装上车。
+> 两级流水线：**散件（`loose:true`）-> 装托 -> 装车**；普通箱子直接散装上车。
 > 核心思想：**托盘即装箱单元**。装托阶段把托盘当小容器，用与装车完全相同的算法与约束链（`pack_single`）把散件码上托盘；随后每个托盘改写成一个"不可再叠放、可 90° 平面旋转"的虚拟箱，交给现有求解器装车——**装车零改动**，路线/重量/支撑/tender/后处理等既有约束全部免费生效。
 
 ### 3.1 流程
@@ -78,7 +78,7 @@ flowchart LR
 | 装托支撑率 | `constraints.pallet_support_rate` | 1.0   | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                      |
 | 装托兜底   | `constraints.pallet_fallback`     | false | 散件装不进任何托盘：false = 未装箱报错（partial）；true = 降级散装上车                |
 
-预校验：装托模式强制有重量信息、全部容器带 `payload`、装车 `support_rate > 0`；`loose: true` 但无 `pallet_types` → `invalid`；有 `pallet_types` 但无散件 → 等价普通装箱。
+预校验：装托模式强制有重量信息、全部容器带 `payload`、装车 `support_rate > 0`；`loose: true` 但无 `pallet_types` -> `invalid`；有 `pallet_types` 但无散件 -> 等价普通装箱。
 
 ### 3.3 行为
 
@@ -126,7 +126,7 @@ flowchart LR
 ```
 pack()
   ├─ 阶段 A: 预填充已有容器
-  │   build_load_from_existing() → all_loads（locked=true）
+  │   build_load_from_existing() -> all_loads（locked=true）
   ├─ 阶段 B: 继续塞已有容器
   │   for each cl in all_loads:
   │     extra = pack_single(remaining, ct, cl.placements)
@@ -162,10 +162,10 @@ pack()
 
 ### Placement.osize
 
-`Placement` 新增 `OrientedSize osize` 字段，放置时预计算朝向后的实际尺寸。消除了 `check_overlap`、`check_support` 中反复的 `box_type_map.at().size.orient()` 调用：
+`Placement` 携带 `OrientedSize osize`（放置时预计算的朝向实际尺寸），约束函数直接使用，无需在检查时反复查箱型表：
 
-- `check_overlap` 签名简化为 `(pos, osize, existing)`，不再需要 `box_type_map` 参数。
-- `check_support` 中支撑矩形检测使用 `pl.osize`，不再需要 `box_type_map` 参数。
+- `check_overlap` 接收 `(pos, osize, existing)`，不依赖箱型表。
+- `check_support` 的支撑矩形检测直接用 `pl.osize`。
 
 ### 承重约束状态（max_stack / max_load）
 
