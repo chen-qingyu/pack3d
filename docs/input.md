@@ -93,6 +93,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 - 数组：长度必须等于 `allowed_orientations` 长度，按朝向分别取值（如平放堆 3 层、立放只能堆 2 层）。
 - 任一箱型有非空值即启用对应约束（presence-based）；两者与 `support_rate` 相互独立，可同时开启。
 - `max_load` 启用时要求有重量信息（箱型级或箱子级）。
+- 两者启用时要求 `constraints.support_rate > 0`（预校验强制，否则悬空箱可绕过承重约束，报 `invalid`）。
 
 **行业组合语义（朝上 / 易碎，无需专用字段）**：
 

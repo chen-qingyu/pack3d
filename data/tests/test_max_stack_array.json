@@ -19,5 +19,6 @@
   "boxes": [
     { "id": "b1", "box_type_id": "box" },
     { "id": "b2", "box_type_id": "box" }
-  ]
+  ],
+  "constraints": { "support_rate": 1.0 }
 }

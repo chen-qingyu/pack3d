@@ -520,6 +520,13 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         out.push_back("inconsistent weight: max_load requires weight info (box_types or boxes)");
     }
 
+    // max_stack/max_load 物理有效的前提：support_rate>0（support_rate=0 允许悬空放置，
+    // 悬空箱不计入堆叠柱，可绕过堆码层数与单箱承重约束）
+    if ((any_max_stack || any_max_load) && problem.support_rate == 0.0)
+    {
+        out.push_back("max_stack/max_load requires support_rate > 0");
+    }
+
     // 箱子/已有放置有 platform 就必须有 route 且平台在路线中
     bool any_platform = false;
     for (const auto& bx : problem.boxes)
