@@ -117,7 +117,7 @@ flowchart TD
 
 - **简单块**：同箱型同朝向的 nx×ny×nz 致密长方体；块内所有箱子的 platform、group 必须一致。仅实现简单块，未做论文的复合块（复杂约束下复合块生成/评估成本高，简单块已够用）。
 - **空间栈**：放置一个块后，未填充空间确定性切成至多 3 个子空间（上方、右方、后方）入栈。`parent_id` 追踪来源，支持 `TransferSpace` 碎片回收——栈顶无可行块时尝试合并给同次划分的兄弟空间。
-- **障碍物雕刻**：初始空间用 6-slab 完整分解挖掉障碍物，保证周边空间可达。**斜面不雕刻**——阶梯碎片会切碎空间栈、降低装载，楔形禁区由 `check_block_feasible` 的 `check_facet` 逐箱兜底（过挖为 0）。
+- **障碍物雕刻**：初始空间用 6-slab 完整分解挖掉障碍物，保证周边空间可达。**斜面不雕刻**——阶梯碎片会切碎空间栈、降低装载，楔形禁区由 `check_block_feasible` 的 `check_facet` 逐箱兜底（过挖为 0）；**例外**：某斜面禁区覆盖原点（两负截距）时对贴角楔形做阶梯雕刻，否则初始空间 min corner 在禁区、块全部被拒而零装载。
 - **beam 精炼**（`pack_beam`）：每步对候选块做多轮精炼——模拟放置 + 贪心完成评估 + 多目标排序，裁半保留。前瞻分两级：`greedy_complete` 对前几个候选做一步前瞻选最优（`pick_best_block`，eval_width=4）；`complete_largest` 纯贪心填到底，用于最终得分。
 - **多目标评分**：`compare_local_scores` 按 (站点数, 体积率, 组数, 箱数) 字典序比较候选——站点聚拢优先，其次体积利用。
 
@@ -281,7 +281,7 @@ flowchart TD
 - **状态**：`BSGState` 含残余空间 cover `R`（**允许重叠**）、剩余箱型计数、可构造块索引、已放置块、`used_volume`、三轴 KPA 表。`GeneralBlock` 保存外包尺寸 `osize`、内部箱子清单、真实箱体积 `single_box_volume` 和二叉合并树；求解结束递归展开合并树输出独立放置。
 - **两个体积不能混用**：$V_{\text{box}}(b)$（真实装载体积，用于评分/统计）与 $V_{\text{bound}}(b)$（外包体积，仅表示占据空间）。允许空隙的通用块两者不等。
 - **块预处理**：先枚举致密 simple block，再迭代合并（X/Y/Z 方向，外包取 max），最多 `max_bl` 个。合并要求外包不超容器、成员需求不超库存、填充率 ≥ `max_fr`。BR 分组：BR0–7（1–20 箱型）`max_fr=1.00`，BR8–15（30–100 箱型）`max_fr=0.98`。
-- **障碍物雕刻**：初始空间/残差 cover 挖掉障碍物；`support_rate > 0` 时障碍物强制逐叶（快路径 `is_supported` 不认障碍物顶面支撑），`support_rate = 0` 时雕刻已保证空间无禁区、走快路径。**斜面不雕刻**——`facets` 存在即强制逐叶（`needs_leaf_validation`），由 `can_place_block` 的 `check_facet` 逐叶兜底（过挖为 0）。
+- **障碍物雕刻**：初始空间/残差 cover 挖掉障碍物；`support_rate > 0` 时障碍物强制逐叶（快路径 `is_supported` 不认障碍物顶面支撑），`support_rate = 0` 时雕刻已保证空间无禁区、走快路径。**斜面不雕刻**——`facets` 存在即强制逐叶（`needs_leaf_validation`），由 `can_place_block` 的 `check_facet` 逐叶兜底（过挖为 0）；**例外**：某斜面禁区覆盖原点（两负截距）时对贴角楔形做阶梯雕刻，否则残余空间 anchor 落在原点会被拒而零装载。
 - **残余空间**：overlapping cover，**不能改成互不重叠 partition**。一个块放入后，对所有与其重叠的残余 cuboid 各做 6-slab（左右前后下上）分解挖除，删除被完全包含的 non-maximal cuboid。互不重叠的碎片化表达会严重损害强异构实例。
 - **anchor 与评分**：每个残余 cuboid 的 8 角与容器对应角算 Manhattan 距离，最小者为 anchor，优先 anchor 距离小的空间（并列取体积大者）。候选块用 $f(b,r)=V_{\text{box}}(b)-V_{\text{loss}}(b,r)$ 排序，`V_loss` 由三轴 KPA 估计块边缘可继续填补的最大范围。KPA 对每件箱建模"至多选一个允许朝向尺寸"的多选背包——不能只取该轴最大尺寸，否则最大尺寸不适配而较小朝向可适配时会错误排除可用箱。
 - **beam search**：根层最多扩展 $\min(w^2,|B|)$ 个块，后续层每状态最多 w 个；每个后继做一次 greedy rollout 评分；用 rollout 最终装入的箱型计数去相似状态（相似时保留已装体积更小者）；保留评分最高 w 个。外层从 w=1 开始，每次结束后 $w \leftarrow \lceil\sqrt{2}\,w\rceil$（相邻轮次搜索投入约翻倍），根层候选数自然限制并做 int 溢出保护。

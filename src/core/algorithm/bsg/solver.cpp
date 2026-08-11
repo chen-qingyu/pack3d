@@ -109,8 +109,24 @@ PackResult solve(const GlobalContext& ctx,
     {
         update_residual_space(s0.R, {o.x, o.y, o.z}, {o.dx, o.dy, o.dz});
     }
-    // 斜面楔形禁区不做阶梯雕刻（阶梯碎片会切碎残余空间、降低装载）：
-    // facets 存在时 needs_leaf_validation 强制逐叶，由 can_place_block 的 check_facet 兜底。
+    // 斜面楔形禁区默认不做阶梯雕刻（阶梯碎片会切碎残余空间、降低装载），facets
+    // 使 needs_leaf_validation 强制逐叶、由 can_place_block 的 check_facet 兜底；仅当
+    // 某斜面禁区覆盖原点（两负截距，残余空间 anchor 落在原点会被拒导致零装载）时
+    // 阶梯雕刻贴角楔形，使可用空间的 min corner 避开禁区。
+    if (facet_covers_origin(ctx.container_type.facets))
+    {
+        for (const auto& f : ctx.container_type.facets)
+        {
+            if (!facet_covers_origin(f))
+            {
+                continue;
+            }
+            for (const auto& s : facet_staircase(f, ctx.container_size, FACET_STAIR_STEPS))
+            {
+                update_residual_space(s0.R, {s.x, s.y, s.z}, {s.dx, s.dy, s.dz});
+            }
+        }
+    }
     s0.remaining_counts = initial_counts;
     s0.available_blocks.reserve(ctx.blocks.size());
     for (int i = 0; i < static_cast<int>(ctx.blocks.size()); ++i)

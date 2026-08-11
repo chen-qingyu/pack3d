@@ -46,6 +46,17 @@ ContainerLoad GepPacker::pack_single(
     };
     std::set<Ep> eps;
     eps.insert({0, 0, 0});
+    // 斜面禁区覆盖原点时原点不可用：用最大箱首个朝向扫描地板找可用起点
+    if (facet_covers_origin(ct.facets) && !sorted.empty())
+    {
+        const auto& bt = box_type_map_.at(sorted[0].box_type_id);
+        auto spot = first_floor_spot(ct.inner_size, ct.facets,
+                                     bt.size.orient(bt.allowed_orientations[0]));
+        if (spot.has_value())
+        {
+            eps.insert({spot->x, spot->y, spot->z});
+        }
+    }
 
     // 从已有放置生成初始 EP
     for (const auto& pl : existing)

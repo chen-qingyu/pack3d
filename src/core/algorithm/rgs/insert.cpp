@@ -368,6 +368,36 @@ void insertion_heuristic(
     }
 
     out_ctx.extreme_points.insert({0, 0, 0});
+    // 斜面禁区覆盖原点时原点不可用：用最大箱首个朝向扫描地板找可用起点
+    if (facet_covers_origin(ctype.facets) && !items.empty())
+    {
+        const Box* ref = nullptr;
+        int64_t best_vol = 0;
+        for (const auto& bx : items)
+        {
+            auto it = box_type_map.find(bx.box_type_id);
+            if (it == box_type_map.end())
+            {
+                continue;
+            }
+            const int64_t v = it->second.size.volume();
+            if (ref == nullptr || v > best_vol)
+            {
+                ref = &bx;
+                best_vol = v;
+            }
+        }
+        if (ref != nullptr)
+        {
+            const auto& bt = box_type_map.at(ref->box_type_id);
+            auto spot = first_floor_spot(ctype.inner_size, ctype.facets,
+                                         bt.size.orient(bt.allowed_orientations[0]));
+            if (spot.has_value())
+            {
+                out_ctx.extreme_points.insert(*spot);
+            }
+        }
+    }
 
     // 障碍物 8 角点（4 顶角可上到顶面，4 底角可贴侧放置）
     for (const auto& o : ctype.obstacles)

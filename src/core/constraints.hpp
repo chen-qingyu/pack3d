@@ -31,6 +31,30 @@ namespace pack3d
                                const Size& container_size,
                                const std::vector<Facet>& facets) noexcept;
 
+/// 单个斜面禁区是否覆盖原点 (0,0,0)：两截距均为负（从 min 侧切入，贴原点角）
+[[nodiscard]] bool facet_covers_origin(const Facet& f) noexcept;
+
+/// 是否存在覆盖原点的斜面（有则算法需备用起始点/雕刻贴角楔形，否则原点被禁会零装载）
+[[nodiscard]] bool facet_covers_origin(const std::vector<Facet>& facets) noexcept;
+
+/// 原点被斜面覆盖时，返回地板 (z=0) 上第一个能放下 ref（不侵入禁区）的可用起点
+[[nodiscard]] std::optional<Position> first_floor_spot(const Size& csize,
+                                                       const std::vector<Facet>& facets,
+                                                       const OrientedSize& ref) noexcept;
+
+// 斜面楔形的 N 步阶梯 AABB 近似（覆盖整个楔形禁区，过挖≈楔形/N，远小于 AABB 的楔形过挖）
+struct FacetSlab
+{
+    int32_t x = 0, y = 0, z = 0;
+    int32_t dx = 0, dy = 0, dz = 0;
+};
+[[nodiscard]] std::vector<FacetSlab> facet_staircase(const Facet& f,
+                                                     const Size& csize,
+                                                     int steps) noexcept;
+
+// 斜面楔形阶梯近似的步数（仅用于覆盖原点的斜面，GLC/BSG 共用）
+inline constexpr int FACET_STAIR_STEPS = 2;
+
 /// 检查放入箱子后是否超重
 [[nodiscard]] bool check_weight(const ContainerLoad& load,
                                 double box_weight) noexcept;

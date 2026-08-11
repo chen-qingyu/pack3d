@@ -102,4 +102,4 @@ $$\text{增量}(S) = w \times \frac{A_S}{\sum_i A_i}$$
 
 预校验（违反 -> `invalid`）：恰好两个非零截距、`1 <= |截距| <= 容器该轴尺寸`、`existing_containers` 已有放置不侵入斜面禁区。
 
-实现：共享 `check_facet`（箱子极角点 vs 平面单次点积）为四个算法统一兜底。GLC/BSG 不做阶梯雕刻（阶梯碎片会切碎空间栈/残余空间、降低装载），楔形禁区分别由 `check_block_feasible` / `can_place_block` 的逐箱 `check_facet` 兜底（过挖为 0）。
+实现：共享 `check_facet`（箱子极角点 vs 平面单次点积）为四个算法统一兜底。GLC/BSG 默认不做阶梯雕刻（阶梯碎片会切碎空间栈/残余空间、降低装载），楔形禁区分别由 `check_block_feasible` / `can_place_block` 的逐箱 `check_facet` 兜底（过挖为 0）。**例外（禁区覆盖原点）**：某斜面两截距均为负（贴原点角）时，GEP/RGS 用地板扫描补首个可用起点、GLC/BSG 对贴角楔形做阶梯雕刻——否则原点不可用会导致零装载。

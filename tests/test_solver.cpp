@@ -1068,3 +1068,20 @@ TEST_CASE("facet 斜面+障碍物+支撑率组合", "[solver][facet]")
         require_no_geom_violation(res, input["container_types"][0]);
     }
 }
+
+// test_facet_origin.json — 两负截距 {dx:-10,dz:-10}，楔形禁区覆盖原点 (0,0,0)
+// 验证：初始原点不可用时四算法均有备用起点（GEP/RGS 地板扫描、GLC/BSG 贴角雕刻），
+// 全部 8 箱装下且不侵入（无备用起点会零装载）
+TEST_CASE("facet 禁区覆盖原点：四算法仍可装载", "[solver][facet]")
+{
+    auto input = load_data("data/tests/test_facet_origin.json");
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        input["algorithm"] = algo;
+        auto res = run(input);
+        INFO("algo=" << algo);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["packed_box_count"] == 8);
+        require_no_geom_violation(res, input["container_types"][0]);
+    }
+}
