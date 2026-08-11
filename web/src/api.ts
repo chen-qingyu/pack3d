@@ -1,13 +1,16 @@
 export type RunStatus = 'running' | 'completed' | 'invalid' | 'failed' | 'cancelled'
 
 export interface Summary {
-  elapsed_second?: number
+  elapsed_second: number
   packed_box_count: number
   unpacked_box_count: number
   container_count: number
   platform_split: number
   volume_rate: number
   group_split: number
+  pallet_count: number
+  palletized_box_count: number
+  loose_box_count: number
 }
 
 export interface Run {
@@ -40,8 +43,9 @@ export interface Placement {
   dy: number
   dz: number
   orientation: string
-  platform?: string | null
-  group?: string | null
+  platform: string | null
+  group: string | null
+  weight: number | null
 }
 
 export interface PalletResult {
@@ -55,8 +59,8 @@ export interface PalletResult {
   used_height: number
   used_weight: number
   volume_rate: number
-  groups?: string[] | null
-  platforms?: string[] | null
+  groups: string[]
+  platforms: string[]
   placements: Placement[]
 }
 
@@ -80,29 +84,31 @@ export interface ContainerResult {
   sx: number
   sy: number
   sz: number
-  payload?: number | null
-  used_volume?: number
-  used_weight?: number | null
+  payload: number | null
+  used_volume: number
+  used_weight: number | null
   volume_rate: number
-  weight_rate?: number | null
+  weight_rate: number | null
   packed_count: number
-  platforms?: string[]
-  groups?: string[]
-  obstacles?: Obstacle[]
-  facets?: Facet[]
+  platforms: string[]
+  groups: string[]
+  obstacles: Obstacle[]
+  facets: Facet[]
+  tender: number | null
   placements: Placement[]
 }
 
+// 求解器输出：所有字段恒存在（未启用功能为 null / 空数组 / false）
 export interface ResultData {
   status: string
   summary: Summary
-  result?: {
+  result: {
     containers: ContainerResult[]
-    box_types?: Array<{ id: string; sx: number; sy: number; sz: number }>
-    pallets?: PalletResult[]
-    unpacked_boxes?: string[]
+    box_types: Array<{ id: string; sx: number; sy: number; sz: number }>
+    pallets: PalletResult[]
+    unpacked_boxes: string[]
   }
-  violations?: string[]
+  violations: string[]
 }
 
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {

@@ -20,10 +20,10 @@ type RunDetailProps = {
 
 export function RunDetail({ run, result, onBack, onCancel, onDelete, onNewRun, onRename }: RunDetailProps) {
   const summary = result?.summary || run.summary
-  const containers = result?.result?.containers || []
-  const boxTypes = result?.result?.box_types || []
-  const pallets = result?.result?.pallets || []
-  const violations = result?.violations || run.violations || []
+  const containers = result?.result.containers ?? []
+  const boxTypes = result?.result.box_types ?? []
+  const pallets = result?.result.pallets ?? []
+  const violations = result?.violations ?? run.violations ?? []
   const statusColor = run.status === 'completed' ? 'teal' : run.status === 'running' ? 'orange' : run.status === 'invalid' || run.status === 'failed' ? 'red' : 'gray'
   return <Container size="xl" py="xl">
     <Group justify="space-between" align="flex-end" mb="xl"><div><Button variant="subtle" px={0} leftSection={<ArrowLeft size={16} />} onClick={onBack}>返回实例</Button><Group gap="xs"><ThemeIcon variant="light" size="sm"><Activity size={14} /></ThemeIcon><Text size="sm" c="teal" fw={600}>运行详情</Text></Group><Title mt="xs">{run.run_name}</Title><Text size="sm" c="dimmed" mt={4}>{run.run_id} · {formatDate(run.created_at)}</Text></div><Group>{run.status === 'running' ? <Button color="red" variant="light" leftSection={<Square size={14} />} onClick={onCancel}>取消运行</Button> : <Button variant="default" leftSection={<RefreshCw size={16} />} onClick={onNewRun}>再次运行</Button>}<Button variant="default" onClick={onRename}>重命名</Button><ActionIcon color="red" variant="subtle" size="lg" onClick={onDelete}><Trash2 size={16} /></ActionIcon></Group></Group>
@@ -42,5 +42,5 @@ export function RunDetail({ run, result, onBack, onCancel, onDelete, onNewRun, o
 }
 
 function ContainerTable({ containers }: { containers: ContainerResult[] }) {
-  return <Paper withBorder mt="lg"><Stack gap={0}><div><Title order={3} p="md">容器明细</Title><Text size="sm" c="dimmed" px="md" pb="md">按装车顺序排列</Text></div><Table.ScrollContainer minWidth={850}><Table striped><Table.Thead><Table.Tr><Table.Th>容器</Table.Th><Table.Th>尺寸</Table.Th><Table.Th>体积率</Table.Th><Table.Th>重量率</Table.Th><Table.Th>装载</Table.Th><Table.Th>平台 / 分组</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{containers.map((container, index) => <Table.Tr key={`${container.type_id}-${index}`}><Table.Td><Text fw={600}>#{index + 1} · {container.type_id}</Text></Table.Td><Table.Td>{container.sx} × {container.sy} × {container.sz}</Table.Td><Table.Td>{formatPercent(container.volume_rate)}</Table.Td><Table.Td>{formatPercent(container.weight_rate)}</Table.Td><Table.Td>{container.packed_count} 箱</Table.Td><Table.Td>{container.platforms?.join(', ') || '无平台'} / {container.groups?.join(', ') || '无分组'}</Table.Td></Table.Tr>)}</Table.Tbody></Table></Table.ScrollContainer></Stack></Paper>
+  return <Paper withBorder mt="lg"><Stack gap={0}><div><Title order={3} p="md">容器明细</Title><Text size="sm" c="dimmed" px="md" pb="md">按装车顺序排列</Text></div><Table.ScrollContainer minWidth={850}><Table striped><Table.Thead><Table.Tr><Table.Th>容器</Table.Th><Table.Th>尺寸</Table.Th><Table.Th>体积率</Table.Th><Table.Th>重量率</Table.Th><Table.Th>装载</Table.Th><Table.Th>平台 / 分组</Table.Th></Table.Tr></Table.Thead><Table.Tbody>{containers.map((container, index) => <Table.Tr key={`${container.type_id}-${index}`}><Table.Td><Text fw={600}>#{index + 1} · {container.type_id}</Text></Table.Td><Table.Td>{container.sx} × {container.sy} × {container.sz}</Table.Td><Table.Td>{formatPercent(container.volume_rate)}</Table.Td><Table.Td>{formatPercent(container.weight_rate)}</Table.Td><Table.Td>{container.packed_count} 箱</Table.Td><Table.Td>{container.platforms.join(', ') || '无平台'} / {container.groups.join(', ') || '无分组'}</Table.Td></Table.Tr>)}</Table.Tbody></Table></Table.ScrollContainer></Stack></Paper>
 }

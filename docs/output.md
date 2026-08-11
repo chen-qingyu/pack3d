@@ -11,7 +11,7 @@ JSON，顶层四个字段：
 }
 ```
 
-> **字段恒存在**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`max_stack`/`max_load`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）、`false`（`loose`）。
+> **字段恒存在（消费契约）**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`max_stack`/`max_load`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）、`false`（`loose`）。下游（web/server/SDK）**依赖此契约**，不再对缺失字段做防御（如 `?.`/`?? []`/`.get("x", [])`）。唯一例外：斜面 `facets[].dx/dy/dz` 按格式只输出非零截距（天然缺省），消费方须容忍缺键。
 
 ## `status` 状态枚举
 

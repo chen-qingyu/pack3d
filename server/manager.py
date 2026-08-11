@@ -41,7 +41,7 @@ class RunState:
         if self.status in ("completed", "invalid") and self.result is not None:
             d["summary"] = self.result["summary"]
         if self.status == "invalid" and self.result is not None:
-            d["violations"] = self.result.get("violations", [])
+            d["violations"] = self.result["violations"]
         return d
 
     def get_result(self) -> dict | None:
