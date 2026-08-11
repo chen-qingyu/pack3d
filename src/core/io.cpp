@@ -42,33 +42,22 @@ Orientation orientation_from_string(const std::string& s)
     return magic_enum::enum_cast<Orientation>(s, magic_enum::case_insensitive).value();
 }
 
-// 有值则序列化，无值则输出 null
 template <typename T>
 json opt_json(const std::optional<T>& opt) noexcept
 {
     return opt.has_value() ? json(opt.value()) : json(nullptr);
 }
 
-// 从 JSON 中获取可选的 int，null 视为空 optional
-std::optional<int> json_opt_int(const json& j, const char* key)
+// 从 JSON 中获取可选的标量，key 缺失或 null 视为空 optional
+template <typename T>
+std::optional<T> json_opt(const json& j, const char* key)
 {
     auto it = j.find(key);
     if (it == j.end() || it->is_null())
     {
         return std::nullopt;
     }
-    return it->get<int>();
-}
-
-// 从 JSON 中获取可选的 double
-std::optional<double> json_opt_double(const json& j, const char* key)
-{
-    auto it = j.find(key);
-    if (it == j.end() || it->is_null())
-    {
-        return std::nullopt;
-    }
-    return it->get<double>();
+    return it->get<T>();
 }
 
 // 解析 标量 或 数组 为与 allowed_orientations 对齐的 optional 向量。
@@ -101,38 +90,38 @@ void parse_optional_vector(const json& j, const char* key,
     }
 }
 
+void from_json(const json& j, Obstacle& o)
+{
+    j["x"].get_to(o.x);
+    j["y"].get_to(o.y);
+    j["z"].get_to(o.z);
+    j["dx"].get_to(o.dx);
+    j["dy"].get_to(o.dy);
+    j["dz"].get_to(o.dz);
+}
+
+void from_json(const json& j, Facet& f)
+{
+    f.dx = json_opt<int>(j, "dx").value_or(0);
+    f.dy = json_opt<int>(j, "dy").value_or(0);
+    f.dz = json_opt<int>(j, "dz").value_or(0);
+}
+
 void from_json(const json& j, ContainerType& ct)
 {
     j["id"].get_to(ct.id);
     j["sx"].get_to(ct.inner_size.x);
     j["sy"].get_to(ct.inner_size.y);
     j["sz"].get_to(ct.inner_size.z);
-    ct.payload = json_opt_double(j, "payload");
-    ct.quantity_limit = json_opt_int(j, "quantity_limit");
+    ct.payload = json_opt<double>(j, "payload");
+    ct.quantity_limit = json_opt<int>(j, "quantity_limit");
     if (j.contains("obstacles"))
     {
-        for (const auto& o : j["obstacles"])
-        {
-            Obstacle obs;
-            o["x"].get_to(obs.x);
-            o["y"].get_to(obs.y);
-            o["z"].get_to(obs.z);
-            o["dx"].get_to(obs.dx);
-            o["dy"].get_to(obs.dy);
-            o["dz"].get_to(obs.dz);
-            ct.obstacles.push_back(obs);
-        }
+        j["obstacles"].get_to(ct.obstacles);
     }
     if (j.contains("facets"))
     {
-        for (const auto& f : j["facets"])
-        {
-            Facet facet;
-            facet.dx = json_opt_int(f, "dx").value_or(0);
-            facet.dy = json_opt_int(f, "dy").value_or(0);
-            facet.dz = json_opt_int(f, "dz").value_or(0);
-            ct.facets.push_back(facet);
-        }
+        j["facets"].get_to(ct.facets);
     }
 }
 
@@ -148,7 +137,7 @@ void from_json(const json& j, BoxType& bt)
     }
     parse_optional_vector<int>(j, "max_stack", bt.max_stack, bt.allowed_orientations.size());
     parse_optional_vector<double>(j, "max_load", bt.max_load, bt.allowed_orientations.size());
-    bt.weight = json_opt_double(j, "weight");
+    bt.weight = json_opt<double>(j, "weight");
     bt.loose = j.value("loose", false);
 }
 
@@ -156,7 +145,7 @@ void from_json(const json& j, Box& bx)
 {
     j["id"].get_to(bx.id);
     j["box_type_id"].get_to(bx.box_type_id);
-    bx.weight = json_opt_double(j, "weight");
+    bx.weight = json_opt<double>(j, "weight");
     bx.group = j.value("group", std::string());
     bx.platform = j.value("platform", std::string());
 }
@@ -169,7 +158,7 @@ void from_json(const json& j, ExistingPlacement& ep)
     j["y"].get_to(ep.position.y);
     j["z"].get_to(ep.position.z);
     ep.orientation = orientation_from_string(j["orientation"].get<std::string>());
-    ep.weight = json_opt_double(j, "weight");
+    ep.weight = json_opt<double>(j, "weight");
     ep.platform = j.value("platform", std::string());
     ep.group = j.value("group", std::string());
     if (j.contains("dx"))
@@ -216,22 +205,21 @@ void from_json(const json& j, Problem& p)
     if (j.contains("constraints"))
     {
         const auto& c = j["constraints"];
-        if (auto v = json_opt_double(c, "time_limit"))
+        if (auto v = json_opt<double>(c, "time_limit"))
         {
             p.time_limit = *v;
         }
-        if (auto v = json_opt_double(c, "support_rate"))
+        if (auto v = json_opt<double>(c, "support_rate"))
         {
             p.support_rate = *v;
         }
-        p.platform_limit = json_opt_int(c, "platform_limit");
-        p.tender_limit = json_opt_int(c, "tender_limit");
-        auto it = c.find("pallet_fallback");
-        if (it != c.end() && !it->is_null())
+        p.platform_limit = json_opt<int>(c, "platform_limit");
+        p.tender_limit = json_opt<int>(c, "tender_limit");
+        if (auto v = json_opt<bool>(c, "pallet_fallback"))
         {
-            it->get_to(p.pallet_fallback);
+            p.pallet_fallback = *v;
         }
-        if (auto v = json_opt_double(c, "pallet_support_rate"))
+        if (auto v = json_opt<double>(c, "pallet_support_rate"))
         {
             p.pallet_support_rate = *v;
         }
@@ -298,17 +286,19 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
 {
     std::vector<std::string> out;
 
-    // 重复 ID
+    // 重复 ID 校验（容器类型 / 箱型 / 箱子）
+    auto check_dup = [&](const auto& items, const char* what)
     {
         std::set<std::string> seen;
-        for (const auto& ct : problem.container_types)
+        for (const auto& it : items)
         {
-            if (!seen.insert(ct.id).second)
+            if (!seen.insert(it.id).second)
             {
-                out.push_back("duplicate container_type id: " + ct.id);
+                out.push_back(std::string("duplicate ") + what + " id: " + it.id);
             }
         }
-    }
+    };
+    check_dup(problem.container_types, "container_type");
 
     // 障碍物校验：完全在容器内、互不重叠
     for (const auto& ct : problem.container_types)
@@ -371,26 +361,8 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             }
         }
     }
-    {
-        std::set<std::string> seen;
-        for (const auto& bt : problem.box_types)
-        {
-            if (!seen.insert(bt.id).second)
-            {
-                out.push_back("duplicate box_type id: " + bt.id);
-            }
-        }
-    }
-    {
-        std::set<std::string> seen;
-        for (const auto& bx : problem.boxes)
-        {
-            if (!seen.insert(bx.id).second)
-            {
-                out.push_back("duplicate box id: " + bx.id);
-            }
-        }
-    }
+    check_dup(problem.box_types, "box_type");
+    check_dup(problem.boxes, "box");
 
     std::set<std::string> bt_ids;
     for (const auto& bt : problem.box_types)
@@ -915,42 +887,39 @@ void to_json(json& j, const Solution& sol)
         cj["sy"] = cs.inner_size.y;
         cj["sz"] = cs.inner_size.z;
         // obstacles/facets 恒输出（未启用为空数组）
+        json obs_json = json::array();
+        for (const auto& o : cs.obstacles)
         {
-            json obs_json = json::array();
-            for (const auto& o : cs.obstacles)
-            {
-                json oj;
-                oj["x"] = o.x;
-                oj["y"] = o.y;
-                oj["z"] = o.z;
-                oj["dx"] = o.dx;
-                oj["dy"] = o.dy;
-                oj["dz"] = o.dz;
-                obs_json.push_back(std::move(oj));
-            }
-            cj["obstacles"] = std::move(obs_json);
+            json oj;
+            oj["x"] = o.x;
+            oj["y"] = o.y;
+            oj["z"] = o.z;
+            oj["dx"] = o.dx;
+            oj["dy"] = o.dy;
+            oj["dz"] = o.dz;
+            obs_json.push_back(std::move(oj));
         }
+        cj["obstacles"] = std::move(obs_json);
+
+        json fac_json = json::array();
+        for (const auto& f : cs.facets)
         {
-            json fac_json = json::array();
-            for (const auto& f : cs.facets)
+            json fj;
+            if (f.dx != 0)
             {
-                json fj;
-                if (f.dx != 0)
-                {
-                    fj["dx"] = f.dx;
-                }
-                if (f.dy != 0)
-                {
-                    fj["dy"] = f.dy;
-                }
-                if (f.dz != 0)
-                {
-                    fj["dz"] = f.dz;
-                }
-                fac_json.push_back(std::move(fj));
+                fj["dx"] = f.dx;
             }
-            cj["facets"] = std::move(fac_json);
+            if (f.dy != 0)
+            {
+                fj["dy"] = f.dy;
+            }
+            if (f.dz != 0)
+            {
+                fj["dz"] = f.dz;
+            }
+            fac_json.push_back(std::move(fj));
         }
+        cj["facets"] = std::move(fac_json);
         cj["payload"] = opt_json(cs.payload);
         cj["used_volume"] = cs.used_volume;
         cj["used_weight"] = opt_json(cs.used_weight);
@@ -979,6 +948,20 @@ void to_json(json& j, const Solution& sol)
     result["pallets"] = sol.pallets;
 
     json box_types_json = json::array();
+    // max_stack/max_load 恒输出（未配置为 null，配置则按朝向数组）
+    auto optional_vec = [](const auto& vec) -> json
+    {
+        if (vec.empty())
+        {
+            return nullptr;
+        }
+        json arr = json::array();
+        for (const auto& v : vec)
+        {
+            arr.push_back(v.has_value() ? json(v.value()) : json(nullptr));
+        }
+        return arr;
+    };
     for (const auto& bt : sol.box_types)
     {
         json bj;
@@ -993,33 +976,8 @@ void to_json(json& j, const Solution& sol)
         }
         bj["allowed_orientations"] = std::move(orients);
         bj["loose"] = bt.loose;
-        // max_stack/max_load/weight 恒输出（未配置为 null）
-        if (bt.max_stack.empty())
-        {
-            bj["max_stack"] = nullptr;
-        }
-        else
-        {
-            json ms = json::array();
-            for (const auto& v : bt.max_stack)
-            {
-                ms.push_back(v.has_value() ? json(v.value()) : json(nullptr));
-            }
-            bj["max_stack"] = std::move(ms);
-        }
-        if (bt.max_load.empty())
-        {
-            bj["max_load"] = nullptr;
-        }
-        else
-        {
-            json ml = json::array();
-            for (const auto& v : bt.max_load)
-            {
-                ml.push_back(v.has_value() ? json(v.value()) : json(nullptr));
-            }
-            bj["max_load"] = std::move(ml);
-        }
+        bj["max_stack"] = optional_vec(bt.max_stack);
+        bj["max_load"] = optional_vec(bt.max_load);
         bj["weight"] = opt_json(bt.weight);
         box_types_json.push_back(std::move(bj));
     }
