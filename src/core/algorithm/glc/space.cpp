@@ -281,22 +281,4 @@ void carve_obstacles(std::vector<Space>& stack,
     }
 }
 
-void carve_facets(std::vector<Space>& stack,
-                  const Size& container_size,
-                  const std::vector<Facet>& facets) noexcept
-{
-    // N 步阶梯近似楔形禁区（只覆盖禁区、永不过挖安全台阶区），逐 slab 雕刻
-    for (const auto& f : facets)
-    {
-        for (const auto& s : facet_staircase(f, container_size, FACET_STAIR_STEPS))
-        {
-            carve_box(stack, s.x, s.y, s.z, s.dx, s.dy, s.dz);
-            if (stack.empty())
-            {
-                return;
-            }
-        }
-    }
-}
-
 } // namespace pack3d::glc

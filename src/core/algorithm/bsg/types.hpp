@@ -189,13 +189,15 @@ struct GlobalContext
     // block id → blocks 数组索引（packer 构建一次，feasibility 复用）
     std::unordered_map<int64_t, int> block_indices;
 
-    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重/tender）。
+    /// 是否存在需要逐叶校验的项目约束（重量/平台上限/路线/堆码/承重/tender/facets）。
     /// 支撑由 is_supported 在块级处理；障碍物在 support_rate>0 时强制逐叶（快路径的
     /// is_supported 不认障碍物顶面支撑）；support_rate==0 时雕刻已保证空间无禁区，快路径即可。
-    /// 斜面由阶梯雕刻保证覆盖禁区（过挖≈楔形/N），从不强制逐叶。
+    /// 斜面不做阶梯雕刻（阶梯碎片会切碎残余空间、降低装载），facets 存在即强制逐叶，
+    /// 由 can_place_block 的 check_facet 逐叶兜底。
     [[nodiscard]] bool needs_leaf_validation() const noexcept
     {
-        return (!container_type.obstacles.empty() && support_rate > 0.0) ||
+        return !container_type.facets.empty() ||
+               (!container_type.obstacles.empty() && support_rate > 0.0) ||
                has_weight_info || platform_limit.has_value() || route.has_value() ||
                has_max_stack || has_max_load || tender.limit > 0;
     }

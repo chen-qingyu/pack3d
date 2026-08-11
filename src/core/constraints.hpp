@@ -31,19 +31,6 @@ namespace pack3d
                                const Size& container_size,
                                const std::vector<Facet>& facets) noexcept;
 
-// 斜面楔形的 N 步阶梯 AABB 近似（覆盖整个楔形禁区，过挖≈楔形/N，远小于 AABB 的楔形过挖）
-struct FacetSlab
-{
-    int32_t x = 0, y = 0, z = 0;
-    int32_t dx = 0, dy = 0, dz = 0;
-};
-[[nodiscard]] std::vector<FacetSlab> facet_staircase(const Facet& f,
-                                                     const Size& csize,
-                                                     int steps) noexcept;
-
-// 斜面楔形阶梯近似的步数（GLC/BSG 初始空间雕刻共用）
-inline constexpr int FACET_STAIR_STEPS = 2;
-
 /// 检查放入箱子后是否超重
 [[nodiscard]] bool check_weight(const ContainerLoad& load,
                                 double box_weight) noexcept;

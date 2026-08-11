@@ -110,67 +110,6 @@ bool check_facet(const Position& pos, const OrientedSize& osize,
     return false;
 }
 
-std::vector<FacetSlab> facet_staircase(const Facet& f, const Size& csize, int steps) noexcept
-{
-    std::vector<FacetSlab> out;
-    const auto nf = normalize_facet(f);
-    if (nf.u_axis < 0 || nf.v_axis < 0 || steps <= 0)
-    {
-        return out;
-    }
-    const int32_t extents[3] = {csize.x, csize.y, csize.z};
-    const int64_t mu = (nf.su < 0) ? -nf.su : nf.su;
-    const int64_t mv = (nf.sv < 0) ? -nf.sv : nf.sv;
-
-    auto set_axis = [&](int axis, int64_t lo, int64_t hi)
-    {
-        switch (axis)
-        {
-            case 0:
-                out.back().x = static_cast<int32_t>(lo);
-                out.back().dx = static_cast<int32_t>(hi - lo);
-                break;
-            case 1:
-                out.back().y = static_cast<int32_t>(lo);
-                out.back().dy = static_cast<int32_t>(hi - lo);
-                break;
-            default:
-                out.back().z = static_cast<int32_t>(lo);
-                out.back().dz = static_cast<int32_t>(hi - lo);
-                break;
-        }
-    };
-
-    for (int i = 1; i <= steps; ++i)
-    {
-        out.emplace_back();
-        // u 方向：本片最大进深（角侧向内）
-        int64_t u_depth = mu * (steps - i + 1) / steps;
-        if (nf.su > 0)
-        {
-            set_axis(nf.u_axis, extents[nf.u_axis] - u_depth, extents[nf.u_axis]);
-        }
-        else
-        {
-            set_axis(nf.u_axis, 0, u_depth);
-        }
-        // v 方向：距角侧 [(i-1)*mv/steps, i*mv/steps]
-        int64_t v_lo = (i - 1) * mv / steps;
-        int64_t v_hi = i * mv / steps;
-        if (nf.sv > 0)
-        {
-            set_axis(nf.v_axis, extents[nf.v_axis] - v_hi, extents[nf.v_axis] - v_lo);
-        }
-        else
-        {
-            set_axis(nf.v_axis, v_lo, v_hi);
-        }
-        // 平行轴贯穿全容器
-        set_axis(nf.w_axis, 0, extents[nf.w_axis]);
-    }
-    return out;
-}
-
 bool check_weight(const ContainerLoad& load,
                   double box_weight) noexcept
 {

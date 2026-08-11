@@ -558,8 +558,8 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
 
     // 初始空间 = 容器减障碍物（凸自由空间分解）
     carve_obstacles(stack, container_.obstacles);
-    // 再挖掉斜面楔形禁区（阶梯近似）
-    carve_facets(stack, container_.inner_size, container_.facets);
+    // 斜面楔形禁区不做空间雕刻（阶梯碎片会切碎空间栈、降低装载）：
+    // 由 check_block_feasible 的 check_facet 逐箱兜底，可用空间保持大块。
 
     while (!stack.empty() && !available.empty())
     {

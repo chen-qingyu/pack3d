@@ -109,14 +109,8 @@ PackResult solve(const GlobalContext& ctx,
     {
         update_residual_space(s0.R, {o.x, o.y, o.z}, {o.dx, o.dy, o.dz});
     }
-    // 挖掉斜面楔形禁区（N 步阶梯近似，只覆盖禁区）
-    for (const auto& f : ctx.container_type.facets)
-    {
-        for (const auto& s : facet_staircase(f, ctx.container_size, FACET_STAIR_STEPS))
-        {
-            update_residual_space(s0.R, {s.x, s.y, s.z}, {s.dx, s.dy, s.dz});
-        }
-    }
+    // 斜面楔形禁区不做阶梯雕刻（阶梯碎片会切碎残余空间、降低装载）：
+    // facets 存在时 needs_leaf_validation 强制逐叶，由 can_place_block 的 check_facet 兜底。
     s0.remaining_counts = initial_counts;
     s0.available_blocks.reserve(ctx.blocks.size());
     for (int i = 0; i < static_cast<int>(ctx.blocks.size()); ++i)
