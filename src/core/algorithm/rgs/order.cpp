@@ -26,62 +26,10 @@ std::set<int32_t> reachable_z_heights(const BoxType& bt) noexcept
     return zs;
 }
 
-bool sets_intersect(const std::set<int32_t>& a, const std::set<int32_t>& b) noexcept
-{
-    if (a.empty() || b.empty())
-    {
-        return false;
-    }
-    auto ia = a.begin();
-    auto ib = b.begin();
-    while (ia != a.end() && ib != b.end())
-    {
-        if (*ia < *ib)
-        {
-            ++ia;
-        }
-        else if (*ib < *ia)
-        {
-            ++ib;
-        }
-        else
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-// 计算两个已排序集合的交集
-std::set<int32_t> set_intersection(const std::set<int32_t>& a, const std::set<int32_t>& b) noexcept
-{
-    std::set<int32_t> result;
-    auto ia = a.begin();
-    auto ib = b.begin();
-    while (ia != a.end() && ib != b.end())
-    {
-        if (*ia < *ib)
-        {
-            ++ia;
-        }
-        else if (*ib < *ia)
-        {
-            ++ib;
-        }
-        else
-        {
-            result.insert(*ia);
-            ++ia;
-            ++ib;
-        }
-    }
-    return result;
-}
-
 struct IdenticalGroup
 {
     std::string box_type_id;
-    std::set<int32_t> z_heights;
+    std::set<int32_t> z_heights; // 可达高度集合（论文 §4.2.1：同一箱型可入多个组）
     std::vector<const Box*> boxes;
     int64_t total_volume = 0;
     int64_t max_volume = 0;
@@ -90,7 +38,7 @@ struct IdenticalGroup
 
 struct SimilarGroup
 {
-    std::set<int32_t> z_heights; // 组内所有箱型可达高度的交集（论文 Sh,ϑ 的 h）
+    int32_t height = 0; // 论文 Sh,ϑ 的 h：本组所有箱子均以高度 h 装载
     std::vector<IdenticalGroup> identicals;
     int64_t total_volume = 0;
     int64_t max_volume = 0;
@@ -161,36 +109,33 @@ std::vector<OrderEntry> build_ordered_list(
         }
     }
 
-    // ---- step 2: merge identical groups into similar groups ----
-    std::vector<SimilarGroup> sgs;
-
+    // ---- step 2: 按论文 §4.2.1 对每个可达高度 h 精确分组 ----
+    // 每个可达高度一个 SimilarGroup（高度 = h）；同一 IdenticalGroup 可达几个高度
+    // 就入几个组（拷贝共享），配合 step 5 的朝向锁定实现层叠装载。
+    std::map<int32_t, SimilarGroup> sg_by_height;
     for (auto& [btid, ig] : ig_map)
     {
-        bool merged = false;
-        for (auto& sg : sgs)
+        for (int32_t h : ig.z_heights)
         {
-            if (sets_intersect(sg.z_heights, ig.z_heights))
+            auto it = sg_by_height.find(h);
+            if (it == sg_by_height.end())
             {
-                // 交集 = 两个组共同可达的高度
-                sg.z_heights = set_intersection(sg.z_heights, ig.z_heights);
-                sg.identicals.push_back(std::move(ig));
-                sg.total_volume += sg.identicals.back().total_volume;
-                sg.max_volume = std::max(sg.max_volume, sg.identicals.back().max_volume);
-                sg.route_depth = std::max(sg.route_depth, sg.identicals.back().route_depth);
-                merged = true;
-                break;
+                it = sg_by_height.emplace(h, SimilarGroup{}).first;
+                it->second.height = h;
             }
+            SimilarGroup& sg = it->second;
+            sg.identicals.push_back(ig);
+            sg.total_volume += ig.total_volume;
+            sg.max_volume = std::max(sg.max_volume, ig.max_volume);
+            sg.route_depth = std::max(sg.route_depth, ig.route_depth);
         }
-        if (!merged)
-        {
-            SimilarGroup sg;
-            sg.z_heights = ig.z_heights; // 初始 = 第一个 identical group 的 z_heights
-            sg.total_volume = ig.total_volume;
-            sg.max_volume = ig.max_volume;
-            sg.route_depth = ig.route_depth;
-            sg.identicals.push_back(std::move(ig));
-            sgs.push_back(std::move(sg));
-        }
+    }
+
+    std::vector<SimilarGroup> sgs;
+    sgs.reserve(sg_by_height.size());
+    for (auto& [h, sg] : sg_by_height)
+    {
+        sgs.push_back(std::move(sg));
     }
 
     // ---- step 3: sort similar groups by criterion ----
@@ -266,6 +211,9 @@ std::vector<OrderEntry> build_ordered_list(
     }
 
     // ---- step 5: flatten to OrderEntry list ----
+    // 朝向锁定（论文 §4.2.3）：在高度 h 的组里只保留 dz == h 的朝向，层叠装载的
+    // 关键机制。每个箱子最多出现 3 次（每个可达高度一次）；首次装入后其余出现由
+    // insertion_heuristic 的 loaded_ids 跳过，装不下的则在后续高度重试。
     std::vector<OrderEntry> ordered;
 
     for (const auto& sg : sgs)
@@ -279,9 +227,23 @@ std::vector<OrderEntry> build_ordered_list(
             }
             const auto& bt = bt_it->second;
 
+            std::vector<Orientation> locked;
+            locked.reserve(bt.allowed_orientations.size());
+            for (auto o : bt.allowed_orientations)
+            {
+                if (bt.size.orient(o).dz == sg.height)
+                {
+                    locked.push_back(o);
+                }
+            }
+            if (locked.empty())
+            {
+                continue; // 防御：入组时已保证该高度可达
+            }
+
             for (const auto* bx : ig.boxes)
             {
-                ordered.push_back({bx->id, bt.allowed_orientations});
+                ordered.push_back({bx->id, locked});
             }
         }
     }
