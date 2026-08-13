@@ -26,6 +26,27 @@ std::set<int32_t> reachable_z_heights(const BoxType& bt) noexcept
     return zs;
 }
 
+// 箱型是否可被叠放（论文 §4.2 的可堆叠性 ϑ）：存在某朝向允许其上方放箱。
+// max_stack 层号模型要求支撑箱 max_stack >= 2 才允许其上再放一层；max_load 须未设或 > 0。
+bool type_stackable(const BoxType& bt) noexcept
+{
+    for (auto o : bt.allowed_orientations)
+    {
+        auto ms = bt.max_stack_for(o);
+        if (ms.has_value() && ms.value() < 2)
+        {
+            continue;
+        }
+        auto ml = bt.max_load_for(o);
+        if (ml.has_value() && ml.value() <= 0)
+        {
+            continue;
+        }
+        return true;
+    }
+    return false;
+}
+
 struct IdenticalGroup
 {
     std::string box_type_id;
@@ -33,12 +54,14 @@ struct IdenticalGroup
     std::vector<const Box*> boxes;
     int64_t total_volume = 0;
     int64_t max_volume = 0;
-    int route_depth = -1; // 组内箱子的最大 route 索引（无 route 平台为 -1）
+    int route_depth = -1;  // 组内箱子的最大 route 索引（无 route 平台为 -1）
+    bool stackable = true; // 论文 ϑ：组内箱子是否可被叠放
 };
 
 struct SimilarGroup
 {
-    int32_t height = 0; // 论文 Sh,ϑ 的 h：本组所有箱子均以高度 h 装载
+    int32_t height = 0;     // 论文 Sh,ϑ 的 h：本组所有箱子均以高度 h 装载
+    bool stackable = false; // 论文 ϑ：本组统一的可堆叠性（组键的一部分）
     std::vector<IdenticalGroup> identicals;
     int64_t total_volume = 0;
     int64_t max_volume = 0;
@@ -82,6 +105,7 @@ std::vector<OrderEntry> build_ordered_list(
             ig.box_type_id = bx.box_type_id;
             ig.z_heights = reachable_z_heights(bt);
             ig.max_volume = box_volume(bt);
+            ig.stackable = type_stackable(bt);
         }
         ig.boxes.push_back(&bx);
         ig.total_volume += box_volume(bt);
@@ -109,19 +133,22 @@ std::vector<OrderEntry> build_ordered_list(
         }
     }
 
-    // ---- step 2: 按论文 §4.2.1 对每个可达高度 h 精确分组 ----
-    // 每个可达高度一个 SimilarGroup（高度 = h）；同一 IdenticalGroup 可达几个高度
-    // 就入几个组（拷贝共享），配合 step 5 的朝向锁定实现层叠装载。
-    std::map<int32_t, SimilarGroup> sg_by_height;
+    // ---- step 2: 按论文 §4.2.1 对每个 (可达高度 h, 可堆叠性 ϑ) 精确分组 ----
+    // 每个 (h, ϑ) 一个 SimilarGroup（论文的 Sh,ϑ）；同一 IdenticalGroup 可达几个高度
+    // 就入几个组（拷贝共享），配合 step 5 的朝向锁定实现层叠装载。可堆叠性入组键，
+    // 使 Stackability* 排序的"可堆叠优先"在组内恒成立（组内 ϑ 一致）。
+    std::map<std::pair<int32_t, bool>, SimilarGroup> sg_by_key;
     for (auto& [btid, ig] : ig_map)
     {
         for (int32_t h : ig.z_heights)
         {
-            auto it = sg_by_height.find(h);
-            if (it == sg_by_height.end())
+            auto key = std::pair<int32_t, bool>{h, ig.stackable};
+            auto it = sg_by_key.find(key);
+            if (it == sg_by_key.end())
             {
-                it = sg_by_height.emplace(h, SimilarGroup{}).first;
+                it = sg_by_key.emplace(key, SimilarGroup{}).first;
                 it->second.height = h;
+                it->second.stackable = ig.stackable;
             }
             SimilarGroup& sg = it->second;
             sg.identicals.push_back(ig);
@@ -132,8 +159,8 @@ std::vector<OrderEntry> build_ordered_list(
     }
 
     std::vector<SimilarGroup> sgs;
-    sgs.reserve(sg_by_height.size());
-    for (auto& [h, sg] : sg_by_height)
+    sgs.reserve(sg_by_key.size());
+    for (auto& [key, sg] : sg_by_key)
     {
         sgs.push_back(std::move(sg));
     }
@@ -144,10 +171,22 @@ std::vector<OrderEntry> build_ordered_list(
         switch (criterion)
         {
             case SortCriterion::StackabilityCumulatedVolume:
-            case SortCriterion::CumulatedVolume:
+                if (a.stackable != b.stackable)
+                {
+                    return a.stackable; // 可堆叠优先
+                }
                 return a.total_volume > b.total_volume;
 
             case SortCriterion::StackabilityHighestVolume:
+                if (a.stackable != b.stackable)
+                {
+                    return a.stackable; // 可堆叠优先
+                }
+                return a.max_volume > b.max_volume;
+
+            case SortCriterion::CumulatedVolume:
+                return a.total_volume > b.total_volume;
+
             case SortCriterion::HighestVolume:
                 return a.max_volume > b.max_volume;
 
@@ -215,9 +254,18 @@ std::vector<OrderEntry> build_ordered_list(
     // 关键机制。每个箱子最多出现 3 次（每个可达高度一次）；首次装入后其余出现由
     // insertion_heuristic 的 loaded_ids 跳过，装不下的则在后续高度重试。
     std::vector<OrderEntry> ordered;
+    // Stackability* 准则下 sgs 已按可堆叠优先排序，展平后前半段全为可堆叠箱；
+    // 记录首个非可堆叠组的起点，供 rho>0 时对两段分别 Shaw（保持可堆叠严格优先）。
+    size_t stackable_end = 0;
+    bool seen_nonstackable = false;
 
     for (const auto& sg : sgs)
     {
+        if (!sg.stackable && !seen_nonstackable)
+        {
+            stackable_end = ordered.size();
+            seen_nonstackable = true;
+        }
         for (const auto& ig : sg.identicals)
         {
             auto bt_it = box_type_map.find(ig.box_type_id);
@@ -246,6 +294,10 @@ std::vector<OrderEntry> build_ordered_list(
                 ordered.push_back({bx->id, locked});
             }
         }
+    }
+    if (!seen_nonstackable)
+    {
+        stackable_end = ordered.size();
     }
 
     // ---- step 6: Shaw randomization with ρ ----
@@ -291,7 +343,26 @@ std::vector<OrderEntry> build_ordered_list(
             return shuffled;
         };
 
-        ordered = shaw(ordered);
+        // 论文 §4.2.2：Stackability* 准则对可堆叠/不可堆叠子集分别随机化，
+        // 保持"可堆叠箱严格优先于不可堆叠箱"在随机化后仍然成立。
+        const bool stackability_split =
+            (criterion == SortCriterion::StackabilityCumulatedVolume ||
+             criterion == SortCriterion::StackabilityHighestVolume);
+        if (stackability_split && stackable_end > 0 && stackable_end < ordered.size())
+        {
+            std::vector<OrderEntry> stackable_part(
+                ordered.begin(), ordered.begin() + static_cast<ptrdiff_t>(stackable_end));
+            std::vector<OrderEntry> rest(ordered.begin() + static_cast<ptrdiff_t>(stackable_end),
+                                         ordered.end());
+            auto s1 = shaw(stackable_part);
+            auto s2 = shaw(rest);
+            s1.insert(s1.end(), s2.begin(), s2.end());
+            ordered = std::move(s1);
+        }
+        else
+        {
+            ordered = shaw(ordered);
+        }
     }
 
     return ordered;
