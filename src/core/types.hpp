@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <map>
@@ -344,11 +345,7 @@ struct ContainerLoad
         const int32_t extents[3] = {type->inner_size.x, type->inner_size.y, type->inner_size.z};
         for (const auto& f : type->facets)
         {
-            const auto nf = normalize_facet(f);
-            if (nf.u_axis < 0 || nf.v_axis < 0)
-            {
-                continue; // 防御：预校验保证恰好两个非零截距
-            }
+            const auto nf = normalize_facet(f); // 预校验保证恰好两个非零截距
             int64_t mu = (nf.su < 0) ? -nf.su : nf.su;
             int64_t mv = (nf.sv < 0) ? -nf.sv : nf.sv;
             usable -= (mu * mv / 2) * extents[nf.w_axis];
@@ -359,6 +356,68 @@ struct ContainerLoad
     double volume_rate() const noexcept
     {
         return static_cast<double>(used_volume) / static_cast<double>(usable_volume());
+    }
+
+    // 实际使用的 X 方向最大长度 = max(placement.x + dx)，无放置为 0
+    int32_t used_x() const noexcept
+    {
+        int32_t ux = 0;
+        for (const auto& pl : placements)
+        {
+            ux = std::max(ux, pl.position.x + pl.osize.dx);
+        }
+        return ux;
+    }
+
+    // X 方向口径可用容积：slab [0, used_x]×[0,sy]×[0,sz] − 障碍物 − 斜面楔形（X 方向体积率分母）
+    int64_t usable_volume_x() const noexcept
+    {
+        const int32_t ux = used_x();
+        int64_t usable = static_cast<int64_t>(ux) * inner_y() * inner_z();
+        for (const auto& o : type->obstacles)
+        {
+            // 障碍物完全在容器内，只截断 X 方向与 slab 的重叠
+            const int32_t o_hi = o.x + o.dx;
+            const int32_t overlap_x = (o.x < ux) ? std::min(o_hi, ux) - o.x : 0;
+            if (overlap_x > 0)
+            {
+                usable -= static_cast<int64_t>(overlap_x) * o.dy * o.dz;
+            }
+        }
+        const int32_t extents[3] = {inner_x(), inner_y(), inner_z()};
+        for (const auto& f : type->facets)
+        {
+            const auto nf = normalize_facet(f); // 预校验保证恰好两个非零截距
+            const int64_t m0 = (nf.su < 0) ? -nf.su : nf.su;
+            const int64_t m1 = (nf.sv < 0) ? -nf.sv : nf.sv;
+            if (nf.w_axis == 0)
+            {
+                // 贯穿轴为 X：楔形沿 X 全长，slab 内体积 = 截面 × used_x
+                usable -= (m0 * m1 / 2) * ux;
+                continue;
+            }
+            // 贯穿轴非 X：u/v 恰含 X 轴，楔形 X 向截面高度随 x 线性变化（梯形体积）
+            const int x_idx = (nf.u_axis == 0) ? 0 : 1;
+            const int64_t mx = (x_idx == 0) ? m0 : m1; // X 轴截距
+            const int64_t sx = (x_idx == 0) ? nf.su : nf.sv;
+            const int64_t mq = (x_idx == 0) ? m1 : m0; // 另一截距轴
+            const int64_t wedge_x0 = (sx > 0) ? static_cast<int64_t>(extents[0]) - mx : 0;
+            int64_t x0 = std::max<int64_t>(wedge_x0, 0);
+            int64_t x1 = std::min<int64_t>((sx > 0) ? static_cast<int64_t>(extents[0]) : mx, ux);
+            if (x1 > x0)
+            {
+                // 截面高度 dv(x) = mq·(x − wedge_x0)/mx（sx>0）或 mq·(mx − x)/mx（sx<0）
+                const double dv0 = static_cast<double>(mq) * (sx > 0 ? x0 - wedge_x0 : mx - x0) / mx;
+                const double dv1 = static_cast<double>(mq) * (sx > 0 ? x1 - wedge_x0 : mx - x1) / mx;
+                usable -= static_cast<int64_t>((dv0 + dv1) * 0.5 * extents[nf.w_axis] * (x1 - x0));
+            }
+        }
+        return usable > 0 ? usable : 1;
+    }
+
+    double volume_rate_x() const noexcept
+    {
+        return static_cast<double>(used_volume) / static_cast<double>(usable_volume_x());
     }
 };
 
@@ -402,6 +461,7 @@ struct ContainerSummary
     std::optional<double> payload = std::nullopt;
     int64_t used_volume = 0;
     double volume_rate = 0.0;
+    double volume_rate_x = 0.0; // X 方向口径：装箱体积 / (实际使用 X 最大长度 × 容器宽高)
     std::optional<double> used_weight = std::nullopt;
     std::optional<double> weight_rate = std::nullopt;
     int packed_count = 0; // 本容器内放置的箱子数

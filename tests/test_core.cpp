@@ -448,3 +448,71 @@ TEST_CASE("glc carve_out_space 完整覆盖剩余空间", "[core][glc]")
                             { return can_hold(s, p.x, p.y, p.z, 40, 40, 20); }));
     }
 }
+
+TEST_CASE("usable_volume_x: 障碍物按 X 向截断", "[core]")
+{
+    ContainerType ct;
+    ct.inner_size = {10, 10, 10};
+    ct.obstacles = {{4, 0, 0, 2, 10, 10}}; // 挡住 x∈[4,6] 全宽高
+
+    ContainerLoad load;
+    load.type = &ct;
+    load.placements = {
+        {"a", "t", "", {0, 0, 0}, Orientation::XYZ, {3, 10, 10}},
+        {"b", "t", "", {6, 0, 0}, Orientation::XYZ, {3, 10, 10}},
+    };
+    load.used_volume = 600;
+
+    REQUIRE(load.used_x() == 9);
+    // slab = 9·10·10 = 900，障碍物在 slab 内 x∈[4,6] → 200，可用 700
+    REQUIRE(load.usable_volume_x() == 700);
+    REQUIRE(load.volume_rate_x() == Catch::Approx(600.0 / 700.0));
+
+    // 障碍物完全在 used_x 之外时不影响分母
+    load.placements = {{"a", "t", "", {0, 0, 0}, Orientation::XYZ, {3, 10, 10}}};
+    load.used_volume = 300;
+    REQUIRE(load.used_x() == 3);
+    REQUIRE(load.usable_volume_x() == 300);
+    REQUIRE(load.volume_rate_x() == Catch::Approx(1.0));
+}
+
+TEST_CASE("usable_volume_x: 斜面贯穿 X", "[core]")
+{
+    ContainerType ct;
+    ct.inner_size = {10, 10, 10};
+    ct.facets = {{0, 10, 10}}; // y+z>10 禁区（贯穿 X 全长）
+
+    ContainerLoad load;
+    load.type = &ct;
+    load.placements = {{"a", "t", "", {0, 0, 0}, Orientation::XYZ, {5, 5, 5}}};
+    load.used_volume = 125;
+
+    REQUIRE(load.used_x() == 5);
+    // slab = 5·10·10 = 500，楔形截面 (10·10/2) × used_x 5 = 250，可用 250
+    REQUIRE(load.usable_volume_x() == 250);
+    REQUIRE(load.volume_rate_x() == Catch::Approx(0.5));
+}
+
+TEST_CASE("usable_volume_x: 斜面非贯穿 X 按 X 向截断且与标准口径对齐", "[core]")
+{
+    ContainerType ct;
+    ct.inner_size = {20, 10, 10};
+    ct.facets = {{10, 0, 10}}; // x+z>20 禁区（贯穿 Y）
+
+    ContainerLoad load;
+    load.type = &ct;
+    load.placements = {{"a", "t", "", {0, 0, 0}, Orientation::XYZ, {15, 10, 5}}};
+    load.used_volume = 750;
+
+    REQUIRE(load.used_x() == 15);
+    // slab = 15·10·10 = 1500，楔形 x∈[10,15] 段梯形体积 = 10·(0+5)/2·5 = 125，可用 1375
+    REQUIRE(load.usable_volume_x() == 1375);
+    REQUIRE(load.volume_rate_x() == Catch::Approx(750.0 / 1375.0));
+
+    // used_x 达容器全长时，X 方向口径与标准口径一致（slab = 整个容器）
+    load.placements = {{"a", "t", "", {0, 0, 0}, Orientation::XYZ, {20, 10, 5}}};
+    load.used_volume = 1000;
+    REQUIRE(load.used_x() == 20);
+    REQUIRE(load.usable_volume_x() == load.usable_volume());
+    REQUIRE(load.volume_rate_x() == Catch::Approx(1000.0 / 1500.0));
+}

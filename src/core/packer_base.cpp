@@ -227,6 +227,7 @@ Solution PackerBase::build_solution(
         cs.payload = cl.type->payload;
         cs.used_volume = cl.used_volume;
         cs.volume_rate = cl.volume_rate();
+        cs.volume_rate_x = cl.volume_rate_x();
         cs.packed_count = static_cast<int>(cl.placements.size());
         if (has_weight_info_)
         {

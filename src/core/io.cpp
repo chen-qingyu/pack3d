@@ -867,6 +867,15 @@ void to_json(json& j, const Solution& sol)
     summary["container_count"] = sol.objective.container_count;
     summary["platform_split"] = sol.objective.platform_split;
     summary["volume_rate"] = sol.objective.avg_volume_rate;
+    // X 方向口径平均（口径见 docs/output.md）
+    double sum_rate_x = 0.0;
+    for (const auto& cs : sol.container_summaries)
+    {
+        sum_rate_x += cs.volume_rate_x;
+    }
+    summary["volume_rate_x"] = !sol.container_summaries.empty()
+                                   ? sum_rate_x / static_cast<double>(sol.container_summaries.size())
+                                   : 0.0;
     summary["group_split"] = sol.objective.group_split_sum;
     // 装托字段恒输出：未启用装托时全为 0 / 空数组
     summary["pallet_count"] = sol.pallet_count;
@@ -924,6 +933,7 @@ void to_json(json& j, const Solution& sol)
         cj["used_volume"] = cs.used_volume;
         cj["used_weight"] = opt_json(cs.used_weight);
         cj["volume_rate"] = cs.volume_rate;
+        cj["volume_rate_x"] = cs.volume_rate_x;
         cj["weight_rate"] = opt_json(cs.weight_rate);
         cj["packed_count"] = cs.packed_count;
         cj["platforms"] = cs.platforms;

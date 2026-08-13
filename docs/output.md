@@ -32,6 +32,7 @@ JSON，顶层四个字段：
   "container_count": 1,
   "platform_split": 0,
   "volume_rate": 0.9274,
+  "volume_rate_x": 0.9274,
   "group_split": 0,
   "pallet_count": 2,
   "palletized_box_count": 8,
@@ -39,18 +40,19 @@ JSON，顶层四个字段：
 }
 ```
 
-| 字段                   | 说明                                                                                      |
-| ---------------------- | ----------------------------------------------------------------------------------------- |
-| `elapsed_second`       | 耗时（秒）                                                                                |
-| `packed_box_count`     | 已装箱数（装托模式按散箱口径，托盘按内部箱数计）                                          |
-| `unpacked_box_count`   | 未装箱数                                                                                  |
-| `container_count`      | 使用容器数                                                                                |
-| `platform_split`       | 站点拆分总次数（0=每个站点只在一个容器中）                                                |
-| `volume_rate`          | 各容器平均体积利用率（0-1），口径 = 装箱体积 / 可用容积（物理总容积 − 障碍物 − 斜面楔形） |
-| `group_split`          | 组拆分总次数（0=每组只在一个容器中）                                                      |
-| `pallet_count`         | 托盘单元数（未启用装托恒为 0）                                                            |
-| `palletized_box_count` | 已装托的散件箱数（未启用装托恒为 0）                                                      |
-| `loose_box_count`      | 直接装车箱数：普通箱 + fallback 降级散件（未启用装托恒为 0）                              |
+| 字段                   | 说明                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `elapsed_second`       | 耗时（秒）                                                                                                                  |
+| `packed_box_count`     | 已装箱数（装托模式按散箱口径，托盘按内部箱数计）                                                                            |
+| `unpacked_box_count`   | 未装箱数                                                                                                                    |
+| `container_count`      | 使用容器数                                                                                                                  |
+| `platform_split`       | 站点拆分总次数（0=每个站点只在一个容器中）                                                                                  |
+| `volume_rate`          | 各容器平均体积利用率（0-1），口径 = 装箱体积 / 可用容积（物理总容积 − 障碍物 − 斜面楔形）                                   |
+| `volume_rate_x`        | 各容器平均 X 方向体积利用率（0-1），口径 = 装箱体积 / X 方向 slab 可用容积（[0, used_x]×[0,sy]×[0,sz] − 障碍物 − 斜面楔形） |
+| `group_split`          | 组拆分总次数（0=每组只在一个容器中）                                                                                        |
+| `pallet_count`         | 托盘单元数（未启用装托恒为 0）                                                                                              |
+| `palletized_box_count` | 已装托的散件箱数（未启用装托恒为 0）                                                                                        |
+| `loose_box_count`      | 直接装车箱数：普通箱 + fallback 降级散件（未启用装托恒为 0）                                                                |
 
 ## `result` 装箱结果
 
@@ -66,6 +68,7 @@ JSON，顶层四个字段：
       "used_volume": 271000,
       "used_weight": 25.0,
       "volume_rate": 1.0,
+      "volume_rate_x": 1.0,
       "weight_rate": 0.0005,
       "packed_count": 3,
       "platforms": ["A", "B"],
@@ -137,6 +140,8 @@ JSON，顶层四个字段：
 ```
 
 容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置站点/分组时 `platform`/`group` 为 null）。
+
+`volume_rate_x` 为容器 X 方向口径的体积利用率，与 `volume_rate` 对齐、仅把"整个容器"换成"实际使用的 X 方向 slab"：分母 = slab [0, used_x]×[0,sy]×[0,sz] 的可用容积 = `used_x·sy·sz` − 障碍物（slab 内部分）− 斜面楔形（slab 内部分），分子 = 装箱体积（同 `volume_rate`）。其中 `used_x` = 所有箱子 `x+dx` 的最大值（含续装已有放置）；`used_x` 达容器全长时本值与 `volume_rate` 相等。容器未装任何箱时为 0。`summary.volume_rate_x` 为各容器该值的平均。
 
 `obstacles` 为本容器实例的障碍物（从容器类型继承，自包含），结构与输入一致；未配置时为 `[]`。
 
