@@ -1,6 +1,7 @@
 #include "insert.hpp"
 
 #include <algorithm>
+#include <array>
 #include <set>
 #include <unordered_map>
 
@@ -80,11 +81,13 @@ void set_coord(Position& p, int d, int32_t v) noexcept
 
 } // anonymous namespace
 
+// 论文 Alg4：order 为 gen_new_ep 预排好的、按方向 d 端位置降序的 placement 下标序列
+// （一次排序复用）；这里沿有序序列过滤 + 阻塞判定，避免每次投影重新排序
 std::vector<Position> projection(
     const Position& p,
     int d,
     const ContainerLoad& load,
-    const ContainerType& ctype) noexcept
+    const std::vector<size_t>& order) noexcept
 {
     std::vector<Position> result;
     int theta_dim = (d == 0) ? 1 : 0;
@@ -93,25 +96,24 @@ std::vector<Position> projection(
     int32_t p_theta = get_coord(p, theta_dim);
     int32_t p_eta = get_coord(p, eta_dim);
 
-    struct Candidate
+    std::set<size_t> blocking;
+
+    for (size_t idx : order)
     {
-        size_t idx;
-        int32_t far_end;
-    };
-    std::vector<Candidate> cands;
-    for (size_t i = 0; i < load.placements.size(); ++i)
-    {
-        const auto& pl = load.placements[i];
+        if (idx >= load.placements.size())
+        {
+            continue;
+        }
+        const auto& pl = load.placements[idx];
+
+        // 过滤（与旧实现一致）：候选在投影方向上完全在起点之前，且非投影方向投影相交
         int32_t c_d = get_coord(pl.position, d);
         int32_t s_d = get_size(pl.osize, d);
-
         if (c_d >= p_d)
         {
             continue;
         }
-
-        int32_t far = c_d + s_d;
-        if (far > p_d)
+        if (c_d + s_d > p_d)
         {
             continue;
         }
@@ -129,18 +131,6 @@ std::vector<Position> projection(
         {
             continue;
         }
-
-        cands.push_back({i, far});
-    }
-    std::sort(cands.begin(), cands.end(),
-              [](const Candidate& a, const Candidate& b)
-              { return a.far_end > b.far_end; });
-
-    std::set<size_t> blocking;
-
-    for (const auto& cand : cands)
-    {
-        const auto& pl = load.placements[cand.idx];
 
         bool blocked = false;
         for (size_t bi : blocking)
@@ -167,7 +157,7 @@ std::vector<Position> projection(
             return result;
         }
 
-        blocking.insert(cand.idx);
+        blocking.insert(idx);
     }
 
     Position e_wall = p;
@@ -179,10 +169,35 @@ std::vector<Position> projection(
 std::vector<Position> gen_new_ep(
     const Position& pos,
     const OrientedSize& osize,
-    const ContainerLoad& load,
-    const ContainerType& ctype) noexcept
+    const ContainerLoad& load) noexcept
 {
     std::vector<Position> new_eps;
+
+    // 论文 Alg4：每个投影方向对已放物品按端位置排序一次，6 个投影起点复用同一
+    // 有序序列（排序 O(P log P) 从 6 次降到 3 次）；tie-break 按下标升序保证确定。
+    std::array<std::vector<size_t>, 3> order_by_dir;
+    for (int d = 0; d < 3; ++d)
+    {
+        std::vector<size_t>& order = order_by_dir[d];
+        order.reserve(load.placements.size());
+        for (size_t i = 0; i < load.placements.size(); ++i)
+        {
+            order.push_back(i);
+        }
+        std::sort(order.begin(), order.end(),
+                  [d, &load](size_t a, size_t b)
+                  {
+                      const int32_t fa = get_coord(load.placements[a].position, d) +
+                                         get_size(load.placements[a].osize, d);
+                      const int32_t fb = get_coord(load.placements[b].position, d) +
+                                         get_size(load.placements[b].osize, d);
+                      if (fa != fb)
+                      {
+                          return fa > fb;
+                      }
+                      return a < b;
+                  });
+    }
 
     // Alg3: 对每个投影方向 j
     for (int j = 0; j < 3; ++j)
@@ -198,7 +213,7 @@ std::vector<Position> gen_new_ep(
             set_coord(p, j, get_coord(p, j) + get_size(osize, j));
             set_coord(p, d2, get_coord(p, d2) + get_size(osize, d2));
 
-            auto proj_eps = projection(p, d2, load, ctype);
+            auto proj_eps = projection(p, d2, load, order_by_dir[d2]);
             for (auto& ep : proj_eps)
             {
                 new_eps.push_back(ep);
@@ -345,7 +360,7 @@ void commit_placement(
 
     grid_register(ctx, load.placements, idx);
 
-    auto new_eps = gen_new_ep(ep, osize, load, *load.type);
+    auto new_eps = gen_new_ep(ep, osize, load);
     for (auto& nep : new_eps)
     {
         if (nep.x < 0 || nep.y < 0 || nep.z < 0)

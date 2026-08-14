@@ -41,15 +41,15 @@ void insertion_heuristic(
 [[nodiscard]] std::vector<Position> gen_new_ep(
     const Position& pos,
     const OrientedSize& osize,
-    const ContainerLoad& load,
-    const ContainerType& ctype) noexcept;
+    const ContainerLoad& load) noexcept;
 
-// Alg4: 投影子过程（论文 §4.5）
+// Alg4: 投影子过程（论文 §4.5）。order 为 gen_new_ep 预排好的、按方向 d 端位置
+// 降序的 placement 下标序列（一次排序复用，避免每次投影重新排序）
 [[nodiscard]] std::vector<Position> projection(
     const Position& p,
     int d, // 投影方向: 0=x, 1=y, 2=z
     const ContainerLoad& load,
-    const ContainerType& ctype) noexcept;
+    const std::vector<size_t>& order) noexcept;
 
 // 提交放置：更新 ContainerLoad 和 EpContext
 void commit_placement(
