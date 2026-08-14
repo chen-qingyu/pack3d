@@ -178,7 +178,7 @@ flowchart TD
   A[5 种排序策略 × M 次迭代] --> B{ρ=0 首次确定性, 之后 ρ=0.5}
   B --> C[build_ordered_list 排序 + Shaw 扰动]
   C --> D[insertion_heuristic: EP first-fit]
-  D --> E[评分 (体积率, 剩余站点数) 字典序]
+  D --> E[评分（体积率, 剩余站点数）字典序]
   E --> F{更优?}
   F -->|是| G[更新 best]
   F -->|否| A
