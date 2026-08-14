@@ -32,6 +32,9 @@ struct EpOrder
 struct EpContext
 {
     int32_t grid_cell_size = 1;
+    int32_t grid_cx = 1; // 网格单元数（容器内尺寸 / cell_size，上取整），route 投影查询用
+    int32_t grid_cy = 1;
+    int32_t grid_cz = 1;
     std::map<std::tuple<int32_t, int32_t, int32_t>, std::vector<size_t>> grid;
     std::set<Position, EpOrder> extreme_points;
 };

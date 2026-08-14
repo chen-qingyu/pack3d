@@ -284,9 +284,13 @@ bool can_place(
         }
     }
 
-    if (problem.route.has_value())
+    // 路线检查同样走网格：只查与候选 YZ 或 XY 投影重叠的已放箱（check_route_order
+    // 的规则只对这些箱生效），避免全量扫描。
+    if (problem.route.has_value() && !box.platform.empty() &&
+        problem.route.value().index_of.count(box.platform) != 0)
     {
-        if (!check_route_order(load, box.platform, ep, osize, problem.route.value()))
+        std::vector<size_t> route_neighbors = grid_route_neighbors(ctx, ep, osize);
+        if (!check_route_order(load, box.platform, ep, osize, problem.route.value(), &route_neighbors))
         {
             return false;
         }
@@ -369,6 +373,9 @@ void insertion_heuristic(
 {
     out_load.type = &ctype;
     out_ctx.grid_cell_size = compute_cell_size(items, box_type_map);
+    out_ctx.grid_cx = (ctype.inner_size.x + out_ctx.grid_cell_size - 1) / out_ctx.grid_cell_size;
+    out_ctx.grid_cy = (ctype.inner_size.y + out_ctx.grid_cell_size - 1) / out_ctx.grid_cell_size;
+    out_ctx.grid_cz = (ctype.inner_size.z + out_ctx.grid_cell_size - 1) / out_ctx.grid_cell_size;
 
     // 已有放置（resume/续塞/后处理 trial）注册进碰撞网格：grid_collides 依赖它
     // 检测与旧箱的重叠，否则会把新箱放到旧箱位置（此前会重叠放置）

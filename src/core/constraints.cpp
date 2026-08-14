@@ -554,7 +554,8 @@ static bool xy_overlap(const Position& a, const OrientedSize& as,
 bool check_route_order(const ContainerLoad& load,
                        const std::string& platform,
                        const Position& pos, const OrientedSize& osize,
-                       const RouteOrder& route) noexcept
+                       const RouteOrder& route,
+                       const std::vector<size_t>* indices) noexcept
 {
     if (platform.empty())
     {
@@ -569,8 +570,17 @@ bool check_route_order(const ContainerLoad& load,
 
     size_t my_idx = it->second;
 
-    for (const auto& pl : load.placements)
+    // indices 非空时只遍历网格 YZ/XY 投影重叠候选（超集），规则只对这些箱生效，
+    // 结果与全量扫描一致
+    const size_t n = indices ? indices->size() : load.placements.size();
+    for (size_t k = 0; k < n; ++k)
     {
+        const size_t idx = indices ? (*indices)[k] : k;
+        if (idx >= load.placements.size())
+        {
+            continue;
+        }
+        const auto& pl = load.placements[idx];
         if (pl.platform == platform || pl.platform.empty())
         {
             continue;

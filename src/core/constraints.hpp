@@ -91,11 +91,13 @@ void recompute_stack_state(ContainerLoad& load,
                                         int platform_limit) noexcept;
 
 /// 路线顺序约束：卸货顺序中靠前的平台（idx 小，先卸）应在更近门处（X 大），
-/// 靠后的平台（后卸）应在更深处（X 小）
+/// 靠后的平台（后卸）应在更深处（X 小）。indices 非空时只检查这些 placement
+/// 下标（网格加速的 YZ/XY 投影重叠候选超集，结果不变）。
 [[nodiscard]] bool check_route_order(const ContainerLoad& load,
                                      const std::string& platform,
                                      const Position& pos, const OrientedSize& osize,
-                                     const RouteOrder& route) noexcept;
+                                     const RouteOrder& route,
+                                     const std::vector<size_t>* indices = nullptr) noexcept;
 
 // ============================================================
 // tender（发标）约束：容器按共享 group 连通，每个连通分量即一个 tender。

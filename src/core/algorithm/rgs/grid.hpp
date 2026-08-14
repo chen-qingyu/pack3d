@@ -36,6 +36,13 @@ void grid_register(
     const Position& pos,
     const OrientedSize& osize) noexcept;
 
+// 查询与候选 YZ 或 XY 投影重叠的 placement 索引（同款网格加速，路线顺序检查
+// 只对这些投影重叠的已放箱生效）
+[[nodiscard]] std::vector<size_t> grid_route_neighbors(
+    const EpContext& ctx,
+    const Position& pos,
+    const OrientedSize& osize) noexcept;
+
 // AABB 碰撞检测：候选放置是否与 neighbors 中任一 placement 重叠
 [[nodiscard]] bool grid_collides(
     const std::vector<Placement>& placements,
