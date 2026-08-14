@@ -222,6 +222,64 @@ std::vector<OrderEntry> build_ordered_list(
                          { return a.route_depth > b.route_depth; });
     }
 
+    // 组级 Shaw（论文 §4.2.2，仅 rho>0）：从有序列表逐位置抽取，第 j 个 =
+    // ceil(y_j^(1/rho) * (n - j + 1))；rho 越大越随机，rho=0 接近原序。
+    auto shaw = [&rng, rho](auto& work)
+    {
+        if (work.size() <= 1)
+        {
+            return work;
+        }
+        std::uniform_real_distribution<double> dist(0.0, 1.0);
+        size_t m = work.size();
+        auto shuffled = work;
+        shuffled.clear();
+        shuffled.reserve(m);
+        for (size_t j = 0; j < m && !work.empty(); ++j)
+        {
+            double y = dist(rng);
+            size_t remaining_count = work.size();
+            size_t pick = static_cast<size_t>(std::ceil(std::pow(y, 1.0 / rho) * remaining_count));
+            if (pick == 0)
+            {
+                pick = 1;
+            }
+            if (pick > remaining_count)
+            {
+                pick = remaining_count;
+            }
+            shuffled.push_back(work[pick - 1]);
+            work.erase(work.begin() + static_cast<ptrdiff_t>(pick - 1));
+        }
+        return shuffled;
+    };
+
+    // 相似组层 Shaw（仅 rho>0）：保持同组箱子相邻。Stackability* 准则下 sgs 已按
+    // 可堆叠优先排序，对可堆叠/不可堆叠两段分别随机化，保持"可堆叠组严格优先于
+    // 不可堆叠组"在随机化后仍然成立。
+    if (rho > 0.0)
+    {
+        const bool stackability_split =
+            (criterion == SortCriterion::StackabilityCumulatedVolume ||
+             criterion == SortCriterion::StackabilityHighestVolume);
+        if (stackability_split)
+        {
+            auto first_ns = std::find_if(sgs.begin(), sgs.end(),
+                                         [](const SimilarGroup& g)
+                                         { return !g.stackable; });
+            std::vector<SimilarGroup> stackable_part(sgs.begin(), first_ns);
+            std::vector<SimilarGroup> rest(first_ns, sgs.end());
+            auto s1 = shaw(stackable_part);
+            auto s2 = shaw(rest);
+            s1.insert(s1.end(), s2.begin(), s2.end());
+            sgs = std::move(s1);
+        }
+        else
+        {
+            sgs = shaw(sgs);
+        }
+    }
+
     // ---- step 4: within each similar group, sort identical groups ----
     bool use_total = (criterion == SortCriterion::CumulatedVolume ||
                       criterion == SortCriterion::StackabilityCumulatedVolume);
@@ -247,6 +305,13 @@ std::vector<OrderEntry> build_ordered_list(
                              [](const IdenticalGroup& a, const IdenticalGroup& b)
                              { return a.route_depth > b.route_depth; });
         }
+
+        // 组内 identical 组层 Shaw（论文 §4.2.2，仅 rho>0）：组内 ϑ 一致，无需再分
+        // 可堆叠子集；随机化后同组箱子仍相邻（层叠结构关键）。
+        if (rho > 0.0)
+        {
+            sg.identicals = shaw(sg.identicals);
+        }
     }
 
     // ---- step 5: flatten to OrderEntry list ----
@@ -254,18 +319,9 @@ std::vector<OrderEntry> build_ordered_list(
     // 关键机制。每个箱子最多出现 3 次（每个可达高度一次）；首次装入后其余出现由
     // insertion_heuristic 的 loaded_ids 跳过，装不下的则在后续高度重试。
     std::vector<OrderEntry> ordered;
-    // Stackability* 准则下 sgs 已按可堆叠优先排序，展平后前半段全为可堆叠箱；
-    // 记录首个非可堆叠组的起点，供 rho>0 时对两段分别 Shaw（保持可堆叠严格优先）。
-    size_t stackable_end = 0;
-    bool seen_nonstackable = false;
 
     for (const auto& sg : sgs)
     {
-        if (!sg.stackable && !seen_nonstackable)
-        {
-            stackable_end = ordered.size();
-            seen_nonstackable = true;
-        }
         for (const auto& ig : sg.identicals)
         {
             auto bt_it = box_type_map.find(ig.box_type_id);
@@ -295,73 +351,17 @@ std::vector<OrderEntry> build_ordered_list(
             }
         }
     }
-    if (!seen_nonstackable)
-    {
-        stackable_end = ordered.size();
-    }
 
-    // ---- step 6: Shaw randomization with ρ ----
+    // ---- step 6: 随机化朝向（组级 Shaw 已在 step 3/4 完成，保持同组箱子相邻） ----
     if (rho > 0.0)
     {
-        // 6a: shuffle orientations per entry
+        // shuffle orientations per entry（组内朝向顺序随机，不影响组间相邻性）
         for (auto& entry : ordered)
         {
             if (entry.orients.size() > 1)
             {
                 std::shuffle(entry.orients.begin(), entry.orients.end(), rng);
             }
-        }
-
-        // 6b: Shaw item-order randomization（rho>0 时全列表；确定性 pass 已跳过此步）
-        auto shaw = [&rng, rho](std::vector<OrderEntry>& work)
-        {
-            if (work.size() <= 1)
-            {
-                return work;
-            }
-            std::uniform_real_distribution<double> dist(0.0, 1.0);
-            size_t m = work.size();
-            std::vector<OrderEntry> shuffled;
-            shuffled.reserve(m);
-
-            for (size_t j = 0; j < m && !work.empty(); ++j)
-            {
-                double y = dist(rng);
-                size_t remaining_count = work.size();
-                size_t pick = static_cast<size_t>(std::ceil(std::pow(y, 1.0 / rho) * remaining_count));
-                if (pick == 0)
-                {
-                    pick = 1;
-                }
-                if (pick > remaining_count)
-                {
-                    pick = remaining_count;
-                }
-                shuffled.push_back(work[pick - 1]);
-                work.erase(work.begin() + static_cast<ptrdiff_t>(pick - 1));
-            }
-            return shuffled;
-        };
-
-        // 论文 §4.2.2：Stackability* 准则对可堆叠/不可堆叠子集分别随机化，
-        // 保持"可堆叠箱严格优先于不可堆叠箱"在随机化后仍然成立。
-        const bool stackability_split =
-            (criterion == SortCriterion::StackabilityCumulatedVolume ||
-             criterion == SortCriterion::StackabilityHighestVolume);
-        if (stackability_split && stackable_end > 0 && stackable_end < ordered.size())
-        {
-            std::vector<OrderEntry> stackable_part(
-                ordered.begin(), ordered.begin() + static_cast<ptrdiff_t>(stackable_end));
-            std::vector<OrderEntry> rest(ordered.begin() + static_cast<ptrdiff_t>(stackable_end),
-                                         ordered.end());
-            auto s1 = shaw(stackable_part);
-            auto s2 = shaw(rest);
-            s1.insert(s1.end(), s2.begin(), s2.end());
-            ordered = std::move(s1);
-        }
-        else
-        {
-            ordered = shaw(ordered);
         }
     }
 
