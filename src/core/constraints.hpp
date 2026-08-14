@@ -55,6 +55,10 @@ struct FacetSlab
 // 斜面楔形阶梯近似的步数（仅用于覆盖原点的斜面，GLC/BSG 共用）
 inline constexpr int FACET_STAIR_STEPS = 2;
 
+/// 箱型是否可被叠放（论文 §4.2 的 ϑ）：存在某朝向允许其上方放箱——max_stack 未设
+/// 或 ≥2 且 max_load 未设或 >0（与 check_stack_constraints 的层号/承重语义一致）
+[[nodiscard]] bool type_stackable(const BoxType& bt) noexcept;
+
 /// 检查放入箱子后是否超重
 [[nodiscard]] bool check_weight(const ContainerLoad& load,
                                 double box_weight) noexcept;

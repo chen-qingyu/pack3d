@@ -37,11 +37,13 @@ void insertion_heuristic(
     const std::map<std::string, BoxType>& box_type_map,
     const Problem& problem) noexcept;
 
-// Alg3: 从新放置的箱子生成新 EP（论文 §4.4.1）
+// Alg3: 从新放置的箱子生成新 EP（论文 §4.4.1）。stackable = 新箱是否可被叠放：
+// 非可堆叠箱跳过从顶部角点出发的 x/y 投影与顶部中心 EP（论文只对可堆叠箱生成）
 [[nodiscard]] std::vector<Position> gen_new_ep(
     const Position& pos,
     const OrientedSize& osize,
-    const ContainerLoad& load) noexcept;
+    const ContainerLoad& load,
+    bool stackable) noexcept;
 
 // Alg4: 投影子过程（论文 §4.5）。order 为 gen_new_ep 预排好的、按方向 d 端位置
 // 降序的 placement 下标序列（一次排序复用，避免每次投影重新排序）

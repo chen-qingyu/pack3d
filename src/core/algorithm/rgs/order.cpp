@@ -7,6 +7,7 @@
 #include <set>
 #include <unordered_set>
 
+#include "../../constraints.hpp"
 #include "../config.hpp"
 
 namespace pack3d::rgs
@@ -24,27 +25,6 @@ std::set<int32_t> reachable_z_heights(const BoxType& bt) noexcept
         zs.insert(os.dz);
     }
     return zs;
-}
-
-// 箱型是否可被叠放（论文 §4.2 的可堆叠性 ϑ）：存在某朝向允许其上方放箱。
-// max_stack 层号模型要求支撑箱 max_stack >= 2 才允许其上再放一层；max_load 须未设或 > 0。
-bool type_stackable(const BoxType& bt) noexcept
-{
-    for (auto o : bt.allowed_orientations)
-    {
-        auto ms = bt.max_stack_for(o);
-        if (ms.has_value() && ms.value() < 2)
-        {
-            continue;
-        }
-        auto ml = bt.max_load_for(o);
-        if (ml.has_value() && ml.value() <= 0)
-        {
-            continue;
-        }
-        return true;
-    }
-    return false;
 }
 
 struct IdenticalGroup

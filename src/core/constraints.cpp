@@ -7,6 +7,25 @@
 namespace pack3d
 {
 
+bool type_stackable(const BoxType& bt) noexcept
+{
+    for (auto o : bt.allowed_orientations)
+    {
+        auto ms = bt.max_stack_for(o);
+        if (ms.has_value() && ms.value() < 2)
+        {
+            continue;
+        }
+        auto ml = bt.max_load_for(o);
+        if (ml.has_value() && ml.value() <= 0)
+        {
+            continue;
+        }
+        return true;
+    }
+    return false;
+}
+
 bool check_boundary(const ContainerType& ctype, const Position& pos,
                     const OrientedSize& osize) noexcept
 {

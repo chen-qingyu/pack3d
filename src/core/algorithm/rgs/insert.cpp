@@ -169,7 +169,8 @@ std::vector<Position> projection(
 std::vector<Position> gen_new_ep(
     const Position& pos,
     const OrientedSize& osize,
-    const ContainerLoad& load) noexcept
+    const ContainerLoad& load,
+    bool stackable) noexcept
 {
     std::vector<Position> new_eps;
 
@@ -202,6 +203,12 @@ std::vector<Position> gen_new_ep(
     // Alg3: 对每个投影方向 j
     for (int j = 0; j < 3; ++j)
     {
+        // 论文 Alg3：非可堆叠箱跳过从顶部角点出发的 x/y 投影（j==z 的两对），
+        // 避免生成要求直接落在其顶面上的 EP
+        if (!stackable && j == 2)
+        {
+            continue;
+        }
         for (int d2 = 0; d2 < 3; ++d2)
         {
             if (d2 == j)
@@ -221,8 +228,11 @@ std::vector<Position> gen_new_ep(
         }
     }
 
-    // Alg3 line 15: top-center point（能否堆叠由承重/支撑约束在 can_place 判定）
-    new_eps.push_back({pos.x, pos.y, pos.z + osize.dz});
+    // Alg3 line 15: 顶部中心 EP（论文仅对可堆叠箱添加；能否堆叠由 can_place 判定）
+    if (stackable)
+    {
+        new_eps.push_back({pos.x, pos.y, pos.z + osize.dz});
+    }
 
     return new_eps;
 }
@@ -360,7 +370,7 @@ void commit_placement(
 
     grid_register(ctx, load.placements, idx);
 
-    auto new_eps = gen_new_ep(ep, osize, load);
+    auto new_eps = gen_new_ep(ep, osize, load, type_stackable(box_type));
     for (auto& nep : new_eps)
     {
         if (nep.x < 0 || nep.y < 0 || nep.z < 0)
