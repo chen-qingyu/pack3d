@@ -325,9 +325,17 @@ std::vector<OrderEntry> build_ordered_list(
                 continue; // 防御：入组时已保证该高度可达
             }
 
+            const size_t orient_count = locked.size();
             for (const auto* bx : ig.boxes)
             {
-                ordered.push_back({bx->id, locked});
+                OrderEntry entry;
+                entry.box_id = bx->id;
+                entry.orient_count = static_cast<uint8_t>(orient_count);
+                for (size_t k = 0; k < orient_count; ++k)
+                {
+                    entry.orients[k] = locked[k];
+                }
+                ordered.push_back(std::move(entry));
             }
         }
     }
@@ -338,9 +346,10 @@ std::vector<OrderEntry> build_ordered_list(
         // shuffle orientations per entry（组内朝向顺序随机，不影响组间相邻性）
         for (auto& entry : ordered)
         {
-            if (entry.orients.size() > 1)
+            if (entry.orient_count > 1)
             {
-                std::shuffle(entry.orients.begin(), entry.orients.end(), rng);
+                std::shuffle(entry.orients.begin(),
+                             entry.orients.begin() + static_cast<ptrdiff_t>(entry.orient_count), rng);
             }
         }
     }

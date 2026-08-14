@@ -1,6 +1,8 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
@@ -22,11 +24,12 @@ enum class SortCriterion : uint8_t
     Random,
 };
 
-// 排序后的条目：箱子 ID + 允许的朝向列表
+// 排序后的条目：箱子 ID + 允许的朝向列表（固定数组，避免逐箱堆分配）
 struct OrderEntry
 {
     std::string box_id;
-    std::vector<Orientation> orients;
+    std::array<Orientation, 6> orients{}; // 至多 6 种朝向（Orientation 枚举值数）
+    uint8_t orient_count = 0;
 };
 
 // BuildOrderedList（论文 §4.2）

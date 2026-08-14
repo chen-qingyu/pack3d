@@ -394,13 +394,14 @@ void insertion_heuristic(
     const Problem& problem,
     ContainerLoad& out_load,
     EpContext& out_ctx,
-    const TenderState& tender) noexcept
+    const TenderState& tender,
+    int32_t cell_size) noexcept
 {
     out_load.type = &ctype;
-    out_ctx.grid_cell_size = compute_cell_size(items, box_type_map);
-    out_ctx.grid_cx = (ctype.inner_size.x + out_ctx.grid_cell_size - 1) / out_ctx.grid_cell_size;
-    out_ctx.grid_cy = (ctype.inner_size.y + out_ctx.grid_cell_size - 1) / out_ctx.grid_cell_size;
-    out_ctx.grid_cz = (ctype.inner_size.z + out_ctx.grid_cell_size - 1) / out_ctx.grid_cell_size;
+    out_ctx.grid_cell_size = cell_size;
+    out_ctx.grid_cx = (ctype.inner_size.x + cell_size - 1) / cell_size;
+    out_ctx.grid_cy = (ctype.inner_size.y + cell_size - 1) / cell_size;
+    out_ctx.grid_cz = (ctype.inner_size.z + cell_size - 1) / cell_size;
 
     // 已有放置（resume/续塞/后处理 trial）注册进碰撞网格：grid_collides 依赖它
     // 检测与旧箱的重叠，否则会把新箱放到旧箱位置（此前会重叠放置）
@@ -491,8 +492,9 @@ void insertion_heuristic(
         bool placed = false;
         for (const auto& ep : out_ctx.extreme_points)
         {
-            for (auto orient : entry.orients)
+            for (uint8_t k = 0; k < entry.orient_count; ++k)
             {
+                const Orientation orient = entry.orients[k];
                 if (can_place(box, bt, orient, ep, out_load, out_ctx, box_type_map, problem))
                 {
                     commit_placement(out_load, out_ctx, box, bt, orient, ep, problem);

@@ -9,6 +9,7 @@
 
 #include "../../tool.hpp"
 #include "../config.hpp"
+#include "grid.hpp"
 #include "insert.hpp"
 #include "order.hpp"
 
@@ -89,6 +90,9 @@ ContainerLoad RgsPacker::pack_single(
         }
     }
 
+    // 网格单元尺寸只依赖 items（pack_single 内恒定），一次计算供所有迭代复用
+    const int32_t cell_size = rgs::compute_cell_size(items, box_type_map_);
+
     ContainerLoad best_load;
     double best_score = -1e9;
     size_t best_remaining = std::numeric_limits<size_t>::max();
@@ -120,7 +124,7 @@ ContainerLoad RgsPacker::pack_single(
             ctx.extreme_points.insert({0, 0, 0});
             prefill_load(load, existing, box_map_);
             prefill_ep(ctx, existing);
-            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx, tender);
+            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx, tender, cell_size);
 
             if (stop_when_complete && load.placements.size() == complete_size)
             {
@@ -156,7 +160,7 @@ ContainerLoad RgsPacker::pack_single(
             ctx.extreme_points.insert({0, 0, 0});
             prefill_load(load, existing, box_map_);
             prefill_ep(ctx, existing);
-            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx, tender);
+            rgs::insertion_heuristic(items, ct, box_type_map_, crit, rho, problem_, load, ctx, tender, cell_size);
 
             if (stop_when_complete && load.placements.size() == complete_size)
             {

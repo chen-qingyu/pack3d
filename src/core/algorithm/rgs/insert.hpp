@@ -14,7 +14,8 @@
 namespace pack3d::rgs
 {
 
-// Alg1: 单 ULD 插入启发式（状态经 out_load / out_ctx 返回）
+// Alg1: 单 ULD 插入启发式（状态经 out_load / out_ctx 返回）。
+// cell_size 由调用方（pack_single）预计算一次，供所有迭代复用网格单元尺寸
 void insertion_heuristic(
     const std::vector<Box>& items,
     const ContainerType& ctype,
@@ -24,7 +25,8 @@ void insertion_heuristic(
     const Problem& problem,
     ContainerLoad& out_load,
     EpContext& out_ctx,
-    const TenderState& tender) noexcept;
+    const TenderState& tender,
+    int32_t cell_size) noexcept;
 
 // 四道门检查（论文 §4.4）
 [[nodiscard]] bool can_place(
