@@ -230,7 +230,8 @@ bool check_weight(const ContainerLoad& load,
 
 bool check_support(const Position& pos, const OrientedSize& osize,
                    const ContainerLoad& load,
-                   double support_rate) noexcept
+                   double support_rate,
+                   const std::vector<size_t>* indices) noexcept
 {
     if (support_rate <= 0.0 || pos.z == 0)
     {
@@ -251,8 +252,16 @@ bool check_support(const Position& pos, const OrientedSize& osize,
     int64_t supported_area = 0;
     bool directly_supported = false;
 
-    for (const auto& pl : load.placements)
+    // indices 非空时只遍历网格支撑带候选（超集），过滤条件不变，结果与全量扫描一致
+    const size_t n = indices ? indices->size() : load.placements.size();
+    for (size_t k = 0; k < n; ++k)
     {
+        const size_t idx = indices ? (*indices)[k] : k;
+        if (idx >= load.placements.size())
+        {
+            continue;
+        }
+        const auto& pl = load.placements[idx];
         int32_t support_top = pl.position.z + pl.osize.dz;
         if (support_top != pos.z)
         {
@@ -318,7 +327,8 @@ struct SupportInfo
 };
 
 SupportInfo collect_supports(const Position& pos, const OrientedSize& osize,
-                             const std::vector<Placement>& placements) noexcept
+                             const std::vector<Placement>& placements,
+                             const std::vector<size_t>* indices = nullptr) noexcept
 {
     SupportInfo info;
     int32_t bx1 = pos.x;
@@ -326,8 +336,15 @@ SupportInfo collect_supports(const Position& pos, const OrientedSize& osize,
     int32_t by1 = pos.y;
     int32_t by2 = pos.y + osize.dy;
 
-    for (size_t i = 0; i < placements.size(); ++i)
+    // indices 非空时只遍历网格支撑带候选（超集），过滤条件不变，结果与全量扫描一致
+    const size_t n = indices ? indices->size() : placements.size();
+    for (size_t k = 0; k < n; ++k)
     {
+        const size_t i = indices ? (*indices)[k] : k;
+        if (i >= placements.size())
+        {
+            continue;
+        }
         const auto& pl = placements[i];
         if (pl.position.z + pl.osize.dz != pos.z)
         {
@@ -368,9 +385,10 @@ double load_increment(double weight, int64_t area, int64_t total_area) noexcept
 bool check_stack_constraints(
     const Position& pos, const OrientedSize& osize, double weight,
     const ContainerLoad& load,
-    const std::map<std::string, BoxType>& box_type_map) noexcept
+    const std::map<std::string, BoxType>& box_type_map,
+    const std::vector<size_t>* indices) noexcept
 {
-    SupportInfo info = collect_supports(pos, osize, load.placements);
+    SupportInfo info = collect_supports(pos, osize, load.placements, indices);
     int level = info.supports.empty() ? 1 : info.max_level + 1;
 
     for (size_t i = 0; i < info.supports.size(); ++i)

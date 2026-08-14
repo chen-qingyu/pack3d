@@ -245,17 +245,27 @@ bool can_place(
         return false;
     }
 
-    if (!check_support(ep, osize, load, problem.support_rate))
+    // 支撑/堆叠检查走网格（论文 §4.4.4）：只查候选底面正下方支撑带的已放箱，
+    // 避免全量扫描。grid_support_neighbors 返回的是支撑箱超集，check_support /
+    // check_stack_constraints 仍按顶面贴合 + 投影相交过滤，结果与全量扫描一致。
+    const bool need_support_cands =
+        (problem.support_rate > 0.0 && ep.z > 0) || problem.has_max_stack || problem.has_max_load;
+    std::vector<size_t> support_cands;
+    if (need_support_cands)
+    {
+        support_cands = grid_support_neighbors(ctx, ep, osize);
+    }
+    const std::vector<size_t>* sc = need_support_cands ? &support_cands : nullptr;
+
+    if (problem.support_rate > 0.0 && !check_support(ep, osize, load, problem.support_rate, sc))
     {
         return false;
     }
 
-    if (problem.has_max_stack || problem.has_max_load)
+    if ((problem.has_max_stack || problem.has_max_load) &&
+        !check_stack_constraints(ep, osize, box.weight.value_or(0.0), load, box_type_map, sc))
     {
-        if (!check_stack_constraints(ep, osize, box.weight.value_or(0.0), load, box_type_map))
-        {
-            return false;
-        }
+        return false;
     }
 
     if (box.weight.has_value())

@@ -29,6 +29,13 @@ void grid_register(
     const Position& pos,
     const OrientedSize& osize) noexcept;
 
+// 查询候选放置底面正下方支撑带覆盖的 placement 索引（论文 §4.4.4：非漂浮/堆叠
+// 检查只考虑底面下一层单元中的已放箱；ℏ=0 即顶面 == 候选底面 z 的直接支撑箱）
+[[nodiscard]] std::vector<size_t> grid_support_neighbors(
+    const EpContext& ctx,
+    const Position& pos,
+    const OrientedSize& osize) noexcept;
+
 // AABB 碰撞检测：候选放置是否与 neighbors 中任一 placement 重叠
 [[nodiscard]] bool grid_collides(
     const std::vector<Placement>& placements,

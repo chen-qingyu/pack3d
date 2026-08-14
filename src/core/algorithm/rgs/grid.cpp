@@ -98,6 +98,41 @@ std::vector<size_t> grid_neighbors(
     return std::vector<size_t>(seen.begin(), seen.end());
 }
 
+std::vector<size_t> grid_support_neighbors(
+    const EpContext& ctx,
+    const Position& pos,
+    const OrientedSize& osize) noexcept
+{
+    if (pos.z <= 0)
+    {
+        return {};
+    }
+    int32_t cs = ctx.grid_cell_size;
+    int32_t cx0 = pos.x / cs;
+    int32_t cx1 = (pos.x + osize.dx - 1) / cs;
+    int32_t cy0 = pos.y / cs;
+    int32_t cy1 = (pos.y + osize.dy - 1) / cs;
+    int32_t cz = (pos.z - 1) / cs;
+
+    // 直接支撑箱顶面 == 候选底面 z，其最顶层单元行恒为 (pos.z-1)/cs，只需查这一行
+    std::set<size_t> seen;
+    for (int32_t cx = cx0; cx <= cx1; ++cx)
+    {
+        for (int32_t cy = cy0; cy <= cy1; ++cy)
+        {
+            auto it = ctx.grid.find({cx, cy, cz});
+            if (it != ctx.grid.end())
+            {
+                for (size_t nidx : it->second)
+                {
+                    seen.insert(nidx);
+                }
+            }
+        }
+    }
+    return std::vector<size_t>(seen.begin(), seen.end());
+}
+
 bool grid_collides(
     const std::vector<Placement>& placements,
     const Position& pos,

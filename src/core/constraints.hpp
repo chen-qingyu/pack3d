@@ -59,16 +59,20 @@ inline constexpr int FACET_STAIR_STEPS = 2;
 [[nodiscard]] bool check_weight(const ContainerLoad& load,
                                 double box_weight) noexcept;
 
-/// 检查底面支撑率是否达标（support_rate=0 则跳过）
+/// 检查底面支撑率是否达标（support_rate=0 则跳过）。
+/// indices 非空时只检查这些 placement 下标（网格加速的支撑带候选超集，结果不变）。
 [[nodiscard]] bool check_support(const Position& pos, const OrientedSize& osize,
                                  const ContainerLoad& load,
-                                 double support_rate) noexcept;
+                                 double support_rate,
+                                 const std::vector<size_t>* indices = nullptr) noexcept;
 
-/// 堆码层数/单箱承重只读预检（max_stack + max_load，逐直接支撑箱判定）
+/// 堆码层数/单箱承重只读预检（max_stack + max_load，逐直接支撑箱判定）。
+/// indices 非空时只检查这些 placement 下标（网格加速的支撑带候选超集，结果不变）。
 [[nodiscard]] bool check_stack_constraints(
     const Position& pos, const OrientedSize& osize, double weight,
     const ContainerLoad& load,
-    const std::map<std::string, BoxType>& box_type_map) noexcept;
+    const std::map<std::string, BoxType>& box_type_map,
+    const std::vector<size_t>* indices = nullptr) noexcept;
 
 /// 放置提交后的堆叠状态副作用：新箱（load.placements.back()）的
 /// stack_level/supported_load，及直接支撑箱的 supported_load 增量。
