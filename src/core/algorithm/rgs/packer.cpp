@@ -77,6 +77,18 @@ ContainerLoad RgsPacker::pack_single(
     // （否则后处理合并在 existing 非空时把"已放部分捐献箱"误判为完成，导致合并失败）
     const size_t complete_size = existing.size() + items.size();
 
+    // 无 platform 快速路径：items 没有任何平台时 count_remaining_platforms 恒 0，
+    // 每迭代直接取 0，避免每迭代构建两个 std::set 全量扫描 placements + items
+    bool any_platform = false;
+    for (const auto& bx : items)
+    {
+        if (!bx.platform.empty())
+        {
+            any_platform = true;
+            break;
+        }
+    }
+
     ContainerLoad best_load;
     double best_score = -1e9;
     size_t best_remaining = std::numeric_limits<size_t>::max();
@@ -116,7 +128,7 @@ ContainerLoad RgsPacker::pack_single(
                 goto done;
             }
 
-            size_t remaining = count_remaining_platforms(items, load);
+            size_t remaining = any_platform ? count_remaining_platforms(items, load) : 0;
             double score = load.volume_rate();
             if (better(score, remaining, best_score, best_remaining))
             {
@@ -152,7 +164,7 @@ ContainerLoad RgsPacker::pack_single(
                 goto done;
             }
 
-            size_t remaining = count_remaining_platforms(items, load);
+            size_t remaining = any_platform ? count_remaining_platforms(items, load) : 0;
             double score = load.volume_rate();
             if (better(score, remaining, best_score, best_remaining))
             {
