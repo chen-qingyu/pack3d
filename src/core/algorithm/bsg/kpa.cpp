@@ -46,20 +46,33 @@ std::vector<int> knapsack_axis(
             continue;
         }
 
+        // 有界多选背包：逐 copy 0/1 更新。更新期间 dp 为"恰好容量"口径（仅从非空容量延伸），
+        // 容量降序遍历保证同一 copy 不链式复用（读到的都是本 pass 未更新的旧值），
+        // 免去每 copy 的 next 缓冲分配；某 pass 无更新即达不动点（单调算子），
+        // 提前结束大 count 的拷贝循环，末尾前缀 max 转回"≤ c"口径。
         for (int copy = 0; copy < count; ++copy)
         {
-            std::vector<int> next = dp;
-            for (int c = 0; c <= cap; ++c)
+            bool changed = false;
+            for (int c = cap; c >= 0; --c)
             {
+                const int base = dp[c];
+                if (base == 0 && c != 0)
+                {
+                    continue; // 该容量无恰好总和可延伸
+                }
                 for (int len : lengths)
                 {
-                    if (c + len <= cap)
+                    if (c + len <= cap && base + len > dp[c + len])
                     {
-                        next[c + len] = std::max(next[c + len], dp[c] + len);
+                        dp[c + len] = base + len;
+                        changed = true;
                     }
                 }
             }
-            dp = std::move(next);
+            if (!changed)
+            {
+                break;
+            }
         }
     }
 
