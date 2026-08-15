@@ -179,6 +179,7 @@ struct GlobalContext
     std::optional<int> platform_limit;
     std::optional<RouteOrder> route;
     bool has_weight_info = false;
+    bool has_platform = false; // 任一 item class 含非空 platform（count_remaining_platforms 快速路径）
 
     // 已提交容器的 tender 分解（本容器装载期间不可变；limit<=0 未启用）
     TenderState tender;

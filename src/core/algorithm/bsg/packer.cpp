@@ -71,6 +71,9 @@ ContainerLoad BsgPacker::pack_single(
     ctx.has_max_load = problem_.has_max_load;
     ctx.box_types = std::move(box_types);
     ctx.item_classes = std::move(item_classes);
+    ctx.has_platform = std::any_of(ctx.item_classes.begin(), ctx.item_classes.end(),
+                                   [](const bsg::ItemClass& ic) noexcept
+                                   { return !ic.platform.empty(); });
     ctx.box_type_map = box_type_map_;
     ctx.platform_limit = problem_.platform_limit;
     ctx.route = problem_.route;

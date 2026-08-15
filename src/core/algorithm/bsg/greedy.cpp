@@ -14,7 +14,7 @@ namespace pack3d::bsg
 
 int count_remaining_platforms(const BSGState& state, const GlobalContext& ctx)
 {
-    if (ctx.item_classes.empty())
+    if (!ctx.has_platform)
     {
         return 0;
     }
