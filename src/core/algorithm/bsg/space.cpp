@@ -197,24 +197,61 @@ void update_residual_space(
 
 void remove_non_maximal(std::vector<Cuboid>& R) noexcept
 {
-    // O(N²) 剔除：若 r_i 完全包含 r_j，删 r_j
+    // 剔除被完全包含的 cuboid。contains 蕴含容器体积不小于被包含者，故按体积降序
+    // 只检查"更大体积是否包含更小体积"（并列按下标序确定性化），无效 contains 对减半。
     size_t n = R.size();
     if (n <= 1)
     {
         return;
     }
 
-    std::vector<bool> keep(n, true);
-
+    std::vector<size_t> order(n);
     for (size_t i = 0; i < n; ++i)
     {
+        order[i] = i;
+    }
+    std::sort(order.begin(), order.end(), [&](size_t a, size_t b) noexcept
+              {
+                  const Cuboid& A = R[a];
+                  const Cuboid& B = R[b];
+                  if (A.volume() != B.volume())
+                  {
+                      return A.volume() > B.volume();
+                  }
+                  if (A.pos.x != B.pos.x)
+                  {
+                      return A.pos.x < B.pos.x;
+                  }
+                  if (A.pos.y != B.pos.y)
+                  {
+                      return A.pos.y < B.pos.y;
+                  }
+                  if (A.pos.z != B.pos.z)
+                  {
+                      return A.pos.z < B.pos.z;
+                  }
+                  if (A.lx != B.lx)
+                  {
+                      return A.lx < B.lx;
+                  }
+                  if (A.ly != B.ly)
+                  {
+                      return A.ly < B.ly;
+                  }
+                  return A.lz < B.lz; });
+
+    std::vector<bool> keep(n, true);
+    for (size_t oi = 0; oi < n; ++oi)
+    {
+        const size_t i = order[oi];
         if (!keep[i])
         {
             continue;
         }
-        for (size_t j = 0; j < n; ++j)
+        for (size_t oj = oi + 1; oj < n; ++oj)
         {
-            if (i == j || !keep[j])
+            const size_t j = order[oj];
+            if (!keep[j])
             {
                 continue;
             }
