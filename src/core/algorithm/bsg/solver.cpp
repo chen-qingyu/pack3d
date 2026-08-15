@@ -185,6 +185,9 @@ PackResult solve(const GlobalContext& ctx,
                   total_boxes, n_types, ctx.blocks.size(),
                   ctx.container_size.x, ctx.container_size.y, ctx.container_size.z);
 
+    // 根状态跨轮完全不变，KPA 只算一次；beam_search 按值拷贝会带上缓存（内部 run_kpa 变 no-op）
+    run_kpa(s0, ctx);
+
     while (TimeChecker::check())
     {
         spdlog::debug("Beam round: w={}", w);
