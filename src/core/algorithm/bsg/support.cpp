@@ -19,18 +19,6 @@ struct SupportState
     bool directly_supported = false;
 };
 
-int find_block_index(const std::vector<GeneralBlock>& blocks, int64_t id) noexcept
-{
-    for (size_t i = 0; i < blocks.size(); ++i)
-    {
-        if (blocks[i].id == id)
-        {
-            return static_cast<int>(i);
-        }
-    }
-    return -1;
-}
-
 void add_support(const Position& position,
                  const OrientedSize& size,
                  SupportState& state) noexcept
@@ -79,12 +67,15 @@ void add_block_support(const GeneralBlock& block,
         return;
     }
 
-    int left_index = find_block_index(ctx.blocks, block.source_left_id);
-    int right_index = find_block_index(ctx.blocks, block.source_right_id);
-    if (left_index < 0 || right_index < 0)
+    // 用 packer 预构建的 block id → 索引映射（noexcept 语境下用 find，勿用会抛异常的 at）
+    const auto lit = ctx.block_indices.find(block.source_left_id);
+    const auto rit = ctx.block_indices.find(block.source_right_id);
+    if (lit == ctx.block_indices.end() || rit == ctx.block_indices.end())
     {
         return;
     }
+    const int left_index = lit->second;
+    const int right_index = rit->second;
 
     const auto& left = ctx.blocks[left_index];
     Position right_position = position;
