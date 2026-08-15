@@ -93,9 +93,12 @@ GreedyResult greedy_rollout(
         SpaceSelection selection = select_free_space(cur.R, ctx.container_size);
         const Cuboid& r = cur.R[selection.cuboid_index];
 
-        // K4: 选 f(b, r) 最大的块
+        // K4: 选 f(b, r) 最大的块；约束模式下候选循环已逐叶校验，胜出块的叶子状态随选中一起
+        // 保存，提交时直接复用，避免二次 can_place_block
         int best_bi = -1;
         int64_t best_f = std::numeric_limits<int64_t>::lowest();
+        ContainerLoad best_load;
+        std::vector<int> best_classes;
 
         for (int bi : cur.available_blocks)
         {
@@ -119,18 +122,18 @@ GreedyResult greedy_rollout(
             }
 
             Position place_pos = placement_position(r, b, selection.anchor);
-            if (!ctx.needs_leaf_validation() && !is_supported(cur, place_pos, b.osize, ctx))
-            {
-                continue;
-            }
+            ContainerLoad next_load;
+            std::vector<int> next_classes;
             if (ctx.needs_leaf_validation())
             {
-                ContainerLoad next_load;
-                std::vector<int> next_item_classes;
-                if (!can_place_block(cur, bi, place_pos, ctx, next_load, next_item_classes))
+                if (!can_place_block(cur, bi, place_pos, ctx, next_load, next_classes))
                 {
                     continue;
                 }
+            }
+            else if (!is_supported(cur, place_pos, b.osize, ctx))
+            {
+                continue;
             }
 
             int64_t fv = compute_f(cur, r, b, ctx);
@@ -138,6 +141,11 @@ GreedyResult greedy_rollout(
             {
                 best_f = fv;
                 best_bi = bi;
+                if (ctx.needs_leaf_validation())
+                {
+                    best_load = std::move(next_load);
+                    best_classes = std::move(next_classes);
+                }
             }
         }
 
@@ -150,11 +158,11 @@ GreedyResult greedy_rollout(
         const auto& b = ctx.blocks[best_bi];
         Position place_pos = placement_position(r, b, selection.anchor);
 
-        if (ctx.needs_leaf_validation() &&
-            !can_place_block(cur, best_bi, place_pos, ctx,
-                             cur.constraint_load, cur.item_class_indices))
+        if (ctx.needs_leaf_validation())
         {
-            break;
+            // best_bi 只在 can_place_block 通过时更新，此处必可成功，直接复用候选循环的校验结果
+            cur.constraint_load = std::move(best_load);
+            cur.item_class_indices = std::move(best_classes);
         }
 
         update_residual_space(cur.R, place_pos, b.osize);
