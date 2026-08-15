@@ -115,7 +115,7 @@ int64_t beam_search(
                 break;
             }
 
-            auto gr = greedy_rollout(S_prime[i], s_best_volume, ctx);
+            auto gr = greedy_rollout(S_prime[i], ctx);
             int64_t score = gr.total_volume;
             Slot slot{score, gr.remaining_platform_count, i, true};
 

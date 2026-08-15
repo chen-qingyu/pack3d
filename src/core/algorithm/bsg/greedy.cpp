@@ -29,28 +29,8 @@ int count_remaining_platforms(const BSGState& state, const GlobalContext& ctx)
     return static_cast<int>(platforms.size());
 }
 
-int64_t max_remaining_volume(const BSGState& state, const GlobalContext& ctx)
-{
-    int64_t total = 0;
-    for (size_t ti = 0; ti < ctx.box_types.size(); ++ti)
-    {
-        if (ti >= state.remaining_counts.size())
-        {
-            continue;
-        }
-        int count = state.remaining_counts[ti];
-        if (count <= 0)
-        {
-            continue;
-        }
-        total += static_cast<int64_t>(ctx.box_types[ti].size.volume()) * count;
-    }
-    return total;
-}
-
 GreedyResult greedy_rollout(
     const BSGState& state,
-    int64_t s_best_volume,
     const GlobalContext& ctx)
 {
     BSGState cur = state; // copy
@@ -78,16 +58,6 @@ GreedyResult greedy_rollout(
         if (cur.R.empty() || cur.available_blocks.empty())
         {
             break;
-        }
-
-        // 剪枝：当前体积 + 剩余上界 ≤ 最优 → 不可能超越
-        if (s_best_volume > 0)
-        {
-            int64_t upper = cur.used_volume + max_remaining_volume(cur, ctx);
-            if (upper <= s_best_volume)
-            {
-                break;
-            }
         }
 
         SpaceSelection selection = select_free_space(cur.R, ctx.container_size);

@@ -234,7 +234,7 @@ TEST_CASE("greedy rollout: 1 box", "[bsg][greedy]")
     for (int i = 0; i < static_cast<int>(ctx.blocks.size()); ++i)
         s.available_blocks.push_back(i);
 
-    auto gr = greedy_rollout(s, 0, ctx);
+    auto gr = greedy_rollout(s, ctx);
     CHECK(gr.total_volume == 125000);
     CHECK(gr.packed_counts[0] == 1);
     CHECK(gr.final_state.placements.size() == 1);
