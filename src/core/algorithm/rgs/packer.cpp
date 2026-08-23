@@ -54,7 +54,7 @@ size_t count_remaining_platforms(const std::vector<Box>& items,
 
 } // namespace
 
-ContainerLoad RgsPacker::pack_single(
+ContainerLoad RgsPacker::pack_single_impl(
     const std::vector<Box>& items,
     const ContainerType& ct,
     const std::vector<Placement>& existing,

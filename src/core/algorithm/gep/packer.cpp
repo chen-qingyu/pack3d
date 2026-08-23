@@ -7,7 +7,7 @@
 namespace pack3d
 {
 
-ContainerLoad GepPacker::pack_single(
+ContainerLoad GepPacker::pack_single_impl(
     const std::vector<Box>& items,
     const ContainerType& ct,
     const std::vector<Placement>& existing,

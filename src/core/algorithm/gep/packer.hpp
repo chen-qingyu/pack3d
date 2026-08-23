@@ -15,12 +15,12 @@ class GepPacker : public PackerBase
 public:
     using PackerBase::PackerBase;
 
-    ContainerLoad pack_single(
+    ContainerLoad pack_single_impl(
         const std::vector<Box>& items,
         const ContainerType& ct,
         const std::vector<Placement>& existing,
         const TenderState& tender,
-        bool stop_when_complete = false) override;
+        bool stop_when_complete) override;
 };
 
 } // namespace pack3d

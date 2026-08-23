@@ -7,7 +7,7 @@
 namespace pack3d
 {
 
-ContainerLoad GlcPacker::pack_single(
+ContainerLoad GlcPacker::pack_single_impl(
     const std::vector<Box>& items,
     const ContainerType& ct,
     const std::vector<Placement>& existing,

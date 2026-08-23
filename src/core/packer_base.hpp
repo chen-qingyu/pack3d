@@ -28,12 +28,14 @@ public:
 
     virtual ~PackerBase() = default;
 
-    virtual ContainerLoad pack_single(
+    /// 单容器填充入口：route 存在时按装货顺序（route 深度降序）**逐平台分桶**放置，
+    /// 每桶只允许一个平台的箱子（严格分阶段，最深平台先放）；无 route 时直接委托底层。
+    ContainerLoad pack_single(
         const std::vector<Box>& items,
         const ContainerType& ct,
         const std::vector<Placement>& existing,
         const TenderState& tender,
-        bool stop_when_complete = false) = 0;
+        bool stop_when_complete = false);
 
     Solution pack();
 
@@ -58,6 +60,21 @@ public:
     }
 
 protected:
+    /// 底层单容器填充（单次调用，不跨平台分桶）；各算法实现。
+    virtual ContainerLoad pack_single_impl(
+        const std::vector<Box>& items,
+        const ContainerType& ct,
+        const std::vector<Placement>& existing,
+        const TenderState& tender,
+        bool stop_when_complete) = 0;
+
+    /// 算法自身是否已按 route 深度排序平台（如 RGS 的 build_ordered_list 深度优先）。
+    /// true = 不需要 Packer 层的逐平台分桶封装（避免重复/破坏其时间预算迭代搜索）。
+    virtual bool self_orders_platforms() const
+    {
+        return false;
+    }
+
     const Problem& problem_;
     const std::map<std::string, BoxType>& box_type_map_;
     const std::map<std::string, Box>& box_map_;

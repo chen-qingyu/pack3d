@@ -21,7 +21,9 @@ TEST_CASE("min_container_count", "[solver]")
 }
 
 // test_min_platform.json — 大小箱子各 2，A/B 平台
-// 固定目标: min_container_count > min_platform_split → 2 大容器，平台不分散
+// 固定目标: min_container_count > min_platform_split → 2 大容器，平台不分散。
+// 容器顺序：分阶段算法（gep/glc/bsg）按装货顺序（route 深度降序）→ 最深平台 B 先装 → [B],[A]；
+// RGS 自排序（组级深度 + 组内箱型序）→ [A],[B]。
 TEST_CASE("min_platform_split", "[solver]")
 {
     json input = load_data("data/tests/test_min_platform.json");
@@ -34,9 +36,19 @@ TEST_CASE("min_platform_split", "[solver]")
         REQUIRE(res["summary"]["volume_rate"] < 1.0);
         REQUIRE(res["result"]["containers"].size() == 2);
         REQUIRE(res["result"]["containers"][0]["type_id"] == "big");
-        REQUIRE(res["result"]["containers"][0]["platforms"] == json::array({"A"}));
         REQUIRE(res["result"]["containers"][1]["type_id"] == "big");
-        REQUIRE(res["result"]["containers"][1]["platforms"] == json::array({"B"}));
+        const auto first_plat = res["result"]["containers"][0]["platforms"][0].get<std::string>();
+        const auto second_plat = res["result"]["containers"][1]["platforms"][0].get<std::string>();
+        if (std::string(algo) == "rgs")
+        {
+            REQUIRE(first_plat == "A");
+            REQUIRE(second_plat == "B");
+        }
+        else
+        {
+            REQUIRE(first_plat == "B");
+            REQUIRE(second_plat == "A");
+        }
     }
 }
 

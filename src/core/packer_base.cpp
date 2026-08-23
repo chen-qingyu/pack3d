@@ -1,5 +1,7 @@
 #include "packer_base.hpp"
 
+#include <algorithm>
+
 #include <spdlog/spdlog.h>
 
 #include "io.hpp"
@@ -10,6 +12,92 @@
 
 namespace pack3d
 {
+
+namespace
+{
+
+// 按 route 深度降序（装货顺序：最深平台先放）分平台桶；无平台箱为最后一桶。
+// 深度 = 平台在 route 中的索引（越靠后 = 越深 = 先装）。
+std::vector<std::vector<Box>> split_platform_buckets(const std::vector<Box>& items,
+                                                     const RouteOrder& route)
+{
+    std::map<std::string, std::vector<Box>> by_platform;
+    std::vector<Box> no_platform;
+    for (const auto& bx : items)
+    {
+        if (bx.platform.empty())
+        {
+            no_platform.push_back(bx);
+        }
+        else
+        {
+            by_platform[bx.platform].push_back(bx);
+        }
+    }
+    std::vector<std::pair<int, std::string>> order; // (route 深度, 平台)
+    for (const auto& [plat, vec] : by_platform)
+    {
+        auto it = route.index_of.find(plat);
+        order.emplace_back(it != route.index_of.end() ? static_cast<int>(it->second) : -1,
+                           plat);
+    }
+    std::sort(order.begin(), order.end(),
+              [](const auto& a, const auto& b)
+              { return a.first > b.first; });
+    std::vector<std::vector<Box>> buckets;
+    for (const auto& [depth, plat] : order)
+    {
+        (void)depth;
+        buckets.push_back(std::move(by_platform[plat]));
+    }
+    if (!no_platform.empty())
+    {
+        buckets.push_back(std::move(no_platform));
+    }
+    return buckets;
+}
+
+} // namespace
+
+ContainerLoad PackerBase::pack_single(
+    const std::vector<Box>& items,
+    const ContainerType& ct,
+    const std::vector<Placement>& existing,
+    const TenderState& tender,
+    bool stop_when_complete)
+{
+    if (!problem_.route.has_value() || self_orders_platforms())
+    {
+        return pack_single_impl(items, ct, existing, tender, stop_when_complete);
+    }
+
+    const auto buckets = split_platform_buckets(items, problem_.route.value());
+    if (buckets.size() <= 1)
+    {
+        return pack_single_impl(items, ct, existing, tender, stop_when_complete);
+    }
+
+    // 严格分阶段：最深平台先放，逐桶填充同一容器；桶间仍走共享约束（路线顺序等）。
+    // 每桶把上一桶已放入的 placement 作为 existing 传入，算法继续在剩余空间填充。
+    // 注意：先整体移动 extra 进 last（含 placements/聚合字段），acc 再用拷贝同步，
+    // 避免先把 extra.placements 移走导致 last 拿到空列表。
+    ContainerLoad last;
+    last.type_id = ct.id;
+    last.type = &ct;
+    prefill_load(last, existing, box_map_);
+    std::vector<Placement> acc = last.placements;
+    for (const auto& bucket : buckets)
+    {
+        ContainerLoad extra = pack_single_impl(bucket, ct, acc, tender, stop_when_complete);
+        if (extra.placements.size() <= acc.size())
+        {
+            continue; // 该桶没有放入任何箱（空间/约束不允许）
+        }
+        last = std::move(extra);
+        acc = last.placements;
+    }
+    return last;
+}
 
 void prefill_load(ContainerLoad& load,
                   const std::vector<Placement>& existing,
