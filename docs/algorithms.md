@@ -119,7 +119,7 @@ flowchart TD
 - **空间栈**：放置一个块后，未填充空间确定性切成至多 3 个子空间（上方、右方、后方）入栈。`parent_id` 追踪来源，支持 `TransferSpace` 碎片回收——栈顶无可行块时尝试合并给同次划分的兄弟空间。
 - **障碍物雕刻**：初始空间用 6-slab 完整分解挖掉障碍物，保证周边空间可达。**斜面不雕刻**——阶梯碎片会切碎空间栈、降低装载，楔形禁区由 `check_block_feasible` 的 `check_facet` 逐箱兜底（过挖为 0）；**例外**：某斜面禁区覆盖原点（两负截距）时对贴角楔形做阶梯雕刻，否则初始空间 min corner 在禁区、块全部被拒而零装载。
 - **beam 精炼**（`pack_beam`）：每步对候选块做多轮精炼——模拟放置 + 贪心完成评估 + 多目标排序，裁半保留。前瞻分两级：`greedy_complete` 对前几个候选做一步前瞻选最优（`pick_best_block`，eval_width=4）；`complete_largest` 纯贪心填到底，用于最终得分。
-- **多目标评分**：`compare_local_scores` 按 (站点数, 体积率, 组数, 箱数) 字典序比较候选——站点聚拢优先，其次体积利用。
+- **多目标评分**：`compare_local_scores` 按 (体积率, 箱数, 站点数, 组数) 字典序比较候选——装载优先（对齐全局目标 min_container_count 优先），站点聚拢仅在装载相同时作平局裁决。若把站点数排前，跨站点续装（分桶/续装场景）会被"多目标提前停止"误判为更差而整桶放弃；装载优先 + `reduce_platform_splits` 后处理收敛站点（见 [architecture.md](architecture.md) §6），与 GEP/BSG 架构一致。
 
 ### 约束集成
 

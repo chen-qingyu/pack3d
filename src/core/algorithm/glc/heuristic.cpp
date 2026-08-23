@@ -354,21 +354,24 @@ Heuristic::LocalPackScore Heuristic::score_state(const ContainerLoad& state) con
 int Heuristic::compare_local_scores(const LocalPackScore& a,
                                     const LocalPackScore& b) const
 {
-    if (a.platform_split != b.platform_split)
-    {
-        return a.platform_split < b.platform_split ? -1 : 1;
-    }
+    // 与全局字典序目标对齐（min_container_count 优先，min_platform_split 其次）：
+    // 体积/装载量优先，平台/分组只在装载相同时作平局裁决。早期停止若把
+    // platform_split 排前，跨平台续装会被误判为"更差"而整桶放弃（分桶/续装场景）。
     if (a.used_volume != b.used_volume)
     {
         return a.used_volume > b.used_volume ? -1 : 1;
     }
-    if (a.group_count != b.group_count)
-    {
-        return a.group_count < b.group_count ? -1 : 1;
-    }
     if (a.placed_count != b.placed_count)
     {
         return a.placed_count > b.placed_count ? -1 : 1;
+    }
+    if (a.platform_split != b.platform_split)
+    {
+        return a.platform_split < b.platform_split ? -1 : 1;
+    }
+    if (a.group_count != b.group_count)
+    {
+        return a.group_count < b.group_count ? -1 : 1;
     }
     return 0;
 }
