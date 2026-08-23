@@ -171,6 +171,7 @@ struct GlobalContext
     // 承重约束启用标志
     bool has_max_stack = false;
     bool has_max_load = false;
+    bool heavy_not_on_light = false; // 重不压轻：上箱重量 <= 直接支撑箱重量
 
     // 箱子类型（索引即 type_idx）
     std::vector<BoxType> box_types;
@@ -200,7 +201,7 @@ struct GlobalContext
         return !container_type.facets.empty() ||
                (!container_type.obstacles.empty() && support_rate > 0.0) ||
                has_weight_info || platform_limit.has_value() || route.has_value() ||
-               has_max_stack || has_max_load || tender.limit > 0;
+               has_max_stack || has_max_load || heavy_not_on_light || tender.limit > 0;
     }
 
     std::vector<Placement> existing_placements;

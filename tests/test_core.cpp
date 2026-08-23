@@ -490,6 +490,21 @@ TEST_CASE("max_stack: 同层并排不增层（层数口径）", "[core][stack]")
     REQUIRE_FALSE(check_stack_constraints({0, 0, 200}, {100, 100, 100}, 0.0, load, btm));
 }
 
+TEST_CASE("heavy_not_on_light: 上箱重量不得超过直接支撑箱", "[core][stack]")
+{
+    auto load = make_stack_load();
+
+    // 支撑箱 20kg
+    load.placements.push_back({"", "heavy", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}, "", "", 20.0});
+    apply_stack_state({0, 0, 0}, {100, 100, 100}, 20.0, load);
+    // 轻箱 10kg 压上：允许
+    REQUIRE(check_heavy_not_on_light({0, 0, 100}, {100, 100, 100}, 10.0, load));
+    // 等重 20kg：允许
+    REQUIRE(check_heavy_not_on_light({0, 0, 100}, {100, 100, 100}, 20.0, load));
+    // 重箱 30kg 压上：拒绝
+    REQUIRE_FALSE(check_heavy_not_on_light({0, 0, 100}, {100, 100, 100}, 30.0, load));
+}
+
 TEST_CASE("recompute_stack_state: 乱序重建", "[core][stack]")
 {
     auto bt = make_stack_bt("bt", 3, 200.0);

@@ -35,7 +35,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 
 ### 障碍物 `obstacles`
 
-容器内固定的轴对齐长方体占位（如门框包边、台阶、轮拱凸起），所有该类型实例共享。语义（禁入、顶面等价地板、计入体积率分母）见 [constraints.md](constraints.md) 1.10。
+容器内固定的轴对齐长方体占位（如门框包边、台阶、轮拱凸起），所有该类型实例共享。语义（禁入、顶面等价地板、计入体积率分母）见 [constraints.md](constraints.md) 1.11。
 
 | 字段           | 类型   | 必填 | 说明                         |
 | -------------- | ------ | ---- | ---------------------------- |
@@ -59,7 +59,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | -------------- | ------ | -------- | ---------------------------------------------------------- |
 | `dx`/`dy`/`dz` | int!=0 | 恰好两个 | 沿该轴的截距：`+` = 从 max 侧向内进深，`-` = 从 min 侧向内 |
 
-斜面切掉的角附近**楔形禁区**箱子不得侵入（面贴面允许）。语义（禁入、不参与支撑、计入体积率分母）详见 [constraints.md](constraints.md) 1.11；斜面之间允许重叠（独立禁区，重叠只是更禁）。
+斜面切掉的角附近**楔形禁区**箱子不得侵入（面贴面允许）。语义（禁入、不参与支撑、计入体积率分母）详见 [constraints.md](constraints.md) 1.12；斜面之间允许重叠（独立禁区，重叠只是更禁）。
 
 预校验：恰好两个非零截距、`1 <= |截距| <= 容器该轴尺寸`、`existing_containers` 已有放置不侵入斜面禁区。
 
@@ -158,6 +158,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | `tender_limit`        | int>=1     | null  | 每运输委托（tender）最多容器数（tender = 同 group 货物连通的容器连通分量）       |
 | `pallet_fallback`     | boolean    | false | 散件装不进任何托盘时降级散装上车；false=未装箱（partial）                        |
 | `pallet_support_rate` | number 0-1 | 1     | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                 |
+| `heavy_not_on_light`  | boolean    | false | 重不压轻：上箱重量不得超过直接支撑箱重量（需重量信息与 `support_rate > 0`）      |
 
 堆码层数 `max_stack` 与单箱承重 `max_load` 不在此处配置，而是**箱型字段**（见上节），有值即启用。
 

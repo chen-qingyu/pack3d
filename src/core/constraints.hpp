@@ -80,6 +80,12 @@ inline constexpr int FACET_STAIR_STEPS = 2;
     const std::map<std::string, BoxType>& box_type_map,
     const std::vector<size_t>* indices = nullptr) noexcept;
 
+/// 重不压轻（heavy_not_on_light）：上方箱重量不得超过任一直接支撑箱重量。
+/// 只查直接支撑（相邻层）；重量相等允许。indices 同 check_support（网格支撑带候选超集）。
+[[nodiscard]] bool check_heavy_not_on_light(const Position& pos, const OrientedSize& osize,
+                                            double box_weight, const ContainerLoad& load,
+                                            const std::vector<size_t>* indices = nullptr) noexcept;
+
 /// 放置提交后的堆叠状态副作用：新箱（load.placements.back()）的
 /// stack_level/col_height/col_top_z/cum_load/supports，及沿支撑链传播
 /// col_height 新层 +1、cum_load += 各路径份额。

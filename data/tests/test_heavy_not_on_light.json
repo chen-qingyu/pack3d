@@ -1,0 +1,33 @@
+{
+  "container_types": [
+    {
+      "id": "truck",
+      "sx": 200,
+      "sy": 100,
+      "sz": 300,
+      "payload": 1000.0
+    }
+  ],
+  "box_types": [
+    {
+      "id": "light",
+      "sx": 100,
+      "sy": 100,
+      "sz": 100,
+      "allowed_orientations": ["xyz"]
+    },
+    {
+      "id": "heavy",
+      "sx": 100,
+      "sy": 100,
+      "sz": 100,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [
+    { "id": "h1", "box_type_id": "heavy", "weight": 30.0 },
+    { "id": "l1", "box_type_id": "light", "weight": 10.0 },
+    { "id": "l2", "box_type_id": "light", "weight": 10.0 }
+  ],
+  "constraints": { "support_rate": 1.0, "heavy_not_on_light": true }
+}

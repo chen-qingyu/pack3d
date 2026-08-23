@@ -148,6 +148,11 @@ bool can_place_block(
         {
             return false;
         }
+        if (ctx.heavy_not_on_light &&
+            !check_heavy_not_on_light(leaf.position, leaf.osize, item.weight, next_load))
+        {
+            return false;
+        }
         if (ctx.platform_limit.has_value() &&
             !check_platform_limit(next_load, item.platform, ctx.platform_limit.value()))
         {

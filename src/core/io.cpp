@@ -223,6 +223,10 @@ void from_json(const json& j, Problem& p)
         {
             p.pallet_support_rate = *v;
         }
+        if (auto v = json_opt<bool>(c, "heavy_not_on_light"))
+        {
+            p.heavy_not_on_light = *v;
+        }
     }
 
     if (j.contains("route"))
@@ -497,12 +501,21 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     {
         out.push_back("inconsistent weight: max_load requires weight info (box_types or boxes)");
     }
+    if (problem.heavy_not_on_light && !weight_info)
+    {
+        out.push_back("inconsistent weight: heavy_not_on_light requires weight info (box_types or boxes)");
+    }
 
     // max_stack/max_load 物理有效的前提：support_rate>0（support_rate=0 允许悬空放置，
     // 悬空箱不计入堆叠柱，可绕过堆码层数与单箱承重约束）
     if ((any_max_stack || any_max_load) && problem.support_rate == 0.0)
     {
         out.push_back("max_stack/max_load requires support_rate > 0");
+    }
+    // 重不压轻同样以支撑率为物理前提（悬空箱无直接支撑，可绕过比较）
+    if (problem.heavy_not_on_light && problem.support_rate == 0.0)
+    {
+        out.push_back("heavy_not_on_light requires support_rate > 0");
     }
 
     // 箱子/已有放置有 platform 就必须有 route 且平台在路线中

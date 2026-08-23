@@ -170,6 +170,10 @@
           "minimum": 0,
           "maximum": 1,
           "default": 1
+        },
+        "heavy_not_on_light": {
+          "type": "boolean",
+          "default": false
         }
       }
     },

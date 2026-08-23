@@ -137,6 +137,13 @@ ContainerLoad GepPacker::pack_single(
                     continue;
                 }
 
+                // 重不压轻：上箱重量 <= 直接支撑箱重量
+                if (problem_.heavy_not_on_light &&
+                    !check_heavy_not_on_light(pos, os, box.weight.value_or(0.0), load))
+                {
+                    continue;
+                }
+
                 // 平台数量限制
                 if (problem_.platform_limit.has_value() && !box.platform.empty())
                 {

@@ -69,6 +69,7 @@ ContainerLoad BsgPacker::pack_single(
     ctx.support_rate = problem_.support_rate;
     ctx.has_max_stack = problem_.has_max_stack;
     ctx.has_max_load = problem_.has_max_load;
+    ctx.heavy_not_on_light = problem_.heavy_not_on_light;
     ctx.box_types = std::move(box_types);
     ctx.item_classes = std::move(item_classes);
     ctx.has_platform = std::any_of(ctx.item_classes.begin(), ctx.item_classes.end(),

@@ -134,6 +134,65 @@ TEST_CASE("pre_validate_input 检测 max_stack/max_load 需要 support_rate", "[
     }
 }
 
+TEST_CASE("pre_validate_input 检测 heavy_not_on_light 需要重量", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, std::nullopt, std::nullopt});
+    BoxType bt;
+    bt.id = "bt1";
+    bt.size = {100, 100, 100};
+    bt.allowed_orientations = {Orientation::XYZ};
+    p.box_types.push_back(bt);
+    p.boxes.push_back({"box1", "bt1", std::nullopt, "", ""}); // 无重量
+    p.heavy_not_on_light = true;
+    p.support_rate = 1.0;
+
+    auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& v : violations)
+    {
+        if (v.find("heavy_not_on_light requires weight info") != std::string::npos)
+        {
+            found = true;
+        }
+    }
+    REQUIRE(found);
+}
+
+TEST_CASE("pre_validate_input 检测 heavy_not_on_light 需要 support_rate", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    BoxType bt;
+    bt.id = "bt1";
+    bt.size = {100, 100, 100};
+    bt.allowed_orientations = {Orientation::XYZ};
+    p.box_types.push_back(bt);
+    p.boxes.push_back({"box1", "bt1", 10.0, "", ""});
+    p.heavy_not_on_light = true;
+    p.support_rate = 0.0;
+
+    // support_rate=0 + heavy_not_on_light → 报错
+    auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& v : violations)
+    {
+        if (v.find("heavy_not_on_light requires support_rate > 0") != std::string::npos)
+        {
+            found = true;
+        }
+    }
+    REQUIRE(found);
+
+    // support_rate>0 且带重量 → 不再报错
+    p.support_rate = 1.0;
+    violations = pre_validate_input(p);
+    for (const auto& v : violations)
+    {
+        REQUIRE(v.find("heavy_not_on_light requires") == std::string::npos);
+    }
+}
+
 // 箱型级重量：箱型与箱子不能同时有重量
 TEST_CASE("pre_validate_input 重量三选一：箱型与箱子重量互斥", "[validation]")
 {

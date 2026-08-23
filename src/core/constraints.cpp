@@ -500,6 +500,22 @@ bool check_stack_constraints(
     return check_stack_chain(load, info, weight, pos.z, box_type_map);
 }
 
+bool check_heavy_not_on_light(const Position& pos, const OrientedSize& osize,
+                              double box_weight, const ContainerLoad& load,
+                              const std::vector<size_t>* indices) noexcept
+{
+    const SupportInfo info = collect_supports(pos, osize, load.placements, indices);
+    for (size_t i = 0; i < info.supports.size(); ++i)
+    {
+        const auto& S = load.placements[info.supports[i]];
+        if (box_weight > S.weight.value_or(0.0) + 1e-9)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void apply_stack_state(const Position& pos, const OrientedSize& osize, double weight,
                        ContainerLoad& load) noexcept
 {

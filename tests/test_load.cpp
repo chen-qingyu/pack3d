@@ -57,6 +57,57 @@ TEST_CASE("max_load 非均匀重量保持重量一致性", "[solver][stack]")
     }
 }
 
+// 重不压轻（heavy_not_on_light）：任一直接支撑关系不得"上重下轻"。
+// 场景 200x100x300：h1(30)+l1(10)+l2(10)，重箱必须在下层，轻箱可叠上。
+TEST_CASE("heavy_not_on_light 重不压轻", "[solver][stack]")
+{
+    json input = load_data("data/tests/test_heavy_not_on_light.json");
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        input["algorithm"] = algo;
+        auto res = run(input);
+        INFO("algo=" << algo);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["unpacked_box_count"] == 0);
+        // 校验整批输出：任何直接支撑关系都不存在"上重下轻"
+        for (const auto& c : res["result"]["containers"])
+        {
+            const auto& ps = c["placements"];
+            for (size_t a = 0; a < ps.size(); ++a)
+            {
+                const auto& A = ps[a];
+                const int az = A["z"].get<int>();
+                const int ax1 = A["x"].get<int>();
+                const int ax2 = ax1 + A["dx"].get<int>();
+                const int ay1 = A["y"].get<int>();
+                const int ay2 = ay1 + A["dy"].get<int>();
+                const double aw = A["weight"].get<double>();
+                for (size_t b = 0; b < ps.size(); ++b)
+                {
+                    if (a == b)
+                    {
+                        continue;
+                    }
+                    const auto& B = ps[b];
+                    if (az + A["dz"].get<int>() != B["z"].get<int>())
+                    {
+                        continue;
+                    }
+                    const int bx1 = B["x"].get<int>();
+                    const int bx2 = bx1 + B["dx"].get<int>();
+                    const int by1 = B["y"].get<int>();
+                    const int by2 = by1 + B["dy"].get<int>();
+                    if (bx2 <= ax1 || ax2 <= bx1 || by2 <= ay1 || ay2 <= by1)
+                    {
+                        continue;
+                    }
+                    REQUIRE(B["weight"].get<double>() <= aw + 1e-9);
+                }
+            }
+        }
+    }
+}
+
 // 按朝向数组：仅 xzy（立放）能装入容器；max_stack=[2,1] 时立放限 1 层 → 需 2 容器
 TEST_CASE("max_stack 按朝向数组", "[solver][stack]")
 {

@@ -263,6 +263,7 @@ struct Problem
     // 约束（默认值唯一来源；time_limit 见 config.hpp）
     double time_limit = config::TIME_LIMIT;
     double support_rate = 0.0;
+    bool heavy_not_on_light = false; // 重不压轻：上箱重量 <= 直接支撑箱重量
     std::optional<int> platform_limit;
     std::optional<int> tender_limit;
     std::optional<RouteOrder> route;

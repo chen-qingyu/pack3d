@@ -191,6 +191,12 @@ bool Heuristic::check_block_feasible(
                     return false;
                 }
 
+                if (problem_.heavy_not_on_light &&
+                    !check_heavy_not_on_light(pos, single, box_weight, sim))
+                {
+                    return false;
+                }
+
                 if (need_route)
                 {
                     if (!check_route_order(
@@ -208,7 +214,7 @@ bool Heuristic::check_block_feasible(
                 pl.osize = single;
                 pl.platform = block.platform;
                 pl.group = block.group;
-                if (has_weight_info_ && problem_.has_max_load)
+                if (has_weight_info_ && (problem_.has_max_load || problem_.heavy_not_on_light))
                 {
                     pl.weight = box_weight;
                 }
@@ -267,7 +273,7 @@ void Heuristic::place_block(
                 pl.osize = single;
                 pl.platform = block.platform;
                 pl.group = block.group;
-                if (has_weight_info_ && problem_.has_max_load)
+                if (has_weight_info_ && (problem_.has_max_load || problem_.heavy_not_on_light))
                 {
                     pl.weight = box_weight;
                 }
