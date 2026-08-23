@@ -432,25 +432,26 @@ TEST_CASE("max_stack: 跨不同高度支撑每柱计数（C2）", "[core][stack]
     // 每柱计数：S1 柱 = 1+1 = 2 <= 2、S2 柱 = 3+1 = 4 <= 5 → 放行
     REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 50}, 0.0, load, btm));
 
-    // 提交后各柱箱数：S1 上 1 箱，强柱三箱各 +1（B 传递压上）
+    // 提交后各柱层数：S1 柱 = S1+B = 2 层；强柱 A/B2/S2 各 +1（B 传递压上）
     load.placements.push_back({"B", "strong", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 50}});
     apply_stack_state({0, 0, 100}, {200, 100, 50}, 0.0, load);
-    auto above_of = [&](const std::string& id)
+    auto col_of = [&](const std::string& id)
     {
         for (const auto& pl : load.placements)
         {
             if (pl.box_id == id)
             {
-                return pl.above_count;
+                return pl.col_height;
             }
         }
         return -1;
     };
     REQUIRE(load.placements.back().stack_level == 4);
-    REQUIRE(above_of("S1") == 1);
-    REQUIRE(above_of("S2") == 1);
-    REQUIRE(above_of("B2") == 2);
-    REQUIRE(above_of("A") == 3);
+    REQUIRE(load.placements.back().col_height == 4);
+    REQUIRE(col_of("S1") == 2);
+    REQUIRE(col_of("S2") == 4);
+    REQUIRE(col_of("B2") == 4);
+    REQUIRE(col_of("A") == 4);
 
     // 对照组：S1 若 max_stack=1，则 B 压上 S1 柱=2 > 1 → 拒绝
     BoxType weak1 = weak;
@@ -466,6 +467,27 @@ TEST_CASE("max_stack: 跨不同高度支撑每柱计数（C2）", "[core][stack]
     load1.placements.push_back({"S2", "strong", "", {100, 0, 60}, Orientation::XYZ, {100, 100, 40}});
     apply_stack_state({100, 0, 60}, {100, 100, 40}, 0.0, load1);
     REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 50}, 0.0, load1, btm1));
+}
+
+TEST_CASE("max_stack: 同层并排不增层（层数口径）", "[core][stack]")
+{
+    auto bt = make_stack_bt("bt", 2);
+    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    auto load = make_stack_load();
+
+    // 底座 300x100，max_stack 2
+    load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {300, 100, 100}});
+    apply_stack_state({0, 0, 0}, {300, 100, 100}, 0.0, load);
+    // 同层并排两个 100x100：第一个新层，第二个同层不增层 → 均通过
+    REQUIRE(check_stack_constraints({0, 0, 100}, {100, 100, 100}, 0.0, load, btm));
+    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 100}, {100, 100, 100}, 0.0, load);
+    REQUIRE(check_stack_constraints({100, 0, 100}, {100, 100, 100}, 0.0, load, btm));
+    load.placements.push_back({"", "bt", "", {100, 0, 100}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({100, 0, 100}, {100, 100, 100}, 0.0, load);
+    REQUIRE(load.placements[0].col_height == 2);
+    // 第三层叠在其中一个上：柱层数 3 > max_stack 2 → 拒绝
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 200}, {100, 100, 100}, 0.0, load, btm));
 }
 
 TEST_CASE("recompute_stack_state: 乱序重建", "[core][stack]")

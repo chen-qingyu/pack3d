@@ -400,7 +400,7 @@ double load_share(double weight, int64_t area, int64_t total_area) noexcept
 }
 
 // 聚合支撑链：把各直接支撑的份额沿其传递支撑链累计到每个链上箱。
-// out_boxes 去重（每箱一次，用于 above_count +1 与 max_stack 每柱检查），
+// out_boxes 去重（每箱一次，用于 col_height 新层 +1 与 max_stack 每柱检查），
 // out_delta 与之对齐，为该箱所有经过路径的份额之和（max_load 整柱累计）。
 // 链由每箱已维护的 supports 下标构成（apply/recompute 保证支撑箱状态先于本箱建立）。
 void aggregate_chain(const std::vector<Placement>& placements,
@@ -436,9 +436,11 @@ void aggregate_chain(const std::vector<Placement>& placements,
     }
 }
 
-// 只读预检：A3 面积分摊（直接支撑逐对） + 沿支撑链 max_stack 每柱计数 / max_load 整柱累计。
+// 只读预检：A3 面积分摊（直接支撑逐对） + 沿支撑链 max_stack 每柱层数 / max_load 整柱累计。
 // 无支撑（地板/障碍物顶）直接通过（开新柱、不受承重约束）。
+// bottom_z = 候选箱底面 z（与柱顶 z 比较判断是否为新层，同层并排不增层）。
 bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, double weight,
+                       int32_t bottom_z,
                        const std::map<std::string, BoxType>& box_type_map) noexcept
 {
     if (info.supports.empty())
@@ -470,9 +472,9 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
     {
         const auto& X = load.placements[boxes[k]];
         const auto& bt = box_type_map.at(X.box_type_id);
-        // max_stack 每柱计数：新箱使每个链上箱的柱内箱数 +1
+        // max_stack 每柱层数：仅当本箱位于柱顶（底面 == 柱顶 z）时柱 +1 并检查；同层并排不增层
         const auto ms = bt.max_stack_for(X.orientation);
-        if (ms.has_value() && X.stack_level + X.above_count + 1 > ms.value())
+        if (ms.has_value() && bottom_z == X.col_top_z && X.col_height + 1 > ms.value())
         {
             return false;
         }
@@ -495,7 +497,7 @@ bool check_stack_constraints(
     const std::vector<size_t>* indices) noexcept
 {
     const SupportInfo info = collect_supports(pos, osize, load.placements, indices);
-    return check_stack_chain(load, info, weight, box_type_map);
+    return check_stack_chain(load, info, weight, pos.z, box_type_map);
 }
 
 void apply_stack_state(const Position& pos, const OrientedSize& osize, double weight,
@@ -506,17 +508,30 @@ void apply_stack_state(const Position& pos, const OrientedSize& osize, double we
         return;
     }
     Placement& pl = load.placements.back();
+    const int32_t bottom_z = pos.z;
+    const int32_t top_z = pos.z + osize.dz;
 
     // 新箱顶面在 pos.z + dz，不会被 collect_supports 识别为支撑，可安全全量扫描
     const SupportInfo info = collect_supports(pos, osize, load.placements);
     pl.stack_level = info.supports.empty() ? 1 : info.max_level + 1;
-    pl.above_count = 0;
     pl.cum_load = 0.0;
     pl.supports = info.supports;
+    pl.col_top_z = top_z;
     if (info.supports.empty())
     {
+        pl.col_height = 1;
         return;
     }
+
+    // 本箱柱层数 = max(直接支撑柱层数 + (本箱为柱顶新层 ? 1 : 0))；同层并排不增层
+    int max_col = 1;
+    for (size_t i = 0; i < info.supports.size(); ++i)
+    {
+        const auto& S = load.placements[info.supports[i]];
+        const int base = S.col_height + (bottom_z == S.col_top_z ? 1 : 0);
+        max_col = std::max(max_col, base);
+    }
+    pl.col_height = max_col;
 
     std::vector<double> shares(info.supports.size());
     for (size_t i = 0; i < info.supports.size(); ++i)
@@ -529,7 +544,11 @@ void apply_stack_state(const Position& pos, const OrientedSize& osize, double we
     for (size_t k = 0; k < boxes.size(); ++k)
     {
         auto& X = load.placements[boxes[k]];
-        X.above_count += 1;
+        if (bottom_z == X.col_top_z)
+        {
+            X.col_height += 1;
+            X.col_top_z = top_z;
+        }
         X.cum_load += delta[k];
     }
 }
@@ -563,7 +582,8 @@ void recompute_stack_state(ContainerLoad& load,
     for (auto& pl : load.placements)
     {
         pl.stack_level = 1;
-        pl.above_count = 0;
+        pl.col_height = 1;
+        pl.col_top_z = 0;
         pl.cum_load = 0.0;
         pl.supports.clear();
     }
@@ -572,15 +592,29 @@ void recompute_stack_state(ContainerLoad& load,
     {
         auto& pl = load.placements[order[k]];
         const double weight = pl.weight.value_or(0.0);
+        const int32_t bottom_z = pl.position.z;
+        const int32_t top_z = pl.position.z + pl.osize.dz;
 
         // 直接支撑箱顶面 == 本箱底面 z，其 z 严格更小，z 序中必已处理
         const SupportInfo info = collect_supports(pl.position, pl.osize, load.placements);
         pl.supports = info.supports;
         pl.stack_level = info.supports.empty() ? 1 : info.max_level + 1;
+        pl.col_top_z = top_z;
         if (info.supports.empty())
         {
+            pl.col_height = 1;
             continue;
         }
+
+        // 本箱柱层数 = max(直接支撑柱层数 + (本箱为柱顶新层 ? 1 : 0))
+        int max_col = 1;
+        for (size_t i = 0; i < info.supports.size(); ++i)
+        {
+            const auto& S = load.placements[info.supports[i]];
+            const int base = S.col_height + (bottom_z == S.col_top_z ? 1 : 0);
+            max_col = std::max(max_col, base);
+        }
+        pl.col_height = max_col;
 
         std::vector<double> shares(info.supports.size());
         for (size_t i = 0; i < info.supports.size(); ++i)
@@ -593,16 +627,19 @@ void recompute_stack_state(ContainerLoad& load,
         for (size_t j = 0; j < boxes.size(); ++j)
         {
             auto& X = load.placements[boxes[j]];
-            X.above_count += 1;
+            if (bottom_z == X.col_top_z)
+            {
+                X.col_height += 1;
+                X.col_top_z = top_z;
+            }
             X.cum_load += delta[j];
             if (errors)
             {
                 const auto& bt = box_type_map.at(X.box_type_id);
                 const auto ms = bt.max_stack_for(X.orientation);
-                if (ms.has_value() && X.stack_level + X.above_count > ms.value())
+                if (ms.has_value() && X.col_height > ms.value())
                 {
-                    errors->push_back("stack " +
-                                      std::to_string(X.stack_level + X.above_count) +
+                    errors->push_back("stack " + std::to_string(X.col_height) +
                                       " > max_stack " + std::to_string(ms.value()) +
                                       " for box " + pl.box_id);
                 }
