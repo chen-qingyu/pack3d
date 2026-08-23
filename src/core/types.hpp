@@ -296,8 +296,10 @@ struct Placement
     std::optional<double> weight = std::nullopt;
 
     // 堆叠状态（内部字段，不序列化到输出）
-    double supported_load = 0.0; // 其上直接承重累计（仅 max_load 约束使用）
-    int stack_level = 1;         // 所在堆柱层号，地板层=1（仅 max_stack 约束使用）
+    int stack_level = 1;          // 所在堆柱层号，地板层=1（max_stack 层号基准）
+    int above_count = 0;          // 其上（含传递）叠放的箱数（max_stack 每柱计数）
+    double cum_load = 0.0;        // 从上方流经本箱的整柱累计载荷（max_load 累计承重）
+    std::vector<size_t> supports; // 直接支撑箱下标（本容器 placements 内，堆叠传播用）
 };
 
 // 容器装载（可变求解状态）

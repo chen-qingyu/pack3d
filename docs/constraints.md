@@ -52,31 +52,50 @@
 
 任一箱型声明了 `max_stack`（非空）即启用。可配置为标量（全部朝向）或数组（与 `allowed_orientations` 对齐）。
 
-层号模型：每个已放置箱记录 `stack_level`（所在堆柱层号，地板层 = 1）。放置新箱 B 时：
+**层号 + 每柱计数**：每个已放置箱记录 `stack_level`（所在堆柱层号，地板层 = 1）与 `above_count`（其上——含传递——叠放的箱数）。放置新箱 B 时：
 
 - `B.stack_level = max(直接支撑箱.stack_level) + 1`（无支撑 -> 1）。
-- 对**每个直接支撑箱 S**，要求 `B.stack_level ≤ S.max_stack_for(S.orientation)`。
+- 对**支撑链上每个箱 X**（B 的直接支撑及其传递支撑），要求：
 
-直接支撑箱 = 底面贴合（`S.top == B.bottom`）且投影相交（面积 > 0）。异构柱高受"最弱箱"限制；"限堆 N 层"= 柱含自身 N 层；同层并排不增层。
+$$X.stack\_level + X.above\_count + 1 \le X.max\_stack\_for(X.orientation)$$
 
-> 注意：`max_stack` 只约束有直接支撑关系的箱子。`support_rate > 0` 是其物理有效的前提（预校验强制：声明 `max_stack` 时 `support_rate = 0` 报 `invalid`，否则悬空箱可绕过堆码限制）。
+放置成功后，链上每个箱 `X.above_count += 1`；`B.above_count = 0`。直接支撑箱 = 底面贴合（`S.top == B.bottom`）且投影相交（面积 > 0）。
+
+**示例（跨不同高度支撑，每柱计数 vs 全局层号）**：
+
+- 弱箱 S1：100×100×100，`max_stack: 2`，在地板（层号 1，顶面 z=100）；
+- 强柱：三只薄箱 100×100 高 33/33/34 叠成层号 1/2/3，顶箱 S2 顶面 z=100，`max_stack: 5`；
+- 大箱 B：200×100×50，底 z=100，左半搭 S1、右半搭 S2。
+
+旧全局层号模型：`B.stack_level = max(1,3)+1 = 4`，与每个支撑比 `4 > S1.max_stack 2` → 误拒。每柱计数：S1 柱 = 1+0+1 = 2 ≤ 2 ✓；S2 柱 = 3+0+1 = 4 ≤ 5 ✓ → 放行（S1 头顶实际只有 B 一箱）。
+
+> 注意：`above_count` 是**箱数**（含并排同层）而非层数——并排同层多箱也逐箱计数，是保守近似（不会误放、可能多拒）；"限堆 N 层"= 柱含自身 N 箱。`support_rate > 0` 是物理有效前提（预校验强制：声明 `max_stack` 时 `support_rate = 0` 报 `invalid`，否则悬空箱可绕过堆码限制）。
 
 ### 1.9 单箱承重上限约束（max_load，箱型字段）
 
 任一箱型声明了 `max_load`（非空）即启用。可配置为标量（全部朝向）或数组（与 `allowed_orientations` 对齐）。启用时要求有**重量信息**（箱型级 `box_types.weight` 或箱子级，输入重量三选一规则见 `docs/input.md` 预校验）。
 
-面积加权分摊（分母 = 受支撑面积，悬空不计）：
+两层判定，均为**沿支撑链**（直接支撑 + 传递支撑）传播：
 
-$$\text{增量}(S) = w \times \frac{A_S}{\sum_i A_i}$$
+**A. 面积分摊（A3，直接支撑逐对）**——按面积重叠比例分配下方箱的承重容量：
 
-放置新箱 B（重 w）时，对**每个直接支撑箱 S**：
+$$\text{份额}(B \to S) = w \times \frac{A_{B,S}}{\sum_i A_{B,S_i}}\qquad \text{分配}(S) = \text{max\_load}(S) \times \frac{A_{B,S}}{A_{\text{footprint}}(S)}$$
 
-- 若 S 在该朝向上声明了 `max_load`，要求 `S.supported_load + 增量(S) ≤ S.max_load_for(S.orientation)`。
-- 放置成功后：每个直接支撑箱 `S.supported_load += 增量(S)`；B 自身 `supported_load = 0`。
+要求每个直接支撑箱 S（声明了 `max_load`）：$\text{份额}(B \to S) \le \text{分配}(S)$。
 
-只累加**直接**放置在 S 顶面的箱子（不沿柱递归累计）。单支撑半面积 + 半悬空 -> 100% 重量给该支撑；两支撑各半（无悬空）-> 各 50%。
+**B. 整柱累计（D，链上累计）**——底层箱承受其上一整柱（含传递）的重量：
 
-> 与 `max_stack` 相同，`max_load` 只约束有直接支撑的箱子；`support_rate > 0` 是其物理有效的前提（预校验强制，同 `max_stack`）。
+$$\text{cum\_load}(X) + \sum_{\text{流经 X 的份额}} \le X.\text{max\_load}$$
+
+放置成功后，B 的份额沿支撑链向下累加到每个链上箱的 `cum_load`；`B.cum_load = 0`。悬空部分不计入分摊（分母 = 受支撑面积）。
+
+**示例（A，单支撑）**：upper 10×10×10 重 5 全压在 lower 20×20×10（`max_load: 10`）上，重叠面积 100，占比 100/400 = 1/4 → 分配 = 10×1/4 = 2.5，5 > 2.5 → 违反承重。
+
+**示例（A，多支撑）**：B 200×100 重 60 各占 S1、S2（均 100×100、`max_load: 50`）一半：份额各 30，分配各 50 → 放行（物理各承 ~30 ≤ 50）。若 S1 `max_load: 5`、S2 `max_load: 95`：对 S1 份额 30 > 分配 5 → 拒绝（强箱不兜底弱箱）。
+
+**示例（D，整柱累计）**：柱高 3 每箱重 5，底层 `max_load: 7`：中层压上时底层累计 5 ≤ 7 放行；顶层压上时底层累计 5+5 = 10 > 7 → 拒绝（即使顶层只直接压在中层上）。
+
+> 与 `max_stack` 相同，承重检查沿支撑链传播；`support_rate > 0` 是物理有效前提（预校验强制，同 `max_stack`）。
 
 ### 1.10 障碍物约束（obstacles，容器类型字段）
 

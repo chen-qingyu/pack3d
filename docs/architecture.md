@@ -171,7 +171,8 @@ pack()
 
 `BoxType` 的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的 optional 向量），任一箱型有非空值即启用（presence-based）：
 
-- `Placement` 新增内部字段 `stack_level` / `supported_load`（不序列化到输出），由 `constraints.cpp` 的 `check_stack_constraints`（只读预检）、`apply_stack_state`（放置后副作用）、`recompute_stack_state`（任意顺序重建 + 校验，用于续装 / 后处理合并 / 预校验）维护。
+- `Placement` 内部字段 `stack_level` / `above_count` / `cum_load` / `supports`（直接支撑下标，均不序列化到输出），由 `constraints.cpp` 的 `check_stack_constraints`（只读预检）、`apply_stack_state`（放置后副作用）、`recompute_stack_state`（任意顺序重建 + 校验，用于续装 / 后处理合并 / 预校验）维护。
+- 堆叠状态沿**支撑链**（直接支撑 + 传递支撑）传播：max_stack 每柱计数（`above_count`）、max_load 面积分摊（A3）+ 整柱累计（`cum_load`），语义与示例见 [constraints.md](constraints.md) 1.8 / 1.9。
 - `support_rate` / `max_stack` / `max_load` 相互独立；`support_rate = 0` 时允许悬空放置，悬空箱不计入堆叠柱。预校验强制：声明 `max_stack`/`max_load` 或启用装托时 `support_rate` 必须 > 0。
 
 ### 其他

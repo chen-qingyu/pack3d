@@ -288,25 +288,33 @@ TEST_CASE("max_stack: 异构最弱箱限制", "[core][stack]")
     REQUIRE_FALSE(check_stack_constraints({0, 0, 200}, {100, 100, 100}, 0.0, load, btm));
 }
 
-TEST_CASE("max_load: 面积加权累计承重", "[core][stack]")
+TEST_CASE("max_load: 面积重叠比例分配承重（A3）", "[core][stack]")
 {
     auto bt = make_stack_bt("bt", std::nullopt, 100.0);
     std::map<std::string, BoxType> btm = {{"bt", bt}};
     auto load = make_stack_load();
 
-    // 底座 200x200
+    // 底座 200x200，max_load 100：半面积覆盖只分配 100×20000/40000=50 容量
     load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {200, 200, 100}});
     apply_stack_state({0, 0, 0}, {200, 200, 100}, 0.0, load);
-    // box2 200x100 完全在底座上：承重 100
-    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
-    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
-    apply_stack_state({0, 0, 100}, {200, 100, 100}, 100.0, load);
-    REQUIRE(load.placements[0].supported_load == Catch::Approx(100.0));
-    // box3 200x100 并排（y=100）：底座累计 200 > max_load 100 → 拒绝
+
+    // 200x100 w100 占半面积：份额 100 > 分配 50 → 拒绝
     REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
+    // 200x100 w40 占半面积：份额 40 <= 分配 50 → 通过
+    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 40.0, load, btm));
+    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
+    apply_stack_state({0, 0, 100}, {200, 100, 100}, 40.0, load);
+    REQUIRE(load.placements[0].cum_load == Catch::Approx(40.0));
+    // 并排第二个 w40（y=100）：A3 通过，整柱累计 80 <= 100 → 通过
+    REQUIRE(check_stack_constraints({0, 100, 100}, {200, 100, 100}, 40.0, load, btm));
+    load.placements.push_back({"", "bt", "", {0, 100, 100}, Orientation::XYZ, {200, 100, 100}});
+    apply_stack_state({0, 100, 100}, {200, 100, 100}, 40.0, load);
+    REQUIRE(load.placements[0].cum_load == Catch::Approx(80.0));
+    // 第三个 w40：整柱累计 120 > 100 → 拒绝（D 整柱累计）
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 40.0, load, btm));
 }
 
-TEST_CASE("max_load: 悬空半面积仍 100% 承重", "[core][stack]")
+TEST_CASE("max_load: 悬空半面积仍 100% 承重（A3 全覆盖分配全容量）", "[core][stack]")
 {
     auto bt = make_stack_bt("bt", std::nullopt, 100.0);
     std::map<std::string, BoxType> btm = {{"bt", bt}};
@@ -315,16 +323,16 @@ TEST_CASE("max_load: 悬空半面积仍 100% 承重", "[core][stack]")
     // 底座 100x100
     load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
     apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load);
-    // 上箱 200x100，一半在底座上、一半悬空 → 承重仍为 100%
+    // 上箱 200x100 半悬空，但完全覆盖底座顶面 → A3 分配 100% 容量 → 通过
     REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
     load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
     apply_stack_state({0, 0, 100}, {200, 100, 100}, 100.0, load);
-    REQUIRE(load.placements[0].supported_load == Catch::Approx(100.0));
-    // 底座 max_load 100 已满载 → 再来一个 100kg 拒绝
+    REQUIRE(load.placements[0].cum_load == Catch::Approx(100.0));
+    // 再来一个 100kg：整柱累计 200 > max_load 100 → 拒绝
     REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
 }
 
-TEST_CASE("max_load: 两支撑各 50%", "[core][stack]")
+TEST_CASE("max_load: 两支撑各 50%（A3 逐对分摊）", "[core][stack]")
 {
     auto bt = make_stack_bt("bt", std::nullopt, 40.0);
     std::map<std::string, BoxType> btm = {{"bt", bt}};
@@ -335,14 +343,129 @@ TEST_CASE("max_load: 两支撑各 50%", "[core][stack]")
     load.placements.push_back({"", "bt", "", {100, 0, 0}, Orientation::XYZ, {100, 100, 100}});
     apply_stack_state({100, 0, 0}, {100, 100, 100}, 0.0, load);
 
-    // 上箱 200x100 各占 50% → 各 50kg > max_load 40 → 拒绝
+    // 上箱 200x100 w100 各占 50%：各支撑分配容量 40 < 份额 50 → 拒绝
     REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 100.0, load, btm));
-
-    // 面积加权拆分：50/50
+    // w60：份额 30 <= 分配 40 → 通过，各支撑累计 30
+    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, 60.0, load, btm));
     load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
-    apply_stack_state({0, 0, 100}, {200, 100, 100}, 100.0, load);
-    REQUIRE(load.placements[0].supported_load == Catch::Approx(50.0));
-    REQUIRE(load.placements[1].supported_load == Catch::Approx(50.0));
+    apply_stack_state({0, 0, 100}, {200, 100, 100}, 60.0, load);
+    REQUIRE(load.placements[0].cum_load == Catch::Approx(30.0));
+    REQUIRE(load.placements[1].cum_load == Catch::Approx(30.0));
+}
+
+TEST_CASE("max_load: 面积重叠比例分配承重（用户示例）", "[core][stack]")
+{
+    // lower 20x20 max_load 10，upper 10x10 w5 全压其上：分配 10×100/400=2.5 < 5 → 拒绝
+    BoxType lower;
+    lower.id = "lower";
+    lower.size = {20, 20, 10};
+    lower.allowed_orientations = {Orientation::XYZ};
+    lower.max_load = {10.0};
+    std::map<std::string, BoxType> btm = {{"lower", lower}};
+    auto load = make_stack_load();
+
+    load.placements.push_back({"", "lower", "", {0, 0, 0}, Orientation::XYZ, {20, 20, 10}});
+    apply_stack_state({0, 0, 0}, {20, 20, 10}, 0.0, load);
+
+    // 5 > 2.5 → 违反承重
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 10}, {10, 10, 10}, 5.0, load, btm));
+    // 轻箱 w2 <= 2.5 → 通过
+    REQUIRE(check_stack_constraints({0, 0, 10}, {10, 10, 10}, 2.0, load, btm));
+}
+
+TEST_CASE("max_load: 整柱累计承重（D）", "[core][stack]")
+{
+    // 底层 weak max_load=7，中层/顶层无 max_load；柱高 3 每箱 w5
+    // 顶层压上时底层整柱累计 5+5=10 > 7 → 拒绝
+    BoxType weak;
+    weak.id = "weak";
+    weak.size = {100, 100, 100};
+    weak.allowed_orientations = {Orientation::XYZ};
+    weak.max_load = {7.0};
+    BoxType plain;
+    plain.id = "plain";
+    plain.size = {100, 100, 100};
+    plain.allowed_orientations = {Orientation::XYZ};
+    std::map<std::string, BoxType> btm = {{"weak", weak}, {"plain", plain}};
+    auto load = make_stack_load();
+
+    load.placements.push_back({"b1", "weak", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load);
+    load.placements.push_back({"b2", "plain", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 100}, {100, 100, 100}, 5.0, load);
+    // 顶层 w5：底层整柱累计 5+5=10 > 7 → 拒绝
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 200}, {100, 100, 100}, 5.0, load, btm));
+    // 底层 max_load=10 时 10 <= 10 → 通过
+    weak.max_load = {10.0};
+    std::map<std::string, BoxType> btm2 = {{"weak", weak}, {"plain", plain}};
+    REQUIRE(check_stack_constraints({0, 0, 200}, {100, 100, 100}, 5.0, load, btm2));
+}
+
+TEST_CASE("max_stack: 跨不同高度支撑每柱计数（C2）", "[core][stack]")
+{
+    // S1 弱箱 max_stack=2 在地板（level 1，顶面 z=100）
+    // 强柱：A(100x100x30) -> B2(100x100x30) -> S2(100x100x40, max_stack=5)，顶面同为 z=100
+    // B(200x100x50) 同时搭在 S1 与 S2 上（level 4）：每柱计数 S1 柱=2 <= 2、S2 柱=4 <= 5 → 放行
+    BoxType weak;
+    weak.id = "weak";
+    weak.size = {100, 100, 100};
+    weak.allowed_orientations = {Orientation::XYZ};
+    weak.max_stack = {2};
+    BoxType strong;
+    strong.id = "strong";
+    strong.size = {100, 100, 100};
+    strong.allowed_orientations = {Orientation::XYZ};
+    strong.max_stack = {5};
+    std::map<std::string, BoxType> btm = {{"weak", weak}, {"strong", strong}};
+    auto load = make_stack_load();
+
+    load.placements.push_back({"S1", "weak", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load);
+    load.placements.push_back({"A", "strong", "", {100, 0, 0}, Orientation::XYZ, {100, 100, 30}});
+    apply_stack_state({100, 0, 0}, {100, 100, 30}, 0.0, load);
+    load.placements.push_back({"B2", "strong", "", {100, 0, 30}, Orientation::XYZ, {100, 100, 30}});
+    apply_stack_state({100, 0, 30}, {100, 100, 30}, 0.0, load);
+    load.placements.push_back({"S2", "strong", "", {100, 0, 60}, Orientation::XYZ, {100, 100, 40}});
+    apply_stack_state({100, 0, 60}, {100, 100, 40}, 0.0, load);
+
+    // B 跨 S1（level 1）与 S2（level 3）：旧全局层号 level 4 > weak.max_stack 2 会拒；
+    // 每柱计数：S1 柱 = 1+1 = 2 <= 2、S2 柱 = 3+1 = 4 <= 5 → 放行
+    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 50}, 0.0, load, btm));
+
+    // 提交后各柱箱数：S1 上 1 箱，强柱三箱各 +1（B 传递压上）
+    load.placements.push_back({"B", "strong", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 50}});
+    apply_stack_state({0, 0, 100}, {200, 100, 50}, 0.0, load);
+    auto above_of = [&](const std::string& id)
+    {
+        for (const auto& pl : load.placements)
+        {
+            if (pl.box_id == id)
+            {
+                return pl.above_count;
+            }
+        }
+        return -1;
+    };
+    REQUIRE(load.placements.back().stack_level == 4);
+    REQUIRE(above_of("S1") == 1);
+    REQUIRE(above_of("S2") == 1);
+    REQUIRE(above_of("B2") == 2);
+    REQUIRE(above_of("A") == 3);
+
+    // 对照组：S1 若 max_stack=1，则 B 压上 S1 柱=2 > 1 → 拒绝
+    BoxType weak1 = weak;
+    weak1.max_stack = {1};
+    std::map<std::string, BoxType> btm1 = {{"weak", weak1}, {"strong", strong}};
+    auto load1 = make_stack_load();
+    load1.placements.push_back({"S1", "weak", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load1);
+    load1.placements.push_back({"A", "strong", "", {100, 0, 0}, Orientation::XYZ, {100, 100, 30}});
+    apply_stack_state({100, 0, 0}, {100, 100, 30}, 0.0, load1);
+    load1.placements.push_back({"B2", "strong", "", {100, 0, 30}, Orientation::XYZ, {100, 100, 30}});
+    apply_stack_state({100, 0, 30}, {100, 100, 30}, 0.0, load1);
+    load1.placements.push_back({"S2", "strong", "", {100, 0, 60}, Orientation::XYZ, {100, 100, 40}});
+    apply_stack_state({100, 0, 60}, {100, 100, 40}, 0.0, load1);
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 50}, 0.0, load1, btm1));
 }
 
 TEST_CASE("recompute_stack_state: 乱序重建", "[core][stack]")
@@ -366,12 +489,13 @@ TEST_CASE("recompute_stack_state: 乱序重建", "[core][stack]")
         {
             if (pl.box_id == id)
             {
-                return std::make_pair(pl.stack_level, pl.supported_load);
+                return std::make_pair(pl.stack_level, pl.cum_load);
             }
         }
         return std::make_pair(0, 0.0);
     };
-    REQUIRE(find_level("b1") == std::make_pair(1, 50.0));
+    // 整柱累计：b1 承受 b2+b3 = 100，b2 承受 b3 = 50
+    REQUIRE(find_level("b1") == std::make_pair(1, 100.0));
     REQUIRE(find_level("b2") == std::make_pair(2, 50.0));
     REQUIRE(find_level("b3") == std::make_pair(3, 0.0));
 }
