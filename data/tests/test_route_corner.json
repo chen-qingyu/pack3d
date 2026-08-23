@@ -1,0 +1,29 @@
+{
+  "container_types": [
+    {
+      "id": "truck",
+      "sx": 300,
+      "sy": 200,
+      "sz": 100,
+      "payload": 100000.0
+    }
+  ],
+  "box_types": [
+    {
+      "id": "cube",
+      "sx": 100,
+      "sy": 100,
+      "sz": 100,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [
+    { "id": "d1", "box_type_id": "cube", "weight": 10.0, "platform": "P2" },
+    { "id": "d2", "box_type_id": "cube", "weight": 10.0, "platform": "P2" },
+    { "id": "d3", "box_type_id": "cube", "weight": 10.0, "platform": "P2" },
+    { "id": "d4", "box_type_id": "cube", "weight": 10.0, "platform": "P2" },
+    { "id": "s1", "box_type_id": "cube", "weight": 10.0, "platform": "P1" },
+    { "id": "s2", "box_type_id": "cube", "weight": 10.0, "platform": "P1" }
+  ],
+  "route": ["P1", "P2"]
+}
