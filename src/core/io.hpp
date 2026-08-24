@@ -20,7 +20,7 @@ namespace pack3d
 /// 输入语义校验（schema 无法表达的跨字段校验：重复 ID、引用完整性、路线等）
 [[nodiscard]] std::vector<std::string> pre_validate_input(const Problem& problem) noexcept;
 
-/// 箱型级重量 → 逐箱缺省（输入为"全箱型有重量、箱子无"模式时，箱子重量取自箱型；校验通过后调用）
+/// 箱型级重量 → 逐实例缺省（箱子和已有放置缺值时取自箱型；校验通过后调用）
 void resolve_type_weights(Problem& p) noexcept;
 
 /// 箱型级 group/platform → 逐实例缺省（严格三选一校验通过后调用）

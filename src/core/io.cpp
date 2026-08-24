@@ -86,11 +86,24 @@ struct LabelSources
     FieldSource platform = FieldSource::Invalid;
 };
 
+template <typename TypeGetter, typename BoxGetter>
 FieldSource detect_three_way_source(const char* name,
-                                    FieldPresence type,
-                                    FieldPresence instance,
+                                    const std::vector<BoxType>& box_types,
+                                    const std::vector<Box>& boxes,
+                                    TypeGetter type_value,
+                                    BoxGetter box_value,
                                     std::vector<std::string>& errors)
 {
+    FieldPresence type;
+    FieldPresence instance;
+    for (const auto& bt : box_types)
+    {
+        type.observe(type_value(bt).has_value());
+    }
+    for (const auto& bx : boxes)
+    {
+        instance.observe(box_value(bx).has_value());
+    }
     if ((type.any && instance.any) || (type.any && !type.all) ||
         (instance.any && !instance.all))
     {
@@ -109,14 +122,16 @@ FieldSource detect_three_way_source(const char* name,
     return FieldSource::None;
 }
 
+std::optional<std::string> optional_string(const std::string& value)
+{
+    return value.empty() ? std::nullopt : std::optional<std::string>(value);
+}
+
 LabelSources detect_label_sources(const Problem& problem,
                                   std::vector<std::string>& errors)
 {
-    FieldPresence type_group;
-    FieldPresence type_platform;
     for (const auto& bt : problem.box_types)
     {
-        type_group.observe(bt.group.has_value());
         if (bt.group.has_value())
         {
             if (bt.group->empty())
@@ -124,7 +139,6 @@ LabelSources detect_label_sources(const Problem& problem,
                 errors.push_back("box_type " + bt.id + ": group must be non-empty when configured");
             }
         }
-        type_platform.observe(bt.platform.has_value());
         if (bt.platform.has_value())
         {
             if (bt.platform->empty())
@@ -134,29 +148,77 @@ LabelSources detect_label_sources(const Problem& problem,
         }
     }
 
-    FieldPresence instance_group;
-    FieldPresence instance_platform;
-    auto inspect_instance = [&](const std::string& group, const std::string& platform)
-    {
-        instance_group.observe(!group.empty());
-        instance_platform.observe(!platform.empty());
+    return {
+        detect_three_way_source("group", problem.box_types, problem.boxes, [](const BoxType& bt)
+                                { return bt.group; }, [](const Box& bx)
+                                { return optional_string(bx.group); }, errors),
+        detect_three_way_source("platform", problem.box_types, problem.boxes, [](const BoxType& bt)
+                                { return bt.platform; }, [](const Box& bx)
+                                { return optional_string(bx.platform); }, errors),
     };
-    for (const auto& bx : problem.boxes)
-    {
-        inspect_instance(bx.group, bx.platform);
-    }
-    for (const auto& ec : problem.existing_containers)
+}
+
+template <typename T, typename TypeGetter, typename SnapshotGetter, typename Equal>
+void check_snapshot_consistency(
+    const char* name,
+    FieldSource source,
+    const std::map<std::string, const BoxType*>& type_map,
+    const std::vector<ExistingContainer>& existing,
+    TypeGetter type_value,
+    SnapshotGetter snapshot_value,
+    Equal equal,
+    std::vector<std::string>& errors)
+{
+    for (const auto& ec : existing)
     {
         for (const auto& ep : ec.placements)
         {
-            inspect_instance(ep.group, ep.platform);
+            auto it = type_map.find(ep.box_type_id);
+            if (it == type_map.end())
+            {
+                continue;
+            }
+            const auto type = type_value(*it->second);
+            const auto snapshot = snapshot_value(ep);
+            const bool valid =
+                source == FieldSource::None ? !snapshot.has_value() : source == FieldSource::Type ? !snapshot.has_value() || (type.has_value() && equal(*type, *snapshot))
+                                                                                                  : snapshot.has_value();
+            if (!valid)
+            {
+                errors.push_back(std::string("inconsistent ") + name +
+                                 ": existing placement violates source mode for box_type " +
+                                 ep.box_type_id);
+            }
         }
     }
+}
 
-    return {
-        detect_three_way_source("group", type_group, instance_group, errors),
-        detect_three_way_source("platform", type_platform, instance_platform, errors),
-    };
+template <typename T, typename Objects, typename TypeGetter,
+          typename ValueGetter, typename Setter>
+void inherit_type_field(FieldSource source,
+                        const std::map<std::string, const BoxType*>& type_map,
+                        Objects& objects,
+                        TypeGetter type_value,
+                        ValueGetter object_value,
+                        Setter set_value)
+{
+    if (source != FieldSource::Type)
+    {
+        return;
+    }
+    for (auto& object : objects)
+    {
+        auto it = type_map.find(object.box_type_id);
+        if (it == type_map.end())
+        {
+            continue;
+        }
+        const auto type = type_value(*it->second);
+        if (type.has_value() && !object_value(object).has_value())
+        {
+            set_value(object, *type);
+        }
+    }
 }
 
 std::string field_value(const BoxType* bt, const std::string& instance,
@@ -507,18 +569,36 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         return field_value(bt, instance_value, source, group);
     };
 
+    check_snapshot_consistency<std::string>(
+        "group", label_sources.group, bt_map, problem.existing_containers,
+        [](const BoxType& bt)
+        { return bt.group; },
+        [](const ExistingPlacement& ep)
+        { return optional_string(ep.group); },
+        std::equal_to<std::string>{}, out);
+    check_snapshot_consistency<std::string>(
+        "platform", label_sources.platform, bt_map, problem.existing_containers,
+        [](const BoxType& bt)
+        { return bt.platform; },
+        [](const ExistingPlacement& ep)
+        { return optional_string(ep.platform); },
+        std::equal_to<std::string>{}, out);
+
     // 重量信息一致性：与 group/platform 共用严格三选一检测
-    FieldPresence type_weight;
-    FieldPresence instance_weight;
-    for (const auto& bt : problem.box_types)
-    {
-        type_weight.observe(bt.weight.has_value());
-    }
-    for (const auto& bx : problem.boxes)
-    {
-        instance_weight.observe(bx.weight.has_value());
-    }
-    const auto weight_source = detect_three_way_source("weight", type_weight, instance_weight, out);
+    const auto weight_source = detect_three_way_source(
+        "weight", problem.box_types, problem.boxes,
+        [](const BoxType& bt)
+        { return bt.weight; },
+        [](const Box& bx)
+        { return bx.weight; }, out);
+    check_snapshot_consistency<double>(
+        "weight", weight_source, bt_map, problem.existing_containers,
+        [](const BoxType& bt)
+        { return bt.weight; },
+        [](const ExistingPlacement& ep)
+        { return ep.weight; },
+        [](double a, double b)
+        { return std::abs(a - b) <= 1e-9; }, out);
     const bool weight_info = weight_source != FieldSource::None;
     if (weight_info)
     {
@@ -843,24 +923,28 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
 // 箱型级重量 → 逐箱缺省：箱子未显式给重量时取所属箱型重量
 void resolve_type_weights(Problem& p) noexcept
 {
-    std::map<std::string, double> type_weight;
+    std::vector<std::string> ignored_errors;
+    const auto source = detect_three_way_source(
+        "weight", p.box_types, p.boxes,
+        [](const BoxType& bt)
+        { return bt.weight; },
+        [](const Box& bx)
+        { return bx.weight; }, ignored_errors);
+    std::map<std::string, const BoxType*> type_map;
     for (const auto& bt : p.box_types)
     {
-        if (bt.weight.has_value())
-        {
-            type_weight[bt.id] = bt.weight.value();
-        }
+        type_map[bt.id] = &bt;
     }
-    for (auto& bx : p.boxes)
+    inherit_type_field<double>(source, type_map, p.boxes, [](const BoxType& bt)
+                               { return bt.weight; }, [](const Box& bx)
+                               { return bx.weight; }, [](Box& bx, double value)
+                               { bx.weight = value; });
+    for (auto& ec : p.existing_containers)
     {
-        if (!bx.weight.has_value())
-        {
-            auto it = type_weight.find(bx.box_type_id);
-            if (it != type_weight.end())
-            {
-                bx.weight = it->second;
-            }
-        }
+        inherit_type_field<double>(source, type_map, ec.placements, [](const BoxType& bt)
+                                   { return bt.weight; }, [](const ExistingPlacement& ep)
+                                   { return ep.weight; }, [](ExistingPlacement& ep, double value)
+                                   { ep.weight = value; });
     }
 }
 
@@ -874,40 +958,27 @@ void resolve_type_labels(Problem& p) noexcept
         type_map[bt.id] = &bt;
     }
 
-    for (auto& bx : p.boxes)
-    {
-        auto it = type_map.find(bx.box_type_id);
-        if (it == type_map.end())
-        {
-            continue;
-        }
-        if (sources.group == FieldSource::Type)
-        {
-            bx.group = it->second->group.value_or(std::string());
-        }
-        if (sources.platform == FieldSource::Type)
-        {
-            bx.platform = it->second->platform.value_or(std::string());
-        }
-    }
+    inherit_type_field<std::string>(sources.group, type_map, p.boxes, [](const BoxType& bt)
+                                    { return bt.group; }, [](const Box& bx)
+                                    { return optional_string(bx.group); }, [](Box& bx, const std::string& value)
+                                    { bx.group = value; });
     for (auto& ec : p.existing_containers)
     {
-        for (auto& ep : ec.placements)
-        {
-            auto it = type_map.find(ep.box_type_id);
-            if (it == type_map.end())
-            {
-                continue;
-            }
-            if (sources.group == FieldSource::Type)
-            {
-                ep.group = it->second->group.value_or(std::string());
-            }
-            if (sources.platform == FieldSource::Type)
-            {
-                ep.platform = it->second->platform.value_or(std::string());
-            }
-        }
+        inherit_type_field<std::string>(sources.group, type_map, ec.placements, [](const BoxType& bt)
+                                        { return bt.group; }, [](const ExistingPlacement& ep)
+                                        { return optional_string(ep.group); }, [](ExistingPlacement& ep, const std::string& value)
+                                        { ep.group = value; });
+    }
+    inherit_type_field<std::string>(sources.platform, type_map, p.boxes, [](const BoxType& bt)
+                                    { return bt.platform; }, [](const Box& bx)
+                                    { return optional_string(bx.platform); }, [](Box& bx, const std::string& value)
+                                    { bx.platform = value; });
+    for (auto& ec : p.existing_containers)
+    {
+        inherit_type_field<std::string>(sources.platform, type_map, ec.placements, [](const BoxType& bt)
+                                        { return bt.platform; }, [](const ExistingPlacement& ep)
+                                        { return optional_string(ep.platform); }, [](ExistingPlacement& ep, const std::string& value)
+                                        { ep.platform = value; });
     }
 }
 

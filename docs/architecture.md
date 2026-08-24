@@ -20,7 +20,7 @@ flowchart LR
 ```
 
 - **schema 校验**：编译时嵌入的 JSON Schema（`data/input_schema.json` -> `input_schema.h`），保证结构合法。
-- **预校验**：`pre_validate_input()` 检查引用完整性、重量/group/platform 各自的三选一来源、路线/站点、障碍物/斜面合法性，以及约束之间的**级联前提**（如 `max_stack`/`max_load`/装托要求 `support_rate > 0`、`tender_limit` 要求 `group`）。
+- **预校验**：`pre_validate_input()` 检查引用完整性、重量/group/platform 各自的三选一来源（只看 `box_types` 与待装 `boxes`）、已有快照的模式一致性、路线/站点、障碍物/斜面合法性，以及约束之间的**级联前提**（如 `max_stack`/`max_load`/装托要求 `support_rate > 0`、`tender_limit` 要求 `group`）。已有放置作为已解析快照：箱型级模式下可无值或重复同值，冲突即拒绝；箱子级模式下必须有值；无值模式下不得有值，缺失属性按箱型继承。
 - **异常兜底**：任何未预见异常返回 `status=invalid`（带 `internal error`），任意输入都有完整 JSON 输出。
 
 ### 1.1 目标向量

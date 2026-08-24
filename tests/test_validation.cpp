@@ -313,7 +313,7 @@ TEST_CASE("pre_validate_input group 一致性：全有或全无均合法", "[val
     REQUIRE(pre_validate_input(p2).empty());
 }
 
-// group 一致性：已有放置缺 group 也判定非法
+// 箱子级模式下 existing placement 必须带 group
 TEST_CASE("pre_validate_input group 一致性：已有放置缺 group 非法", "[validation]")
 {
     Problem p;
@@ -335,12 +335,36 @@ TEST_CASE("pre_validate_input group 一致性：已有放置缺 group 非法", "
     bool found = false;
     for (const auto& v : violations)
     {
-        if (v.find("inconsistent group") != std::string::npos)
-        {
-            found = true;
-        }
+        found |= v.find("inconsistent group") != std::string::npos;
     }
     REQUIRE(found);
+}
+
+TEST_CASE("pre_validate_input existing 快照遵守三选一来源", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
+    p.boxes.push_back({"box1", "bt1", 5.0, "", ""});
+    ExistingPlacement ep;
+    ep.box_id = "e1";
+    ep.box_type_id = "bt1";
+    ep.position = {0, 0, 0};
+    ep.orientation = Orientation::XYZ;
+    ep.weight = 5.0;
+    ep.group = "g1";
+    p.existing_containers.push_back({"ct1", {ep}});
+
+    auto violations = pre_validate_input(p);
+    bool found_group = false;
+    for (const auto& v : violations)
+    {
+        found_group |= v.find("inconsistent group") != std::string::npos;
+    }
+    REQUIRE(found_group);
+
+    p.boxes[0].group = "g1";
+    REQUIRE(pre_validate_input(p).empty());
 }
 
 TEST_CASE("pre_validate_input group/platform 箱型级模式并归一化", "[validation]")
@@ -363,12 +387,68 @@ TEST_CASE("pre_validate_input group/platform 箱型级模式并归一化", "[val
     p.existing_containers.push_back({"ct1", {ep}});
     p.route = RouteOrder{{"P1"}, {{"P1", 0}}};
 
-    REQUIRE(pre_validate_input(p).empty());
+    const auto source = p;
+    REQUIRE(pre_validate_input(source).empty());
     resolve_type_labels(p);
     REQUIRE(p.boxes[0].group == "g1");
     REQUIRE(p.boxes[0].platform == "P1");
     REQUIRE(p.existing_containers[0].placements[0].group == "g1");
     REQUIRE(p.existing_containers[0].placements[0].platform == "P1");
+
+    auto same = source;
+    same.existing_containers[0].placements[0].group = "g1";
+    same.existing_containers[0].placements[0].platform = "P1";
+    same.box_types[0].weight = 10.0;
+    same.existing_containers[0].placements[0].weight = 10.0;
+    REQUIRE(pre_validate_input(same).empty());
+
+    auto conflict = same;
+    conflict.existing_containers[0].placements[0].group = "g2";
+    conflict.existing_containers[0].placements[0].platform = "P2";
+    const auto label_violations = pre_validate_input(conflict);
+    bool found_group_conflict = false;
+    bool found_platform_conflict = false;
+    for (const auto& v : label_violations)
+    {
+        found_group_conflict |= v.find("inconsistent group") != std::string::npos;
+        found_platform_conflict |= v.find("inconsistent platform") != std::string::npos;
+    }
+    REQUIRE(found_group_conflict);
+    REQUIRE(found_platform_conflict);
+
+    auto weight_conflict = source;
+    weight_conflict.box_types[0].weight = 10.0;
+    weight_conflict.existing_containers[0].placements[0].weight = 20.0;
+    bool found_weight_conflict = false;
+    for (const auto& v : pre_validate_input(weight_conflict))
+    {
+        found_weight_conflict |= v.find("inconsistent weight") != std::string::npos;
+    }
+    REQUIRE(found_weight_conflict);
+
+    auto none = source;
+    none.box_types[0].group.reset();
+    none.box_types[0].platform.reset();
+    none.boxes[0].group.clear();
+    none.boxes[0].platform.clear();
+    none.boxes[0].weight.reset();
+    none.existing_containers[0].placements[0].group = "g1";
+    none.existing_containers[0].placements[0].platform = "P1";
+    none.existing_containers[0].placements[0].weight = 10.0;
+    none.route = RouteOrder{{"P1"}, {{"P1", 0}}};
+    const auto none_violations = pre_validate_input(none);
+    bool found_none_group = false;
+    bool found_none_platform = false;
+    bool found_none_weight = false;
+    for (const auto& v : none_violations)
+    {
+        found_none_group |= v.find("inconsistent group") != std::string::npos;
+        found_none_platform |= v.find("inconsistent platform") != std::string::npos;
+        found_none_weight |= v.find("inconsistent weight") != std::string::npos;
+    }
+    REQUIRE(found_none_group);
+    REQUIRE(found_none_platform);
+    REQUIRE(found_none_weight);
 }
 
 TEST_CASE("pre_validate_input group/platform 箱子级模式允许实例不同", "[validation]")
