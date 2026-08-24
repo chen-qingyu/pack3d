@@ -157,12 +157,15 @@ std::vector<PalletLoad> palletize(
             continue;
         }
 
-        // 2) 混合兜底：托盘必须保持单一 group/platform，避免装车后丢失 tender 身份
+        // 2) 混合兜底：托盘始终保持单一 platform；group 是否可混由配置决定
         Candidate best_mixed;
         std::map<std::string, std::vector<Box>> by_label;
         for (const auto& bx : remaining)
         {
-            by_label[bx.platform + "\x1f" + bx.group].push_back(bx);
+            const std::string key = problem.pallet_mix_group.value()
+                                        ? bx.platform
+                                        : bx.platform + "\x1f" + bx.group;
+            by_label[key].push_back(bx);
         }
         for (const auto& pt : problem.pallet_types)
         {

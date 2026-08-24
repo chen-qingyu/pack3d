@@ -144,6 +144,69 @@ TEST_CASE("pallet 同组不拆托", "[solver][pallet]")
     {
         REQUIRE(p["groups"].size() == 1); // 无混合托
     }
+
+    // 当各 group 单独都无法整组装入时，允许混组可以减少托盘数
+    auto constrained = input;
+    constrained["box_types"][0]["sx"] = 600;
+    constrained["box_types"][0]["sy"] = 500;
+    constrained["box_types"][0]["sz"] = 1000;
+    constrained["route"] = json::array({"P1"});
+    for (auto& box : constrained["boxes"])
+    {
+        box["platform"] = "P1";
+    }
+    auto no_mix = run(constrained);
+    REQUIRE(no_mix["status"] == "complete");
+    REQUIRE(no_mix["summary"]["pallet_count"] == 4);
+    for (const auto& p : no_mix["result"]["pallets"])
+    {
+        REQUIRE(p["groups"].size() == 1);
+    }
+
+    constrained["constraints"]["pallet_mix_group"] = true;
+    auto mix = run(constrained);
+    REQUIRE(mix["status"] == "complete");
+    REQUIRE(mix["summary"]["pallet_count"] == 3);
+    bool found_mixed = false;
+    for (const auto& p : mix["result"]["pallets"])
+    {
+        found_mixed |= p["groups"].size() > 1;
+        REQUIRE(p["platforms"] == json::array({"P1"}));
+    }
+    REQUIRE(found_mixed);
+    const auto& container_groups = mix["result"]["containers"][0]["groups"];
+    REQUIRE(std::find(container_groups.begin(), container_groups.end(), "A") !=
+            container_groups.end());
+    REQUIRE(std::find(container_groups.begin(), container_groups.end(), "B") !=
+            container_groups.end());
+    REQUIRE(std::find(container_groups.begin(), container_groups.end(), "C") !=
+            container_groups.end());
+    bool found_mixed_placement = false;
+    for (const auto& placement : mix["result"]["containers"][0]["placements"])
+    {
+        if (placement["box_id"].get<std::string>().rfind("pt1200#", 0) == 0 &&
+            placement["group"].is_null())
+        {
+            found_mixed_placement = true;
+            REQUIRE_FALSE(placement.contains("groups"));
+        }
+    }
+    REQUIRE(found_mixed_placement);
+
+    for (const auto* algorithm : {"gep", "glc", "rgs", "bsg"})
+    {
+        constrained["algorithm"] = algorithm;
+        auto multi_algo = run(constrained);
+        INFO("algorithm=" << algorithm);
+        REQUIRE(multi_algo["status"] == "complete");
+        bool has_mixed_pallet = false;
+        for (const auto& p : multi_algo["result"]["pallets"])
+        {
+            has_mixed_pallet |= p["groups"].size() > 1;
+            REQUIRE(p["platforms"] == json::array({"P1"}));
+        }
+        REQUIRE(has_mixed_pallet);
+    }
 }
 
 // test_pallet_route.json — route 启用时同平台单托，装车后满足路线约束
@@ -246,4 +309,9 @@ TEST_CASE("pallet 非法输入返回 invalid", "[solver][pallet]")
     auto dup = base;
     dup["pallet_types"].push_back(dup["pallet_types"][0]);
     REQUIRE(run(dup)["status"] == "invalid");
+
+    // 装托模式必须显式配置是否混订单
+    auto missing_mix = base;
+    missing_mix["constraints"].erase("pallet_mix_group");
+    REQUIRE(run(missing_mix)["status"] == "invalid");
 }

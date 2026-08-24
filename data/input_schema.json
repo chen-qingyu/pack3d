@@ -173,6 +173,9 @@
           "maximum": 1,
           "default": 1
         },
+        "pallet_mix_group": {
+          "type": "boolean"
+        },
         "heavy_not_on_light": {
           "type": "boolean",
           "default": false
@@ -223,5 +226,20 @@
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": ["pallet_types"]
+      },
+      "then": {
+        "required": ["constraints"],
+        "properties": {
+          "constraints": {
+            "required": ["pallet_mix_group"]
+          }
+        }
+      }
+    }
+  ]
 }

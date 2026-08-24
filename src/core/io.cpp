@@ -321,6 +321,10 @@ void from_json(const json& j, Box& bx)
     bx.weight = json_opt<double>(j, "weight");
     bx.group = json_opt<std::string>(j, "group").value_or(std::string());
     bx.platform = json_opt<std::string>(j, "platform").value_or(std::string());
+    if (!bx.group.empty())
+    {
+        bx.group_members.insert(bx.group);
+    }
 }
 
 void from_json(const json& j, ExistingPlacement& ep)
@@ -334,6 +338,10 @@ void from_json(const json& j, ExistingPlacement& ep)
     ep.weight = json_opt<double>(j, "weight");
     ep.platform = json_opt<std::string>(j, "platform").value_or(std::string());
     ep.group = json_opt<std::string>(j, "group").value_or(std::string());
+    if (!ep.group.empty())
+    {
+        ep.group_members.insert(ep.group);
+    }
     if (j.contains("dx"))
     {
         OrientedSize sz;
@@ -396,6 +404,7 @@ void from_json(const json& j, Problem& p)
         {
             p.pallet_support_rate = *v;
         }
+        p.pallet_mix_group = json_opt<bool>(c, "pallet_mix_group");
         if (auto v = json_opt<bool>(c, "heavy_not_on_light"))
         {
             p.heavy_not_on_light = *v;
@@ -621,7 +630,8 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     {
         for (const auto& ep : ec.placements)
         {
-            any_group |= !input_label(ep.box_type_id, ep.group, label_sources.group, true).empty();
+            any_group |= !input_label(ep.box_type_id, ep.group, label_sources.group, true).empty() ||
+                         !ep.group_members.empty();
         }
     }
 
@@ -776,6 +786,10 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         if (problem.support_rate == 0.0)
         {
             out.push_back("pallet mode requires support_rate > 0");
+        }
+        if (!problem.pallet_mix_group.has_value())
+        {
+            out.push_back("pallet mode requires pallet_mix_group");
         }
     }
 
@@ -997,6 +1011,7 @@ ContainerLoad build_load_from_existing(
         pl.osize = bt_it->second.size.orient(ep.orientation);
         pl.platform = ep.platform.empty() ? bt_it->second.platform.value_or(std::string()) : ep.platform;
         pl.group = ep.group.empty() ? bt_it->second.group.value_or(std::string()) : ep.group;
+        pl.group_members = effective_groups(ep.group_members, pl.group);
         pl.weight = ep.weight;
         // 箱型级重量缺省：已有放置未显式给重量时取箱型重量
         if (!pl.weight.has_value() && bt_it->second.weight.has_value())
@@ -1025,9 +1040,9 @@ ContainerLoad build_load_from_existing(
         {
             load.platforms.insert(ep.platform);
         }
-        if (!ep.group.empty())
+        for (const auto& group : pl.group_members)
         {
-            load.groups.insert(ep.group);
+            load.groups.insert(group);
         }
         if (pl.weight.has_value())
         {

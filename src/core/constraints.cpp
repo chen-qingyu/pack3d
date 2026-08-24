@@ -917,9 +917,9 @@ TenderState build_tender_state(const std::vector<ContainerLoad>& all_loads,
 
 bool check_tender_limit(const TenderState& ts,
                         const std::set<std::string>& groups,
-                        const std::string& group) noexcept
+                        const std::set<std::string>& candidate_groups) noexcept
 {
-    if (ts.limit <= 0 || group.empty() || groups.count(group))
+    if (ts.limit <= 0 || candidate_groups.empty())
     {
         return true;
     }
@@ -944,10 +944,17 @@ bool check_tender_limit(const TenderState& ts,
             absorb(it->second);
         }
     }
-    auto it = ts.group_tenders.find(group);
-    if (it != ts.group_tenders.end())
+    for (const auto& group : candidate_groups)
     {
-        absorb(it->second);
+        if (groups.count(group) != 0)
+        {
+            continue;
+        }
+        auto it = ts.group_tenders.find(group);
+        if (it != ts.group_tenders.end())
+        {
+            absorb(it->second);
+        }
     }
     return merged <= ts.limit;
 }

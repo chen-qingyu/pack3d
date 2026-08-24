@@ -80,7 +80,8 @@ ContainerLoad GepPacker::pack_single_impl(
         const auto& bt = box_type_map_.at(box.box_type_id);
 
         // tender 约束：与位置无关，先于朝向/极点循环判断
-        if (!check_tender_limit(tender, load.groups, box.group))
+        const auto box_groups = effective_groups(box.group_members, box.group);
+        if (!check_tender_limit(tender, load.groups, box_groups))
         {
             continue; // 放入本容器会使所属 tender 超限 → 留未装
         }
@@ -173,6 +174,7 @@ ContainerLoad GepPacker::pack_single_impl(
                 pl.osize = os;
                 pl.platform = box.platform;
                 pl.group = box.group;
+                pl.group_members = box_groups;
                 pl.weight = box.weight;
 
                 load.placements.push_back(pl);
@@ -189,9 +191,9 @@ ContainerLoad GepPacker::pack_single_impl(
                 {
                     load.platforms.insert(box.platform);
                 }
-                if (!box.group.empty())
+                for (const auto& group : box_groups)
                 {
-                    load.groups.insert(box.group);
+                    load.groups.insert(group);
                 }
 
                 // 生成新极点

@@ -111,9 +111,9 @@ void prefill_load(ContainerLoad& load,
         {
             load.platforms.insert(pl.platform);
         }
-        if (!pl.group.empty())
+        for (const auto& group : effective_groups(pl.group_members, pl.group))
         {
-            load.groups.insert(pl.group);
+            load.groups.insert(group);
         }
         auto bx_it = box_map.find(pl.box_id);
         if (bx_it != box_map.end() && bx_it->second.weight.has_value())
@@ -350,10 +350,11 @@ Solution PackerBase::build_solution(
             TenderState ts = build_tender_state(all_loads, all_loads.size(), limit);
             for (const auto& bx : remaining)
             {
-                if (!bx.group.empty() && !check_tender_limit(ts, {}, bx.group))
+                const auto groups = effective_groups(bx.group_members, bx.group);
+                if (!groups.empty() && !check_tender_limit(ts, {}, groups))
                 {
                     ++tender_blocked;
-                    blocked_groups.insert(bx.group);
+                    blocked_groups.insert(groups.begin(), groups.end());
                 }
             }
         }

@@ -351,6 +351,7 @@ void commit_placement(
     pl.osize = osize;
     pl.platform = box.platform;
     pl.group = box.group;
+    pl.group_members = effective_groups(box.group_members, box.group);
     pl.weight = box.weight;
 
     size_t idx = load.placements.size();
@@ -370,9 +371,9 @@ void commit_placement(
     {
         load.platforms.insert(box.platform);
     }
-    if (!box.group.empty())
+    for (const auto& group : load.placements.back().group_members)
     {
-        load.groups.insert(box.group);
+        load.groups.insert(group);
     }
 
     grid_register(ctx, load.placements, idx);
@@ -491,7 +492,8 @@ void insertion_heuristic(
         const BoxType& bt = bt_it->second;
 
         // tender 约束：与位置无关，先于极点循环判断
-        if (!check_tender_limit(tender, out_load.groups, box.group))
+        if (!check_tender_limit(tender, out_load.groups,
+                                effective_groups(box.group_members, box.group)))
         {
             continue; // 放入本容器会使所属 tender 超限 → 留未装
         }

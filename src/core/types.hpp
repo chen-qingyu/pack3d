@@ -197,8 +197,9 @@ struct Box
     std::string id;
     std::string box_type_id;
     std::optional<double> weight = std::nullopt;
-    std::string group;    // 空字符串表示未设置
-    std::string platform; // 空字符串表示未设置
+    std::string group;                   // 空字符串表示未设置
+    std::string platform;                // 空字符串表示未设置
+    std::set<std::string> group_members; // 混合托盘的完整分组集合
 };
 
 // 托盘类型（用户自定义，可多种并存，由装托循环选择）
@@ -247,6 +248,7 @@ struct ExistingPlacement
     std::string platform;
     std::string group;
     std::optional<OrientedSize> size = std::nullopt;
+    std::set<std::string> group_members;
 };
 
 struct ExistingContainer
@@ -275,8 +277,9 @@ struct Problem
 
     // 装托（palletizing）：pallet_types 非空即启用装托模式
     std::vector<PalletType> pallet_types;
-    bool pallet_fallback = false;     // 散件装不进任何托盘时是否降级散装
-    double pallet_support_rate = 1.0; // 装托阶段专用底面支撑率（默认完全支撑）
+    bool pallet_fallback = false;         // 散件装不进任何托盘时是否降级散装
+    double pallet_support_rate = 1.0;     // 装托阶段专用底面支撑率（默认完全支撑）
+    std::optional<bool> pallet_mix_group; // 装托是否允许同一站点混合分组
 
     // 算法
     Algorithm algorithm = Algorithm::GEP;
@@ -298,6 +301,8 @@ struct Placement
     std::string group;    // 空字符串表示未设置，输出时转为 null
     std::optional<double> weight = std::nullopt;
 
+    std::set<std::string> group_members; // 混合托盘的完整分组集合
+
     // 堆叠状态（内部字段，不序列化到输出）
     int stack_level = 1;          // 所在堆柱层号，地板层=1（max_stack 层号基准）
     int col_height = 1;           // 所在柱的层数（从地板起；同层并排不增层，max_stack 用）
@@ -305,6 +310,34 @@ struct Placement
     double cum_load = 0.0;        // 从上方流经本箱的整柱累计载荷（max_load 累计承重）
     std::vector<size_t> supports; // 直接支撑箱下标（本容器 placements 内，堆叠传播用）
 };
+
+inline std::set<std::string> effective_groups(
+    const std::set<std::string>& members, const std::string& group)
+{
+    if (!members.empty())
+    {
+        return members;
+    }
+    if (!group.empty())
+    {
+        return {group};
+    }
+    return {};
+}
+
+inline std::string encode_groups(
+    const std::set<std::string>& members, const std::string& group)
+{
+    const auto groups = effective_groups(members, group);
+    std::string encoded;
+    for (const auto& value : groups)
+    {
+        encoded += std::to_string(value.size());
+        encoded += ':';
+        encoded += value;
+    }
+    return encoded;
+}
 
 // 容器装载（可变求解状态）
 struct ContainerLoad

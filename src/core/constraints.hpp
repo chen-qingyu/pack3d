@@ -130,11 +130,18 @@ struct TenderState
 [[nodiscard]] TenderState build_tender_state(const std::vector<ContainerLoad>& all_loads,
                                              size_t current, int tender_limit);
 
-/// 预检：把 group 加入"已含 groups 的当前容器"是否会使所属 tender 超过 limit。
-/// group 已在 groups 中恒真；limit<=0 或 group 为空恒真。
+/// 预检：把 candidate_groups 加入"已含 groups 的当前容器"是否会使所属 tender 超过 limit。
+/// candidate_groups 中的 group 作为一个候选整体处理；limit<=0 或集合为空恒真。
 [[nodiscard]] bool check_tender_limit(const TenderState& ts,
                                       const std::set<std::string>& groups,
-                                      const std::string& group) noexcept;
+                                      const std::set<std::string>& candidate_groups) noexcept;
+
+[[nodiscard]] inline bool check_tender_limit(
+    const TenderState& ts, const std::set<std::string>& groups,
+    const std::string& group) noexcept
+{
+    return check_tender_limit(ts, groups, effective_groups({}, group));
+}
 
 /// 校验全部容器的每个 tender 连通分量都不超过 limit（后处理候选整体复检用）
 [[nodiscard]] bool check_all_tenders(const std::vector<ContainerLoad>& all_loads,

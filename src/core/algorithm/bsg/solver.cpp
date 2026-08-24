@@ -153,9 +153,9 @@ PackResult solve(const GlobalContext& ctx,
             {
                 s0.constraint_load.platforms.insert(pl.platform);
             }
-            if (!pl.group.empty())
+            for (const auto& group : effective_groups(pl.group_members, pl.group))
             {
-                s0.constraint_load.groups.insert(pl.group);
+                s0.constraint_load.groups.insert(group);
             }
         }
     }

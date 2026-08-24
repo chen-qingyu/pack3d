@@ -55,7 +55,8 @@
   ],
   "constraints": {
     "time_limit": 60,
-    "support_rate": 0.6
+    "support_rate": 0.6,
+    "pallet_mix_group": false
   },
   "algorithm": "gep"
 }

@@ -169,7 +169,7 @@ JSON，顶层四个字段：
 
 `result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`、`weight`、`group`、`platform`（承重字段与 `allowed_orientations` 对齐的数组，未配置为 `null`，字段恒存在）；装托模式下额外包含虚拟托盘箱型。箱型级 `group/platform` 会同时以有效值出现在对应 placement 中；箱子级模式下箱型字段为 `null`，placement 保留各实例值。
 
-装托模式下的虚拟托盘箱型是合成类型；由于托盘保持单一 `group/platform`，其箱型字段与托盘 placement 使用相同的有效值。
+装托模式下的虚拟托盘箱型是合成类型；单 group 托盘的箱型字段与 placement 使用相同的有效值。混合 group 托盘的虚拟箱 `group` 为 `null`。混合托盘内部的 group 集合仅用于求解阶段的约束和容器级聚合，不新增 placement 输出字段。
 
 placement 字段说明：
 

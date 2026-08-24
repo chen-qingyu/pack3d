@@ -20,7 +20,7 @@ void to_json(json& j, const PalletLoad& p);
 /// 虚拟托盘箱型：size = 托盘平面 × (loaded_height + sz)，仅 XY 平面旋转，max_stack=[1,1]
 [[nodiscard]] BoxType virtual_box_type(const PalletLoad& p) noexcept;
 
-/// 虚拟托盘箱：重量 = 自重 + 货物重；单组/单平台托取对应值
+/// 虚拟托盘箱：重量 = 自重 + 货物重；混合 group 时单值 group 为空
 [[nodiscard]] Box virtual_box(const PalletLoad& p) noexcept;
 
 /// 从 pack_single 结果构建 PalletLoad（计算 loaded_height/goods_weight/groups/platforms）

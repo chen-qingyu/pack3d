@@ -1,3 +1,4 @@
+#include "core/constraints.hpp"
 #include "test_common.hpp"
 
 // test_tender_limit.json — 3 箱同 group g1，容器限装 2 箱，tender_limit=1
@@ -51,4 +52,17 @@ TEST_CASE("tender 输出按连通分量编号", "[solver][tender]")
         // 无 group 的容器 platforms/groups 保持 null 语义
         REQUIRE(res["result"]["containers"][0]["groups"].size() == 2);
     }
+}
+
+TEST_CASE("tender 多 group 候选按整体检查", "[core][tender]")
+{
+    TenderState ts;
+    ts.limit = 2;
+    ts.sizes = {1, 1};
+    ts.group_tenders["A"] = {0};
+    ts.group_tenders["B"] = {1};
+
+    REQUIRE(check_tender_limit(ts, {}, std::set<std::string>{"A"}));
+    REQUIRE(check_tender_limit(ts, {}, std::set<std::string>{"B"}));
+    REQUIRE_FALSE(check_tender_limit(ts, {}, std::set<std::string>{"A", "B"}));
 }

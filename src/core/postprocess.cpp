@@ -38,9 +38,9 @@ ContainerLoad without_platform(const ContainerLoad& src,
         {
             out.platforms.insert(pl.platform);
         }
-        if (!pl.group.empty())
+        for (const auto& group : effective_groups(pl.group_members, pl.group))
         {
-            out.groups.insert(pl.group);
+            out.groups.insert(group);
         }
         auto it = box_map.find(pl.box_id);
         if (it != box_map.end() && it->second.weight.has_value())

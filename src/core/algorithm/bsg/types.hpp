@@ -154,6 +154,7 @@ struct ItemClass
     double weight = 0.0;
     std::string group;
     std::vector<std::string> box_ids;
+    std::set<std::string> group_members;
 };
 
 // ============================================================

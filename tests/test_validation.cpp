@@ -504,6 +504,12 @@ TEST_CASE("pre_validate_input 检测装托模式需要 support_rate", "[validati
         }
     }
     REQUIRE(found);
+    bool missing_mix = false;
+    for (const auto& v : violations)
+    {
+        missing_mix |= v.find("pallet mode requires pallet_mix_group") != std::string::npos;
+    }
+    REQUIRE(missing_mix);
 
     // support_rate>0 → 不再报错
     p.support_rate = 0.6;
@@ -511,5 +517,12 @@ TEST_CASE("pre_validate_input 检测装托模式需要 support_rate", "[validati
     for (const auto& v : violations)
     {
         REQUIRE(v.find("pallet mode requires support_rate > 0") == std::string::npos);
+    }
+
+    p.pallet_mix_group = false;
+    violations = pre_validate_input(p);
+    for (const auto& v : violations)
+    {
+        REQUIRE(v.find("pallet mode requires pallet_mix_group") == std::string::npos);
     }
 }

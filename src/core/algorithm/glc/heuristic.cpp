@@ -94,7 +94,7 @@ bool Heuristic::check_block_feasible(
     // ---- per-block 检查 ----
 
     // tender 约束：块内同组，只查一次
-    if (!check_tender_limit(tender_, state.groups, block.group))
+    if (!check_tender_limit(tender_, state.groups, block.group_members))
     {
         return false;
     }
@@ -214,6 +214,7 @@ bool Heuristic::check_block_feasible(
                 pl.osize = single;
                 pl.platform = block.platform;
                 pl.group = block.group;
+                pl.group_members = block.group_members;
                 if (has_weight_info_ && (problem_.has_max_load || problem_.heavy_not_on_light))
                 {
                     pl.weight = box_weight;
@@ -290,9 +291,9 @@ void Heuristic::place_block(
                     state.platforms.insert(block.platform);
                 }
 
-                if (!block.group.empty())
+                for (const auto& group : block.group_members)
                 {
-                    state.groups.insert(block.group);
+                    state.groups.insert(group);
                 }
             }
         }
@@ -495,19 +496,25 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
                                 const std::vector<Placement>& existing,
                                 int width)
 {
-    // 库存按 (type, platform, group) 聚合（与块/回填分组一致，热路径用），重量为精确单箱重量
+    // 库存按 (type, platform, group 集合) 聚合，重量为精确单箱重量
     std::map<std::string, std::vector<double>> all_available;
     for (const auto& bx : boxes)
     {
-        all_available[bx.box_type_id + "\t" + bx.platform + "\t" + bx.group].push_back(
-            bx.weight.has_value() ? bx.weight.value() : 0.0);
+        all_available[bx.box_type_id + "\t" + bx.platform + "\t" +
+                      encode_groups(bx.group_members, bx.group)]
+            .push_back(
+                bx.weight.has_value() ? bx.weight.value() : 0.0);
     }
 
-    // 块按 (type, platform, group) 分组生成（确保同平台同分组）
+    // 块按 (type, platform, group 集合) 分组生成
     std::map<std::string, int> group_counts;
+    std::map<std::string, std::set<std::string>> group_members;
     for (const auto& bx : boxes)
     {
-        group_counts[bx.box_type_id + "\t" + bx.platform + "\t" + bx.group]++;
+        const std::string key = bx.box_type_id + "\t" + bx.platform + "\t" +
+                                encode_groups(bx.group_members, bx.group);
+        group_counts[key]++;
+        group_members[key] = effective_groups(bx.group_members, bx.group);
     }
 
     std::vector<SimpleBlock> all_blocks;
@@ -517,8 +524,8 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
         auto tab2 = key.find('\t', tab1 + 1);
         auto tid = key.substr(0, tab1);
         auto plat = key.substr(tab1 + 1, tab2 - tab1 - 1);
-        auto grp = key.substr(tab2 + 1);
-        auto type_blocks = block_gen_.generate_for_type(tid, container_.inner_size, plat, grp, count);
+        auto type_blocks = block_gen_.generate_for_type(
+            tid, container_.inner_size, plat, group_members[key], count);
         all_blocks.insert(all_blocks.end(), type_blocks.begin(), type_blocks.end());
     }
 

@@ -34,13 +34,14 @@ ContainerLoad BsgPacker::pack_single_impl(
             continue;
         }
         const double weight = bx.weight.value_or(0.0);
-        const std::string gkey = use_tender ? bx.group : "";
+        const auto box_groups = effective_groups(bx.group_members, bx.group);
+        const std::string gkey = use_tender ? encode_groups(box_groups, "") : "";
         const auto key = std::make_tuple(bx.box_type_id, bx.platform, gkey, weight);
         auto [it, inserted] = class_index.emplace(key, static_cast<int>(item_classes.size()));
         if (inserted)
         {
             box_types.push_back(bt_it->second);
-            item_classes.push_back({bx.box_type_id, bx.platform, weight, gkey, {}});
+            item_classes.push_back({bx.box_type_id, bx.platform, weight, box_groups.size() == 1 ? *box_groups.begin() : "", {}, box_groups});
         }
         item_classes[it->second].box_ids.push_back(bx.id);
     }
@@ -119,13 +120,14 @@ ContainerLoad BsgPacker::pack_single_impl(
         const auto& bx = bx_it->second;
         pl.platform = bx.platform;
         pl.group = bx.group;
+        pl.group_members = effective_groups(bx.group_members, bx.group);
         if (!bx.platform.empty())
         {
             load.platforms.insert(bx.platform);
         }
-        if (!bx.group.empty())
+        for (const auto& group : pl.group_members)
         {
-            load.groups.insert(bx.group);
+            load.groups.insert(group);
         }
         if (has_weight_info_ && bx.weight.has_value())
         {

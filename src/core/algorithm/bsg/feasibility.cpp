@@ -106,8 +106,6 @@ bool can_place_block(
 
     // tender 约束：逐叶按 group 去重检查（复合块可能含多个 group），
     // 通过后把 group 记入 next_load.groups，供后续块判定连通
-    std::unordered_set<std::string> checked_groups;
-
     // 全支撑（support_rate>=1）下不存在"下方留空隙、后放下方箱"的乱序放置，可跳过检测
     const bool need_recompute_check = ctx.support_rate < 1.0;
     bool need_recompute = false;
@@ -118,13 +116,14 @@ bool can_place_block(
             return false;
         }
         const auto& item = ctx.item_classes[leaf.item_class_idx];
-        if (ctx.tender.limit > 0 && !item.group.empty() && checked_groups.insert(item.group).second)
+        const auto item_groups = effective_groups(item.group_members, item.group);
+        if (ctx.tender.limit > 0 && !item_groups.empty())
         {
-            if (!check_tender_limit(ctx.tender, next_load.groups, item.group))
+            if (!check_tender_limit(ctx.tender, next_load.groups, item_groups))
             {
                 return false;
             }
-            next_load.groups.insert(item.group);
+            next_load.groups.insert(item_groups.begin(), item_groups.end());
         }
         if (!check_boundary(ctx.container_type, leaf.position, leaf.osize) ||
             check_overlap(leaf.position, leaf.osize, next_load.placements) ||
@@ -167,6 +166,7 @@ bool can_place_block(
         next_load.placements.push_back({"", item.box_type_id, "", leaf.position,
                                         leaf.orientation, leaf.osize, item.platform, ""});
         next_load.placements.back().weight = item.weight;
+        next_load.placements.back().group_members = item_groups;
         if (ctx.has_max_stack || ctx.has_max_load)
         {
             apply_stack_state(leaf.position, leaf.osize, item.weight, next_load);
