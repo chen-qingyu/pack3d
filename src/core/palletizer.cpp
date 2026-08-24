@@ -157,18 +157,19 @@ std::vector<PalletLoad> palletize(
             continue;
         }
 
-        // 2) 混合兜底：不同站点的货物不能混装一托 → 按站点分桶，逐桶试装取最优一托
+        // 2) 混合兜底：托盘必须保持单一 group/platform，避免装车后丢失 tender 身份
         Candidate best_mixed;
-        std::map<std::string, std::vector<Box>> by_platform;
+        std::map<std::string, std::vector<Box>> by_label;
         for (const auto& bx : remaining)
         {
-            by_platform[bx.platform].push_back(bx);
+            by_label[bx.platform + "\x1f" + bx.group].push_back(bx);
         }
         for (const auto& pt : problem.pallet_types)
         {
             ContainerType ct = virtual_container(pt);
-            for (const auto& [platform, boxes] : by_platform)
+            for (const auto& entry : by_label)
             {
+                const auto& boxes = entry.second;
                 ContainerLoad load = packer.pack_single(boxes, ct, {}, TenderState{});
                 load.type = nullptr; // ct 是栈上临时容器，避免悬挂指针
                 if (!load.placements.empty())

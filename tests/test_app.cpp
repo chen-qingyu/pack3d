@@ -113,6 +113,14 @@ TEST_CASE("箱型级 group/platform 传播到输出", "[solver][labels]")
     }
 }
 
+TEST_CASE("空 group/platform 被 schema 拒绝", "[solver][labels]")
+{
+    auto input = load_data("data/demo.json");
+    input["boxes"][0]["group"] = "";
+    auto res = run(input);
+    REQUIRE(res["status"] == "invalid");
+}
+
 // run() 对任何非法输入都返回 status=invalid 的 JSON，而不是抛异常/崩溃
 TEST_CASE("run 对畸形输入返回 invalid", "[solver]")
 {

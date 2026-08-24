@@ -26,6 +26,7 @@ TEST_CASE("pallet 基本：全部装托 + 计数口径", "[solver][pallet]")
             saw_virtual = true;
             REQUIRE(bt["allowed_orientations"] == json::array({"xyz", "yxz"}));
             REQUIRE(bt["max_stack"] == json::array({1, 1}));
+            REQUIRE(bt["group"] == "A");
             REQUIRE(bt["sz"] == 180); // loaded_height 30 + sz 150
         }
     }

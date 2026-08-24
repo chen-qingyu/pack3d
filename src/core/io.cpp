@@ -60,7 +60,7 @@ std::optional<T> json_opt(const json& j, const char* key)
     return it->get<T>();
 }
 
-enum class LabelSource : uint8_t
+enum class FieldSource : uint8_t
 {
     Invalid,
     None,
@@ -68,103 +68,78 @@ enum class LabelSource : uint8_t
     Instance,
 };
 
-struct LabelSources
+struct FieldPresence
 {
-    LabelSource group = LabelSource::Invalid;
-    LabelSource platform = LabelSource::Invalid;
+    bool any = false;
+    bool all = true;
+
+    void observe(bool configured) noexcept
+    {
+        any |= configured;
+        all &= configured;
+    }
 };
 
-LabelSource detect_label_source(const char* name,
-                                bool any_type, bool all_type,
-                                bool any_instance, bool all_instance,
-                                std::vector<std::string>& errors)
+struct LabelSources
 {
-    if (any_type && any_instance)
+    FieldSource group = FieldSource::Invalid;
+    FieldSource platform = FieldSource::Invalid;
+};
+
+FieldSource detect_three_way_source(const char* name,
+                                    FieldPresence type,
+                                    FieldPresence instance,
+                                    std::vector<std::string>& errors)
+{
+    if ((type.any && instance.any) || (type.any && !type.all) ||
+        (instance.any && !instance.all))
     {
         errors.push_back(std::string("inconsistent ") + name +
-                         ": box_types and boxes/existing placements cannot coexist");
-        return LabelSource::Invalid;
+                         ": use none, all box_types, or all instances");
+        return FieldSource::Invalid;
     }
-    if (any_type && !all_type)
+    if (type.any)
     {
-        errors.push_back(std::string("inconsistent ") + name +
-                         ": some box_types have the field, some don't");
-        return LabelSource::Invalid;
+        return FieldSource::Type;
     }
-    if (any_instance && !all_instance)
+    if (instance.any)
     {
-        errors.push_back(std::string("inconsistent ") + name +
-                         ": some boxes/existing placements have the field, some don't");
-        return LabelSource::Invalid;
+        return FieldSource::Instance;
     }
-    if (any_type)
-    {
-        return LabelSource::Type;
-    }
-    if (any_instance)
-    {
-        return LabelSource::Instance;
-    }
-    return LabelSource::None;
+    return FieldSource::None;
 }
 
 LabelSources detect_label_sources(const Problem& problem,
                                   std::vector<std::string>& errors)
 {
-    bool any_type_group = false;
-    bool all_type_group = true;
-    bool any_type_platform = false;
-    bool all_type_platform = true;
+    FieldPresence type_group;
+    FieldPresence type_platform;
     for (const auto& bt : problem.box_types)
     {
+        type_group.observe(bt.group.has_value());
         if (bt.group.has_value())
         {
-            any_type_group = true;
             if (bt.group->empty())
             {
                 errors.push_back("box_type " + bt.id + ": group must be non-empty when configured");
             }
         }
-        else
-        {
-            all_type_group = false;
-        }
+        type_platform.observe(bt.platform.has_value());
         if (bt.platform.has_value())
         {
-            any_type_platform = true;
             if (bt.platform->empty())
             {
                 errors.push_back("box_type " + bt.id + ": platform must be non-empty when configured");
             }
         }
-        else
-        {
-            all_type_platform = false;
-        }
     }
 
-    bool any_instance_group = false;
-    bool all_instance_group = true;
-    bool any_instance_platform = false;
-    bool all_instance_platform = true;
+    FieldPresence instance_group;
+    FieldPresence instance_platform;
     auto inspect_instance = [&](const std::string& group, const std::string& platform)
     {
-        if (!group.empty())
-        {
-            any_instance_group = true;
-        }
-        else
-        {
-            all_instance_group = false;
-        }
-        if (!platform.empty())
-        {
-            any_instance_platform = true;
-        }
-        else
-        {
-            all_instance_platform = false;
-        }
+        instance_group.observe(!group.empty());
+        instance_platform.observe(!platform.empty());
     };
     for (const auto& bx : problem.boxes)
     {
@@ -179,21 +154,19 @@ LabelSources detect_label_sources(const Problem& problem,
     }
 
     return {
-        detect_label_source("group", any_type_group, all_type_group,
-                            any_instance_group, all_instance_group, errors),
-        detect_label_source("platform", any_type_platform, all_type_platform,
-                            any_instance_platform, all_instance_platform, errors),
+        detect_three_way_source("group", type_group, instance_group, errors),
+        detect_three_way_source("platform", type_platform, instance_platform, errors),
     };
 }
 
-std::string type_label(const BoxType& bt, LabelSource source, bool group) noexcept
+std::string field_value(const BoxType* bt, const std::string& instance,
+                        FieldSource source, bool group)
 {
-    if (source != LabelSource::Type)
+    if (source == FieldSource::Type && bt != nullptr)
     {
-        return {};
+        return (group ? bt->group : bt->platform).value_or(std::string());
     }
-    const auto& value = group ? bt.group : bt.platform;
-    return value.value_or(std::string());
+    return source == FieldSource::Instance ? instance : std::string();
 }
 
 // 解析 标量 或 数组 为与 allowed_orientations 对齐的 optional 向量。
@@ -525,62 +498,28 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     {
         bt_map[bt.id] = &bt;
     }
-    auto effective_label = [&](const std::string& box_type_id,
-                               const std::string& instance_value,
-                               LabelSource source, bool group)
+    auto input_label = [&](const std::string& box_type_id,
+                           const std::string& instance_value,
+                           FieldSource source, bool group)
     {
-        if (source == LabelSource::Type)
-        {
-            auto it = bt_map.find(box_type_id);
-            if (it != bt_map.end())
-            {
-                return type_label(*it->second, source, group);
-            }
-            return std::string();
-        }
-        return source == LabelSource::Instance ? instance_value : std::string();
+        auto it = bt_map.find(box_type_id);
+        const BoxType* bt = it == bt_map.end() ? nullptr : it->second;
+        return field_value(bt, instance_value, source, group);
     };
 
-    // 重量信息一致性：三选一——无重量 / 全箱型有重量（箱子无）/ 全箱子有重量（箱型无）
-    bool any_bt_weight = false;
-    bool all_bt_weight = true;
+    // 重量信息一致性：与 group/platform 共用严格三选一检测
+    FieldPresence type_weight;
+    FieldPresence instance_weight;
     for (const auto& bt : problem.box_types)
     {
-        if (bt.weight.has_value())
-        {
-            any_bt_weight = true;
-        }
-        else
-        {
-            all_bt_weight = false;
-        }
+        type_weight.observe(bt.weight.has_value());
     }
-    bool any_box_weight = false;
-    bool all_box_weight = true;
     for (const auto& bx : problem.boxes)
     {
-        if (bx.weight.has_value())
-        {
-            any_box_weight = true;
-        }
-        else
-        {
-            all_box_weight = false;
-        }
+        instance_weight.observe(bx.weight.has_value());
     }
-    const bool weight_info = any_bt_weight || any_box_weight;
-    if (any_bt_weight && any_box_weight)
-    {
-        out.push_back("inconsistent weight: box_types weight and box weight cannot coexist");
-    }
-    if (any_bt_weight && !all_bt_weight)
-    {
-        out.push_back("inconsistent weight: some box_types have weight, some don't");
-    }
-    if (any_box_weight && !all_box_weight)
-    {
-        out.push_back("inconsistent weight: some boxes have weight, some don't");
-    }
+    const auto weight_source = detect_three_way_source("weight", type_weight, instance_weight, out);
+    const bool weight_info = weight_source != FieldSource::None;
     if (weight_info)
     {
         for (const auto& ct : problem.container_types)
@@ -596,13 +535,13 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     bool any_group = false;
     for (const auto& bx : problem.boxes)
     {
-        any_group |= !effective_label(bx.box_type_id, bx.group, label_sources.group, true).empty();
+        any_group |= !input_label(bx.box_type_id, bx.group, label_sources.group, true).empty();
     }
     for (const auto& ec : problem.existing_containers)
     {
         for (const auto& ep : ec.placements)
         {
-            any_group |= !effective_label(ep.box_type_id, ep.group, label_sources.group, true).empty();
+            any_group |= !input_label(ep.box_type_id, ep.group, label_sources.group, true).empty();
         }
     }
 
@@ -663,16 +602,16 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     bool any_platform = false;
     for (const auto& bx : problem.boxes)
     {
-        any_platform |= !effective_label(bx.box_type_id, bx.platform,
-                                         label_sources.platform, false)
+        any_platform |= !input_label(bx.box_type_id, bx.platform,
+                                     label_sources.platform, false)
                              .empty();
     }
     for (const auto& ec : problem.existing_containers)
     {
         for (const auto& ep : ec.placements)
         {
-            any_platform |= !effective_label(ep.box_type_id, ep.platform,
-                                             label_sources.platform, false)
+            any_platform |= !input_label(ep.box_type_id, ep.platform,
+                                         label_sources.platform, false)
                                  .empty();
         }
     }
@@ -696,8 +635,8 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
 
         for (const auto& bx : problem.boxes)
         {
-            const auto platform = effective_label(bx.box_type_id, bx.platform,
-                                                  label_sources.platform, false);
+            const auto platform = input_label(bx.box_type_id, bx.platform,
+                                              label_sources.platform, false);
             if (!platform.empty() && !route.index_of.count(platform))
             {
                 out.push_back("platform '" + platform + "' not in route, box " + bx.id);
@@ -710,8 +649,8 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             for (size_t pi = 0; pi < ec.placements.size(); ++pi)
             {
                 const auto& ep = ec.placements[pi];
-                const auto platform = effective_label(ep.box_type_id, ep.platform,
-                                                      label_sources.platform, false);
+                const auto platform = input_label(ep.box_type_id, ep.platform,
+                                                  label_sources.platform, false);
                 if (!platform.empty() && !route.index_of.count(platform))
                 {
                     out.push_back("platform '" + platform + "' not in route, existing_containers[" +
@@ -942,11 +881,11 @@ void resolve_type_labels(Problem& p) noexcept
         {
             continue;
         }
-        if (sources.group == LabelSource::Type)
+        if (sources.group == FieldSource::Type)
         {
             bx.group = it->second->group.value_or(std::string());
         }
-        if (sources.platform == LabelSource::Type)
+        if (sources.platform == FieldSource::Type)
         {
             bx.platform = it->second->platform.value_or(std::string());
         }
@@ -960,11 +899,11 @@ void resolve_type_labels(Problem& p) noexcept
             {
                 continue;
             }
-            if (sources.group == LabelSource::Type)
+            if (sources.group == FieldSource::Type)
             {
                 ep.group = it->second->group.value_or(std::string());
             }
-            if (sources.platform == LabelSource::Type)
+            if (sources.platform == FieldSource::Type)
             {
                 ep.platform = it->second->platform.value_or(std::string());
             }

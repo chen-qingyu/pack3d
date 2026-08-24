@@ -268,7 +268,7 @@ Schema 校验后，代码还会检查：
 | `placements[].platform`    | string |      | 站点 ID（配送停靠点），未设置时为 null         |
 | `placements[].group`       | string |      | 分组 ID，未设置时为 null                       |
 
-`placements[].group` 和 `placements[].platform` 的填写遵循上面的三选一规则；箱型级模式下省略，由所属 `box_type_id` 继承有效值。
+`placements[].group` 和 `placements[].platform` 的填写遵循上面的三选一规则；字段类型为 `string|null`，箱型级模式下省略或填 `null`，由所属 `box_type_id` 继承有效值。
 
 已有容器中的箱子不会出现在 `boxes` 列表中。求解器会先尝试在已有容器中继续塞入剩余箱子（未满则继续），再开新容器。已有放置被锁定，后处理不会移动它们。
 

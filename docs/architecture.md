@@ -20,7 +20,7 @@ flowchart LR
 ```
 
 - **schema 校验**：编译时嵌入的 JSON Schema（`data/input_schema.json` -> `input_schema.h`），保证结构合法。
-- **预校验**：`pre_validate_input()` 检查引用完整性、重量三选一、group 全有或全无、路线/站点、障碍物/斜面合法性，以及约束之间的**级联前提**（如 `max_stack`/`max_load`/装托要求 `support_rate > 0`、`tender_limit` 要求 `group`）。
+- **预校验**：`pre_validate_input()` 检查引用完整性、重量/group/platform 各自的三选一来源、路线/站点、障碍物/斜面合法性，以及约束之间的**级联前提**（如 `max_stack`/`max_load`/装托要求 `support_rate > 0`、`tender_limit` 要求 `group`）。
 - **异常兜底**：任何未预见异常返回 `status=invalid`（带 `internal error`），任意输入都有完整 JSON 输出。
 
 ### 1.1 目标向量
@@ -83,7 +83,7 @@ flowchart LR
 
 ### 3.3 行为
 
-- **装托**：每轮对所有托盘类型试装，按（体积, 箱数）取优；同 `group` 优先整组独占一托（始终按 `platform+group` 分组），装不下的退混合托（混合兜底也按站点分桶）。**不同站点的货物不能混装一托**：托盘恒为单站点（或全无站点），托盘单元带站点参与路线约束。托盘即小容器——不许悬挑、堆高 ≤ `max_height`（装载限高，不含托盘自身）、每托承重 ≤ `payload` 自动满足。
+- **装托**：每轮对所有托盘类型试装，按（体积, 箱数）取优；同 `group` 优先整组独占一托（始终按 `platform+group` 分组），装不下的退混合托。为保持装车阶段的 tender/路线身份，托盘始终只含一个有效 `platform` 和一个有效 `group`（或分别全无）。托盘单元带标签参与路线和 tender 约束。托盘即小容器——不许悬挑、堆高 ≤ `max_height`（装载限高，不含托盘自身）、每托承重 ≤ `payload` 自动满足。
 - **装车**：托盘改写为虚拟箱——`max_stack=[1,1]`（其上不可放箱，单向不叠托）、仅 XY 平面 90° 旋转、重量含托盘自重；与普通箱子一起走现有求解器，主目标仍是用车数最少。
 - **时间**：装托分走 `min(20%×time_limit, 15s)`，剩余归装车。
 

@@ -34,6 +34,14 @@ BoxType virtual_box_type(const PalletLoad& p) noexcept
     bt.size = {p.type->size.x, p.type->size.y, p.loaded_height + p.type->size.z};
     bt.allowed_orientations = {Orientation::XYZ, Orientation::YXZ};
     bt.max_stack = {std::optional<int>(1), std::optional<int>(1)};
+    if (p.groups.size() == 1)
+    {
+        bt.group = *p.groups.begin();
+    }
+    if (p.platforms.size() == 1)
+    {
+        bt.platform = *p.platforms.begin();
+    }
     return bt;
 }
 

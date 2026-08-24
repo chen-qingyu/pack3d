@@ -11,7 +11,7 @@ JSON，顶层四个字段：
 }
 ```
 
-> **字段恒存在（消费契约）**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`max_stack`/`max_load`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）、`false`（`loose`）。下游（web/server/SDK）**依赖此契约**，不再对缺失字段做防御（如 `?.`/`?? []`/`.get("x", [])`）。唯一例外：斜面 `facets[].dx/dy/dz` 按格式只输出非零截距（天然缺省），消费方须容忍缺键。
+> **字段恒存在（消费契约）**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`max_stack`/`max_load`/`group`/`platform`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）、`false`（`loose`）。下游（web/server/SDK）**依赖此契约**，不再对缺失字段做防御（如 `?.`/`?? []`/`.get("x", [])`）。唯一例外：斜面 `facets[].dx/dy/dz` 按格式只输出非零截距（天然缺省），消费方须容忍缺键。
 
 ## `status` 状态枚举
 
@@ -139,7 +139,7 @@ JSON，顶层四个字段：
 }
 ```
 
-容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；箱子未设置站点/分组时 `platform`/`group` 为 null）。
+容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；有效箱子未设置站点/分组时 `platform`/`group` 为 null）。
 
 `volume_rate_x` 为容器 X 方向口径的体积利用率，与 `volume_rate` 对齐、仅把"整个容器"换成"实际使用的 X 方向 slab"：分母 = slab [0, used_x]×[0,sy]×[0,sz] 的可用容积 = `used_x·sy·sz` − 障碍物（slab 内部分）− 斜面楔形（slab 内部分），分子 = 装箱体积（同 `volume_rate`）。其中 `used_x` = 所有箱子 `x+dx` 的最大值（含续装已有放置）；`used_x` 达容器全长时本值与 `volume_rate` 相等。容器未装任何箱时为 0。`summary.volume_rate_x` 为各容器该值的平均。
 
@@ -169,18 +169,20 @@ JSON，顶层四个字段：
 
 `result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`、`weight`、`group`、`platform`（承重字段与 `allowed_orientations` 对齐的数组，未配置为 `null`，字段恒存在）；装托模式下额外包含虚拟托盘箱型。箱型级 `group/platform` 会同时以有效值出现在对应 placement 中；箱子级模式下箱型字段为 `null`，placement 保留各实例值。
 
+装托模式下的虚拟托盘箱型是合成类型；由于托盘保持单一 `group/platform`，其箱型字段与托盘 placement 使用相同的有效值。
+
 placement 字段说明：
 
-| 字段           | 说明                                   |
-| -------------- | -------------------------------------- |
-| `box_id`       | 箱子实例 ID                            |
-| `box_type_id`  | 箱子类型 ID                            |
-| `x`/`y`/`z`    | 放置位置（min corner）                 |
-| `dx`/`dy`/`dz` | 朝向后的实际尺寸（沿容器轴向）         |
-| `orientation`  | 朝向（`xyz`/`xzy`/...）                |
-| `weight`       | 箱子重量，未设置时为 null              |
-| `platform`     | 站点 ID（配送停靠点），未设置时为 null |
-| `group`        | 分组 ID，未设置时为 null               |
+| 字段           | 说明                                       |
+| -------------- | ------------------------------------------ |
+| `box_id`       | 箱子实例 ID                                |
+| `box_type_id`  | 箱子类型 ID                                |
+| `x`/`y`/`z`    | 放置位置（min corner）                     |
+| `dx`/`dy`/`dz` | 朝向后的实际尺寸（沿容器轴向）             |
+| `orientation`  | 朝向（`xyz`/`xzy`/...）                    |
+| `weight`       | 箱子重量，未设置时为 null                  |
+| `platform`     | 有效站点 ID（配送停靠点），未设置时为 null |
+| `group`        | 有效分组 ID，未设置时为 null               |
 
 ## `violations` 说明（非 `complete` 时可能出现）
 

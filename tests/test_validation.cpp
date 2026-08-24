@@ -210,7 +210,7 @@ TEST_CASE("pre_validate_input 重量三选一：箱型与箱子重量互斥", "[
     bool found = false;
     for (const auto& v : violations)
     {
-        if (v.find("cannot coexist") != std::string::npos)
+        if (v.find("inconsistent weight") != std::string::npos)
         {
             found = true;
         }
@@ -241,7 +241,7 @@ TEST_CASE("pre_validate_input 重量三选一：箱型重量必须全部配置",
     bool found = false;
     for (const auto& v : violations)
     {
-        if (v.find("some box_types have weight") != std::string::npos)
+        if (v.find("inconsistent weight") != std::string::npos)
         {
             found = true;
         }
