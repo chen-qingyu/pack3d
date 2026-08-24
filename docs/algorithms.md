@@ -329,6 +329,10 @@ beam 宽度由 double search effort 动态增长。
 
 曾实现过候选块库存扣减后的精确 KPA（以 $C' = C - \mathrm{members}(b)$ 重建三轴 DP，允许恰好填满剩余长度），语义上避免候选块库存被重复用于预测，但显著增加每个 rollout 的 DP 数量，在三个强异构 BR15 固定 30 秒试验中均降低装载率 1~5%，已 reset。若重新尝试：作为可配置实验模式、限制每 state 候选数与缓存、以 BR8–15 全部 800 例组均值比较、同时记录每例耗时。
 
+### 网格索引试验记录（维护者）
+
+曾把 RGS 的 3D 网格加速（`grid_support_neighbors`/`grid_neighbors`/`grid_route_neighbors` + 共享约束的 `indices` 参数）抽到共享层并接入 BSG/GLC 的逐叶重叠/支撑/堆码/承重/重不压轻检查（BSG `can_place_block` 每块评估建一次网格；GLC `check_block_feasible` 按多 cell 块门控 + 惰性构建），实测无稳健收益，已 reset。数据（`-t 60` 吞吐）：GLC 同质 2 型 + `support_rate=1.0` 从 9 箱升到 60 箱（+6.7×），但强异构 5 型下从 60 箱降到 12 箱（−5×，与支撑率无关，由箱型多 → 候选块多决定）；BSG 强异构 300 箱从 31~33s 装完退化到 60s 超时只装 190。根因：每 (block,space) 调用独立构建 O(n) map 网格，常数压过省下的全量扫描，仅同质场景候选块少时才占优。若重新尝试：把网格构建提升到每 space 一次跨块复用、用扁平单元数组替代 `std::map`，并先做同质/异构 × 支撑率的跨场景矩阵验证再谈收益。
+
 ---
 
 ## 基准方法（BR）
