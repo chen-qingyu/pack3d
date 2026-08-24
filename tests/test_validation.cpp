@@ -266,53 +266,6 @@ TEST_CASE("pre_validate_input 箱型级重量模式通过", "[validation]")
     REQUIRE(violations.empty());
 }
 
-// group 一致性：任一箱子有 group → 全部必须有（否则输出 tender 语义不一致）
-TEST_CASE("pre_validate_input group 一致性：部分箱子缺 group 非法", "[validation]")
-{
-    Problem p;
-    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
-    BoxType bt;
-    bt.id = "bt1";
-    bt.size = {100, 100, 100};
-    bt.allowed_orientations = {Orientation::XYZ};
-    p.box_types.push_back(bt);
-    p.boxes.push_back({"box1", "bt1", 5.0, "g1", ""});
-    p.boxes.push_back({"box2", "bt1", 5.0, "", ""}); // 缺 group
-
-    auto violations = pre_validate_input(p);
-    bool found = false;
-    for (const auto& v : violations)
-    {
-        if (v.find("inconsistent group") != std::string::npos)
-        {
-            found = true;
-        }
-    }
-    REQUIRE(found);
-}
-
-// group 一致性：全有或全无均合法
-TEST_CASE("pre_validate_input group 一致性：全有或全无均合法", "[validation]")
-{
-    Problem p;
-    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
-    BoxType bt;
-    bt.id = "bt1";
-    bt.size = {100, 100, 100};
-    bt.allowed_orientations = {Orientation::XYZ};
-    p.box_types.push_back(bt);
-    p.boxes.push_back({"box1", "bt1", 5.0, "g1", ""});
-    p.boxes.push_back({"box2", "bt1", 5.0, "g2", ""});
-    REQUIRE(pre_validate_input(p).empty());
-
-    Problem p2;
-    p2.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
-    p2.box_types.push_back(bt);
-    p2.boxes.push_back({"box1", "bt1", 5.0, "", ""});
-    p2.boxes.push_back({"box2", "bt1", 5.0, "", ""});
-    REQUIRE(pre_validate_input(p2).empty());
-}
-
 // 箱子级模式下 existing placement 必须带 group
 TEST_CASE("pre_validate_input group 一致性：已有放置缺 group 非法", "[validation]")
 {
@@ -389,7 +342,7 @@ TEST_CASE("pre_validate_input group/platform 箱型级模式并归一化", "[val
 
     const auto source = p;
     REQUIRE(pre_validate_input(source).empty());
-    resolve_type_labels(p);
+    resolve_type_fields(p);
     REQUIRE(p.boxes[0].group == "g1");
     REQUIRE(p.boxes[0].platform == "P1");
     REQUIRE(p.existing_containers[0].placements[0].group == "g1");

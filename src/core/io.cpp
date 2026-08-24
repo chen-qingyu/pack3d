@@ -920,62 +920,44 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     return out;
 }
 
-// 箱型级重量 → 逐箱缺省：箱子未显式给重量时取所属箱型重量
-void resolve_type_weights(Problem& p) noexcept
+void resolve_type_fields(Problem& p) noexcept
 {
     std::vector<std::string> ignored_errors;
-    const auto source = detect_three_way_source(
+    const auto weight_source = detect_three_way_source(
         "weight", p.box_types, p.boxes,
         [](const BoxType& bt)
         { return bt.weight; },
         [](const Box& bx)
         { return bx.weight; }, ignored_errors);
+    const auto label_sources = detect_label_sources(p, ignored_errors);
     std::map<std::string, const BoxType*> type_map;
     for (const auto& bt : p.box_types)
     {
         type_map[bt.id] = &bt;
     }
-    inherit_type_field<double>(source, type_map, p.boxes, [](const BoxType& bt)
+    inherit_type_field<double>(weight_source, type_map, p.boxes, [](const BoxType& bt)
                                { return bt.weight; }, [](const Box& bx)
                                { return bx.weight; }, [](Box& bx, double value)
                                { bx.weight = value; });
-    for (auto& ec : p.existing_containers)
-    {
-        inherit_type_field<double>(source, type_map, ec.placements, [](const BoxType& bt)
-                                   { return bt.weight; }, [](const ExistingPlacement& ep)
-                                   { return ep.weight; }, [](ExistingPlacement& ep, double value)
-                                   { ep.weight = value; });
-    }
-}
-
-void resolve_type_labels(Problem& p) noexcept
-{
-    std::vector<std::string> ignored_errors;
-    const auto sources = detect_label_sources(p, ignored_errors);
-    std::map<std::string, const BoxType*> type_map;
-    for (const auto& bt : p.box_types)
-    {
-        type_map[bt.id] = &bt;
-    }
-
-    inherit_type_field<std::string>(sources.group, type_map, p.boxes, [](const BoxType& bt)
+    inherit_type_field<std::string>(label_sources.group, type_map, p.boxes, [](const BoxType& bt)
                                     { return bt.group; }, [](const Box& bx)
                                     { return optional_string(bx.group); }, [](Box& bx, const std::string& value)
                                     { bx.group = value; });
-    for (auto& ec : p.existing_containers)
-    {
-        inherit_type_field<std::string>(sources.group, type_map, ec.placements, [](const BoxType& bt)
-                                        { return bt.group; }, [](const ExistingPlacement& ep)
-                                        { return optional_string(ep.group); }, [](ExistingPlacement& ep, const std::string& value)
-                                        { ep.group = value; });
-    }
-    inherit_type_field<std::string>(sources.platform, type_map, p.boxes, [](const BoxType& bt)
+    inherit_type_field<std::string>(label_sources.platform, type_map, p.boxes, [](const BoxType& bt)
                                     { return bt.platform; }, [](const Box& bx)
                                     { return optional_string(bx.platform); }, [](Box& bx, const std::string& value)
                                     { bx.platform = value; });
     for (auto& ec : p.existing_containers)
     {
-        inherit_type_field<std::string>(sources.platform, type_map, ec.placements, [](const BoxType& bt)
+        inherit_type_field<double>(weight_source, type_map, ec.placements, [](const BoxType& bt)
+                                   { return bt.weight; }, [](const ExistingPlacement& ep)
+                                   { return ep.weight; }, [](ExistingPlacement& ep, double value)
+                                   { ep.weight = value; });
+        inherit_type_field<std::string>(label_sources.group, type_map, ec.placements, [](const BoxType& bt)
+                                        { return bt.group; }, [](const ExistingPlacement& ep)
+                                        { return optional_string(ep.group); }, [](ExistingPlacement& ep, const std::string& value)
+                                        { ep.group = value; });
+        inherit_type_field<std::string>(label_sources.platform, type_map, ec.placements, [](const BoxType& bt)
                                         { return bt.platform; }, [](const ExistingPlacement& ep)
                                         { return optional_string(ep.platform); }, [](ExistingPlacement& ep, const std::string& value)
                                         { ep.platform = value; });
