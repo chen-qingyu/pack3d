@@ -343,6 +343,85 @@ TEST_CASE("pre_validate_input group 一致性：已有放置缺 group 非法", "
     REQUIRE(found);
 }
 
+TEST_CASE("pre_validate_input group/platform 箱型级模式并归一化", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    BoxType bt;
+    bt.id = "bt1";
+    bt.size = {100, 100, 100};
+    bt.allowed_orientations = {Orientation::XYZ};
+    bt.group = "g1";
+    bt.platform = "P1";
+    p.box_types.push_back(bt);
+    p.boxes.push_back({"box1", "bt1", std::nullopt, "", ""});
+    ExistingPlacement ep;
+    ep.box_id = "existing1";
+    ep.box_type_id = "bt1";
+    ep.position = {0, 0, 0};
+    ep.orientation = Orientation::XYZ;
+    p.existing_containers.push_back({"ct1", {ep}});
+    p.route = RouteOrder{{"P1"}, {{"P1", 0}}};
+
+    REQUIRE(pre_validate_input(p).empty());
+    resolve_type_labels(p);
+    REQUIRE(p.boxes[0].group == "g1");
+    REQUIRE(p.boxes[0].platform == "P1");
+    REQUIRE(p.existing_containers[0].placements[0].group == "g1");
+    REQUIRE(p.existing_containers[0].placements[0].platform == "P1");
+}
+
+TEST_CASE("pre_validate_input group/platform 箱子级模式允许实例不同", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
+    p.boxes.push_back({"box1", "bt1", std::nullopt, "g1", "P1"});
+    p.boxes.push_back({"box2", "bt1", std::nullopt, "g2", "P2"});
+    p.route = RouteOrder{{"P1", "P2"}, {{"P1", 0}, {"P2", 1}}};
+
+    REQUIRE(pre_validate_input(p).empty());
+}
+
+TEST_CASE("pre_validate_input group/platform 禁止箱型与箱子混用", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    BoxType bt;
+    bt.id = "bt1";
+    bt.size = {100, 100, 100};
+    bt.allowed_orientations = {Orientation::XYZ};
+    bt.group = "g1";
+    p.box_types.push_back(bt);
+    p.boxes.push_back({"box1", "bt1", std::nullopt, "g2", ""});
+
+    const auto violations = pre_validate_input(p);
+    bool found_group = false;
+    for (const auto& v : violations)
+    {
+        found_group |= v.find("inconsistent group") != std::string::npos;
+    }
+    REQUIRE(found_group);
+}
+
+TEST_CASE("pre_validate_input platform 箱子级模式禁止部分缺失", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
+    p.boxes.push_back({"box1", "bt1", std::nullopt, "", "P1"});
+    p.boxes.push_back({"box2", "bt1", std::nullopt, "", ""});
+    p.route = RouteOrder{{"P1"}, {{"P1", 0}}};
+
+    const auto violations = pre_validate_input(p);
+    bool found_platform = false;
+    for (const auto& v : violations)
+    {
+        found_platform |= v.find("inconsistent platform") != std::string::npos;
+    }
+    REQUIRE(found_platform);
+}
+
 TEST_CASE("pre_validate_input 检测 tender_limit 需要 group", "[validation]")
 {
     Problem p;

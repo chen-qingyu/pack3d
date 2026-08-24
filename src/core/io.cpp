@@ -60,6 +60,142 @@ std::optional<T> json_opt(const json& j, const char* key)
     return it->get<T>();
 }
 
+enum class LabelSource : uint8_t
+{
+    Invalid,
+    None,
+    Type,
+    Instance,
+};
+
+struct LabelSources
+{
+    LabelSource group = LabelSource::Invalid;
+    LabelSource platform = LabelSource::Invalid;
+};
+
+LabelSource detect_label_source(const char* name,
+                                bool any_type, bool all_type,
+                                bool any_instance, bool all_instance,
+                                std::vector<std::string>& errors)
+{
+    if (any_type && any_instance)
+    {
+        errors.push_back(std::string("inconsistent ") + name +
+                         ": box_types and boxes/existing placements cannot coexist");
+        return LabelSource::Invalid;
+    }
+    if (any_type && !all_type)
+    {
+        errors.push_back(std::string("inconsistent ") + name +
+                         ": some box_types have the field, some don't");
+        return LabelSource::Invalid;
+    }
+    if (any_instance && !all_instance)
+    {
+        errors.push_back(std::string("inconsistent ") + name +
+                         ": some boxes/existing placements have the field, some don't");
+        return LabelSource::Invalid;
+    }
+    if (any_type)
+    {
+        return LabelSource::Type;
+    }
+    if (any_instance)
+    {
+        return LabelSource::Instance;
+    }
+    return LabelSource::None;
+}
+
+LabelSources detect_label_sources(const Problem& problem,
+                                  std::vector<std::string>& errors)
+{
+    bool any_type_group = false;
+    bool all_type_group = true;
+    bool any_type_platform = false;
+    bool all_type_platform = true;
+    for (const auto& bt : problem.box_types)
+    {
+        if (bt.group.has_value())
+        {
+            any_type_group = true;
+            if (bt.group->empty())
+            {
+                errors.push_back("box_type " + bt.id + ": group must be non-empty when configured");
+            }
+        }
+        else
+        {
+            all_type_group = false;
+        }
+        if (bt.platform.has_value())
+        {
+            any_type_platform = true;
+            if (bt.platform->empty())
+            {
+                errors.push_back("box_type " + bt.id + ": platform must be non-empty when configured");
+            }
+        }
+        else
+        {
+            all_type_platform = false;
+        }
+    }
+
+    bool any_instance_group = false;
+    bool all_instance_group = true;
+    bool any_instance_platform = false;
+    bool all_instance_platform = true;
+    auto inspect_instance = [&](const std::string& group, const std::string& platform)
+    {
+        if (!group.empty())
+        {
+            any_instance_group = true;
+        }
+        else
+        {
+            all_instance_group = false;
+        }
+        if (!platform.empty())
+        {
+            any_instance_platform = true;
+        }
+        else
+        {
+            all_instance_platform = false;
+        }
+    };
+    for (const auto& bx : problem.boxes)
+    {
+        inspect_instance(bx.group, bx.platform);
+    }
+    for (const auto& ec : problem.existing_containers)
+    {
+        for (const auto& ep : ec.placements)
+        {
+            inspect_instance(ep.group, ep.platform);
+        }
+    }
+
+    return {
+        detect_label_source("group", any_type_group, all_type_group,
+                            any_instance_group, all_instance_group, errors),
+        detect_label_source("platform", any_type_platform, all_type_platform,
+                            any_instance_platform, all_instance_platform, errors),
+    };
+}
+
+std::string type_label(const BoxType& bt, LabelSource source, bool group) noexcept
+{
+    if (source != LabelSource::Type)
+    {
+        return {};
+    }
+    const auto& value = group ? bt.group : bt.platform;
+    return value.value_or(std::string());
+}
+
 // 解析 标量 或 数组 为与 allowed_orientations 对齐的 optional 向量。
 // 标量广播到全部朝向；数组按原样存储（长度对齐在 pre_validate 校验）。
 template <typename T>
@@ -139,6 +275,8 @@ void from_json(const json& j, BoxType& bt)
     parse_optional_vector<double>(j, "max_load", bt.max_load, bt.allowed_orientations.size());
     bt.weight = json_opt<double>(j, "weight");
     bt.loose = j.value("loose", false);
+    bt.group = json_opt<std::string>(j, "group");
+    bt.platform = json_opt<std::string>(j, "platform");
 }
 
 void from_json(const json& j, Box& bx)
@@ -146,8 +284,8 @@ void from_json(const json& j, Box& bx)
     j["id"].get_to(bx.id);
     j["box_type_id"].get_to(bx.box_type_id);
     bx.weight = json_opt<double>(j, "weight");
-    bx.group = j.value("group", std::string());
-    bx.platform = j.value("platform", std::string());
+    bx.group = json_opt<std::string>(j, "group").value_or(std::string());
+    bx.platform = json_opt<std::string>(j, "platform").value_or(std::string());
 }
 
 void from_json(const json& j, ExistingPlacement& ep)
@@ -159,8 +297,8 @@ void from_json(const json& j, ExistingPlacement& ep)
     j["z"].get_to(ep.position.z);
     ep.orientation = orientation_from_string(j["orientation"].get<std::string>());
     ep.weight = json_opt<double>(j, "weight");
-    ep.platform = j.value("platform", std::string());
-    ep.group = j.value("group", std::string());
+    ep.platform = json_opt<std::string>(j, "platform").value_or(std::string());
+    ep.group = json_opt<std::string>(j, "group").value_or(std::string());
     if (j.contains("dx"))
     {
         OrientedSize sz;
@@ -381,6 +519,28 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
     }
 
+    const auto label_sources = detect_label_sources(problem, out);
+    std::map<std::string, const BoxType*> bt_map;
+    for (const auto& bt : problem.box_types)
+    {
+        bt_map[bt.id] = &bt;
+    }
+    auto effective_label = [&](const std::string& box_type_id,
+                               const std::string& instance_value,
+                               LabelSource source, bool group)
+    {
+        if (source == LabelSource::Type)
+        {
+            auto it = bt_map.find(box_type_id);
+            if (it != bt_map.end())
+            {
+                return type_label(*it->second, source, group);
+            }
+            return std::string();
+        }
+        return source == LabelSource::Instance ? instance_value : std::string();
+    };
+
     // 重量信息一致性：三选一——无重量 / 全箱型有重量（箱子无）/ 全箱子有重量（箱型无）
     bool any_bt_weight = false;
     bool all_bt_weight = true;
@@ -432,37 +592,18 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
     }
 
-    // group 一致性：任一箱子（输入或已有放置）有 group → 全部必须有（输出 tender 要么全数字要么全 null）
+    // group 前提按归一化后的有效值判断（输出 tender 要么全数字要么全 null）
     bool any_group = false;
-    bool all_group = true;
     for (const auto& bx : problem.boxes)
     {
-        if (!bx.group.empty())
-        {
-            any_group = true;
-        }
-        else
-        {
-            all_group = false;
-        }
+        any_group |= !effective_label(bx.box_type_id, bx.group, label_sources.group, true).empty();
     }
     for (const auto& ec : problem.existing_containers)
     {
         for (const auto& ep : ec.placements)
         {
-            if (!ep.group.empty())
-            {
-                any_group = true;
-            }
-            else
-            {
-                all_group = false;
-            }
+            any_group |= !effective_label(ep.box_type_id, ep.group, label_sources.group, true).empty();
         }
-    }
-    if (any_group && !all_group)
-    {
-        out.push_back("inconsistent group: some boxes have group, some don't");
     }
 
     // tender_limit 需要 group：无 group 时 check_tender_limit 对空 group 恒真，约束静默失效
@@ -518,17 +659,21 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         out.push_back("heavy_not_on_light requires support_rate > 0");
     }
 
-    // 箱子/已有放置有 platform 就必须有 route 且平台在路线中
+    // 箱子/已有放置的有效 platform 就必须有 route 且平台在路线中
     bool any_platform = false;
     for (const auto& bx : problem.boxes)
     {
-        any_platform |= !bx.platform.empty();
+        any_platform |= !effective_label(bx.box_type_id, bx.platform,
+                                         label_sources.platform, false)
+                             .empty();
     }
     for (const auto& ec : problem.existing_containers)
     {
         for (const auto& ep : ec.placements)
         {
-            any_platform |= !ep.platform.empty();
+            any_platform |= !effective_label(ep.box_type_id, ep.platform,
+                                             label_sources.platform, false)
+                                 .empty();
         }
     }
     if (any_platform && !problem.route.has_value())
@@ -551,9 +696,11 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
 
         for (const auto& bx : problem.boxes)
         {
-            if (!bx.platform.empty() && !route.index_of.count(bx.platform))
+            const auto platform = effective_label(bx.box_type_id, bx.platform,
+                                                  label_sources.platform, false);
+            if (!platform.empty() && !route.index_of.count(platform))
             {
-                out.push_back("platform '" + bx.platform + "' not in route, box " + bx.id);
+                out.push_back("platform '" + platform + "' not in route, box " + bx.id);
             }
         }
 
@@ -563,9 +710,11 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             for (size_t pi = 0; pi < ec.placements.size(); ++pi)
             {
                 const auto& ep = ec.placements[pi];
-                if (!ep.platform.empty() && !route.index_of.count(ep.platform))
+                const auto platform = effective_label(ep.box_type_id, ep.platform,
+                                                      label_sources.platform, false);
+                if (!platform.empty() && !route.index_of.count(platform))
                 {
-                    out.push_back("platform '" + ep.platform + "' not in route, existing_containers[" +
+                    out.push_back("platform '" + platform + "' not in route, existing_containers[" +
                                   std::to_string(ei) + "].placements[" + std::to_string(pi) +
                                   "] (box " + ep.box_id + ")");
                 }
@@ -776,6 +925,53 @@ void resolve_type_weights(Problem& p) noexcept
     }
 }
 
+void resolve_type_labels(Problem& p) noexcept
+{
+    std::vector<std::string> ignored_errors;
+    const auto sources = detect_label_sources(p, ignored_errors);
+    std::map<std::string, const BoxType*> type_map;
+    for (const auto& bt : p.box_types)
+    {
+        type_map[bt.id] = &bt;
+    }
+
+    for (auto& bx : p.boxes)
+    {
+        auto it = type_map.find(bx.box_type_id);
+        if (it == type_map.end())
+        {
+            continue;
+        }
+        if (sources.group == LabelSource::Type)
+        {
+            bx.group = it->second->group.value_or(std::string());
+        }
+        if (sources.platform == LabelSource::Type)
+        {
+            bx.platform = it->second->platform.value_or(std::string());
+        }
+    }
+    for (auto& ec : p.existing_containers)
+    {
+        for (auto& ep : ec.placements)
+        {
+            auto it = type_map.find(ep.box_type_id);
+            if (it == type_map.end())
+            {
+                continue;
+            }
+            if (sources.group == LabelSource::Type)
+            {
+                ep.group = it->second->group.value_or(std::string());
+            }
+            if (sources.platform == LabelSource::Type)
+            {
+                ep.platform = it->second->platform.value_or(std::string());
+            }
+        }
+    }
+}
+
 ContainerLoad build_load_from_existing(
     const ExistingContainer& ec,
     const std::map<std::string, const ContainerType*>& ct_map,
@@ -807,8 +1003,8 @@ ContainerLoad build_load_from_existing(
         pl.position = ep.position;
         pl.orientation = ep.orientation;
         pl.osize = bt_it->second.size.orient(ep.orientation);
-        pl.platform = ep.platform;
-        pl.group = ep.group;
+        pl.platform = ep.platform.empty() ? bt_it->second.platform.value_or(std::string()) : ep.platform;
+        pl.group = ep.group.empty() ? bt_it->second.group.value_or(std::string()) : ep.group;
         pl.weight = ep.weight;
         // 箱型级重量缺省：已有放置未显式给重量时取箱型重量
         if (!pl.weight.has_value() && bt_it->second.weight.has_value())
@@ -1002,6 +1198,8 @@ void to_json(json& j, const Solution& sol)
         bj["max_stack"] = optional_vec(bt.max_stack);
         bj["max_load"] = optional_vec(bt.max_load);
         bj["weight"] = opt_json(bt.weight);
+        bj["group"] = opt_json(bt.group);
+        bj["platform"] = opt_json(bt.platform);
         box_types_json.push_back(std::move(bj));
     }
     result["box_types"] = std::move(box_types_json);

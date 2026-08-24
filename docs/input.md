@@ -77,15 +77,25 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段                   | 类型                     | 必填 | 说明                                     |
-| ---------------------- | ------------------------ | ---- | ---------------------------------------- |
-| `id`                   | string                   | 是   | 唯一标识                                 |
-| `sx`/`sy`/`sz`         | int>=1                   | 是   | 原始尺寸（箱体自身坐标）                 |
-| `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下                     |
-| `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限                  |
-| `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限              |
-| `weight`               | number>0                 |      | 箱型级重量（与箱子重量互斥，见下预校验） |
-| `loose`                | boolean                  |      | true=散件（先装托后装车），默认 false    |
+| 字段                   | 类型                     | 必填 | 说明                                      |
+| ---------------------- | ------------------------ | ---- | ----------------------------------------- |
+| `id`                   | string                   | 是   | 唯一标识                                  |
+| `sx`/`sy`/`sz`         | int>=1                   | 是   | 原始尺寸（箱体自身坐标）                  |
+| `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下                      |
+| `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限                   |
+| `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限               |
+| `weight`               | number>0                 |      | 箱型级重量（与箱子重量互斥，见下预校验）  |
+| `loose`                | boolean                  |      | true=散件（先装托后装车），默认 false     |
+| `group`                | string 或 null           |      | 箱型级分组 ID（与箱子级 group 三选一）    |
+| `platform`             | string 或 null           |      | 箱型级站点 ID（与箱子级 platform 三选一） |
+
+`group` 和 `platform` 分别采用严格三选一模式，每个字段独立选择来源：
+
+- **全无**：所有箱型、箱子和已有放置都不配置该字段。
+- **箱型级**：所有 `box_types` 都配置该字段，`boxes` 和已有放置都不配置；实例值按 `box_type_id` 继承。因此同一箱型不能跨不同分组或站点。
+- **箱子级**：所有 `box_types` 都不配置该字段，每个 `boxes` 和已有放置都必须配置；不同实例可以有不同值。
+
+箱型与箱子混用、部分配置、已有放置缺失配置均非法。`null` 等同未配置；实际配置值必须是非空字符串。两个字段可以选择不同来源，例如 `group` 使用箱型级而 `platform` 使用箱子级。
 
 `max_stack` / `max_load` 为**承重约束**（机制与启用前提见 `docs/constraints.md` 1.8 / 1.9）：
 
@@ -119,13 +129,13 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段          | 类型   | 必填 | 说明                                                                                                   |
-| ------------- | ------ | ---- | ------------------------------------------------------------------------------------------------------ |
-| `id`          | string | 是   | 唯一标识                                                                                               |
-| `box_type_id` | string | 是   | 引用 box_types 中的 id                                                                                 |
-| `weight`      | number |      | 单箱重量，null=无重量                                                                                  |
-| `group`       | string |      | 分组 ID（一票运输委托的货物共用同一 group，用于 tender_limit）。要么所有箱子都有，要么都没有，见预校验 |
-| `platform`    | string |      | 站点 ID（配送停靠点），用于路线约束                                                                    |
+| 字段          | 类型   | 必填 | 说明                                                             |
+| ------------- | ------ | ---- | ---------------------------------------------------------------- |
+| `id`          | string | 是   | 唯一标识                                                         |
+| `box_type_id` | string | 是   | 引用 box_types 中的 id                                           |
+| `weight`      | number |      | 单箱重量，null=无重量                                            |
+| `group`       | string |      | 箱子级分组 ID；仅在该字段选择箱子级模式时填写，用于 tender_limit |
+| `platform`    | string |      | 箱子级站点 ID；仅在该字段选择箱子级模式时填写，用于路线约束      |
 
 ## 算法 `algorithm`（可选）
 
@@ -208,9 +218,9 @@ Schema 校验后，代码还会检查：
 
 - ID 唯一性：`container_types`、`box_types`、`boxes` 中各自的 `id` 必须唯一
 - 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
-- 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）设置了 `platform`，就必须提供 `route`；路线中无重复站点，箱子站点必须在路线中
+- 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）的有效 `platform`，就必须提供 `route`；路线中无重复站点，箱子站点必须在路线中
 - 重量一致性（**三选一**）：要么全无重量；要么**全部箱型**配置 `weight` 且**所有箱子不带**重量（箱子重量取箱型）；要么**所有箱子**配置 `weight` 且箱型不带。箱型与箱子重量混用、部分配置均报错。**有重量信息时**（后两种模式）要求全部容器配置 `payload`，全无重量时不要求；`max_load`/装托模式要求有重量信息（箱型级或箱子级）
-- group 一致性（**全有或全无**）：任一箱子（含 `existing_containers` 已有放置）设置了 `group`，则所有箱子必须都设置 `group`。保证输出 `tender` 要么全为数字要么全为 `null`
+- group/platform 一致性（**分别三选一**）：每个字段独立选择全无、全部箱型配置、或全部箱子（含已有放置）配置；箱型与箱子混用、部分配置均报错。箱型级值按 `box_type_id` 继承，箱子级值必须每个实例显式提供
 - `tender_limit` 配置但无任何 `group` -> 报错（无 group 时该约束静默失效）
 - 装托合法性：`pallet_types` id 唯一、`loose: true` 但未配置 `pallet_types` 报错；装托模式要求有重量信息（箱型级或箱子级）、全部容器带 `payload`、装车 `support_rate > 0`
 - 障碍物合法性：每个障碍物必须完全在所属容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠
@@ -257,6 +267,8 @@ Schema 校验后，代码还会检查：
 | `placements[].weight`      | number |      | 箱子重量，未设置时为 null                      |
 | `placements[].platform`    | string |      | 站点 ID（配送停靠点），未设置时为 null         |
 | `placements[].group`       | string |      | 分组 ID，未设置时为 null                       |
+
+`placements[].group` 和 `placements[].platform` 的填写遵循上面的三选一规则；箱型级模式下省略，由所属 `box_type_id` 继承有效值。
 
 已有容器中的箱子不会出现在 `boxes` 列表中。求解器会先尝试在已有容器中继续塞入剩余箱子（未满则继续），再开新容器。已有放置被锁定，后处理不会移动它们。
 

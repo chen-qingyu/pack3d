@@ -23,6 +23,9 @@ namespace pack3d
 /// 箱型级重量 → 逐箱缺省（输入为"全箱型有重量、箱子无"模式时，箱子重量取自箱型；校验通过后调用）
 void resolve_type_weights(Problem& p) noexcept;
 
+/// 箱型级 group/platform → 逐实例缺省（严格三选一校验通过后调用）
+void resolve_type_labels(Problem& p) noexcept;
+
 // enum 字符串转换
 [[nodiscard]] std::string algorithm_to_string(Algorithm a) noexcept;
 [[nodiscard]] Algorithm algorithm_from_string(const std::string& s);

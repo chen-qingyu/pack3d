@@ -58,6 +58,10 @@ TEST_CASE("输出字段恒存在", "[solver][output]")
         REQUIRE((bt["max_load"].is_null() || bt["max_load"].is_array()));
         REQUIRE(bt.contains("weight"));
         REQUIRE(bt.contains("loose"));
+        REQUIRE(bt.contains("group"));
+        REQUIRE(bt.contains("platform"));
+        REQUIRE(bt["group"].is_null());
+        REQUIRE(bt["platform"].is_null());
     }
 
     // 放置级
@@ -68,6 +72,43 @@ TEST_CASE("输出字段恒存在", "[solver][output]")
             REQUIRE(pl.contains("platform"));
             REQUIRE(pl.contains("group"));
             REQUIRE(pl.contains("weight"));
+        }
+    }
+}
+
+TEST_CASE("箱型级 group/platform 传播到输出", "[solver][labels]")
+{
+    auto input = load_data("data/demo.json");
+    input["box_types"][0]["group"] = "g1";
+    input["box_types"][0]["platform"] = "P1";
+    input["box_types"][1]["group"] = "g2";
+    input["box_types"][1]["platform"] = "P2";
+    input["route"] = {"P1", "P2"};
+
+    auto res = run(input);
+    REQUIRE(res["status"] == "complete");
+    for (const auto& bt : res["result"]["box_types"])
+    {
+        if (bt["id"] == "box_s")
+        {
+            REQUIRE(bt["group"] == "g1");
+            REQUIRE(bt["platform"] == "P1");
+        }
+        else if (bt["id"] == "box_l")
+        {
+            REQUIRE(bt["group"] == "g2");
+            REQUIRE(bt["platform"] == "P2");
+        }
+    }
+    for (const auto& container : res["result"]["containers"])
+    {
+        for (const auto& placement : container["placements"])
+        {
+            const auto& type = placement["box_type_id"] == "box_s"
+                                   ? res["result"]["box_types"][0]
+                                   : res["result"]["box_types"][1];
+            REQUIRE(placement["group"] == type["group"]);
+            REQUIRE(placement["platform"] == type["platform"]);
         }
     }
 }

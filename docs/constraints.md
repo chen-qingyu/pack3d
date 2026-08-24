@@ -40,7 +40,7 @@
 
 **tender（运输委托）** 定义：同一运输委托的货物共享 `group`（一票委托可含多个 group），在存在 `group` 的情况下，容器按共享 group 连通，每个连通分量即一个 tender。例如容器 A{g1,g2}、B{g2,g3}、C{g3,g4} 经 g2/g3 连通构成一个 tender，容器 D{g5} 是另一个 tender。
 
-`tender_limit` 限制**每个运输委托（tender，连通分量）最多包含的容器数**。启用它要求箱子配置 `group`（预校验强制：配置 `tender_limit` 但无任何 `group` 报 `invalid`，否则无 group 时该约束静默失效）。
+`tender_limit` 限制**每个运输委托（tender，连通分量）最多包含的容器数**。启用它要求有效箱子配置 `group`（`group` 可按箱型级或箱子级三选一提供；预校验强制：配置 `tender_limit` 但无任何有效 `group` 报 `invalid`，否则无 group 时该约束静默失效）。
 
 求解时逐箱判断：把箱子放入容器 C 时，若该箱的 `group` 会使 C 所属的连通分量超过 `tender_limit` 个容器，则拒绝放入（该箱保持未装箱）。四个算法（GEP/GLC/RGS/BSG）在单容器填充时均执行此检查；后处理（站点合并、换小容器）同样遵守。
 

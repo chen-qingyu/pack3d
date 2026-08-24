@@ -147,7 +147,7 @@ JSON，顶层四个字段：
 
 `facets` 为本容器实例的斜面（从容器类型继承，自包含），结构与输入一致（`dx`/`dy`/`dz` 恰好两个非零截距）；未配置时为 `[]`。
 
-`tender` 为该容器所属 tender 的序号（1-based）：容器按共享 `group` 连通，每个连通分量即一个 tender，按容器顺序首次出现编号。因输入 group 全有或全无（见 input.md 预校验），`tender` 要么全为数字要么全为 `null`。如容器 A{g1,g2}、B{g2,g3}、C{g3,g4}、D{g5}，则 A/B/C 的 `tender` 均为 1，D 为 2。
+`tender` 为该容器所属 tender 的序号（1-based）：容器按有效 `group` 连通，每个连通分量即一个 tender，按容器顺序首次出现编号。因输入 `group` 采用三选一来源规则（见 input.md），全无时 `tender` 为 `null`，有 group 时相关容器带数字编号。如容器 A{g1,g2}、B{g2,g3}、C{g3,g4}、D{g5}，则 A/B/C 的 `tender` 均为 1，D 为 2。
 
 `pallets` 为托盘明细数组，**恒输出**（未启用装托时为空数组 `[]`）。启用装托时，容器 placement 中托盘单元 `box_id` = `pallet_id`，其内部散件在 `pallets` 中展开。每托字段：
 
@@ -167,7 +167,7 @@ JSON，顶层四个字段：
 
 装托输入与行为详见 [architecture.md](architecture.md) §3。
 
-`result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`（与 `allowed_orientations` 对齐的数组，未配置为 `null`，字段恒存在）；装托模式下额外包含虚拟托盘箱型。
+`result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`、`weight`、`group`、`platform`（承重字段与 `allowed_orientations` 对齐的数组，未配置为 `null`，字段恒存在）；装托模式下额外包含虚拟托盘箱型。箱型级 `group/platform` 会同时以有效值出现在对应 placement 中；箱子级模式下箱型字段为 `null`，placement 保留各实例值。
 
 placement 字段说明：
 
