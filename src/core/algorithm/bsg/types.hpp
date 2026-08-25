@@ -152,9 +152,8 @@ struct ItemClass
     std::string box_type_id;
     std::string platform;
     double weight = 0.0;
-    std::string group;
     std::vector<std::string> box_ids;
-    std::set<std::string> group_members;
+    std::set<std::string> groups; // 所属分组集合
 };
 
 // ============================================================

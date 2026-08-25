@@ -111,7 +111,7 @@ void prefill_load(ContainerLoad& load,
         {
             load.platforms.insert(pl.platform);
         }
-        for (const auto& group : effective_groups(pl.group_members, pl.group))
+        for (const auto& group : pl.groups)
         {
             load.groups.insert(group);
         }
@@ -350,7 +350,7 @@ Solution PackerBase::build_solution(
             TenderState ts = build_tender_state(all_loads, all_loads.size(), limit);
             for (const auto& bx : remaining)
             {
-                const auto groups = effective_groups(bx.group_members, bx.group);
+                const auto& groups = bx.groups;
                 if (!groups.empty() && !check_tender_limit(ts, {}, groups))
                 {
                     ++tender_blocked;

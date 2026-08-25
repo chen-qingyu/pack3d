@@ -17,7 +17,7 @@ std::vector<SimpleBlock> BlockGenerator::generate_for_type(
     const std::string& box_type_id,
     const Size& container_size,
     const std::string& platform,
-    const std::set<std::string>& group_members,
+    const std::set<std::string>& groups,
     int available_count) const
 {
     std::vector<SimpleBlock> blocks;
@@ -59,7 +59,7 @@ std::vector<SimpleBlock> BlockGenerator::generate_for_type(
                     SimpleBlock block;
                     block.box_type_id = box_type_id;
                     block.key = box_type_id + "\t" + platform + "\t" +
-                                encode_groups(group_members, "");
+                                encode_groups(groups);
                     block.orientation = orient;
                     block.nx = nx;
                     block.ny = ny;
@@ -67,11 +67,7 @@ std::vector<SimpleBlock> BlockGenerator::generate_for_type(
                     block.box_count = count;
                     block.osize = {os.dx * nx, os.dy * ny, os.dz * nz};
                     block.platform = platform;
-                    block.group_members = group_members;
-                    if (group_members.size() == 1)
-                    {
-                        block.group = *group_members.begin();
-                    }
+                    block.groups = groups;
 
                     blocks.push_back(std::move(block));
                 }

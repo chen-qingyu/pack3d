@@ -119,7 +119,7 @@ std::vector<PalletLoad> palletize(
         std::map<std::string, std::vector<Box>> groups;
         for (const auto& bx : remaining)
         {
-            std::string key = bx.platform + "\x1f" + bx.group;
+            std::string key = bx.platform + "\x1f" + encode_groups(bx.groups);
             groups[key].push_back(bx);
         }
         for (auto& [key, boxes] : groups)
@@ -164,7 +164,7 @@ std::vector<PalletLoad> palletize(
         {
             const std::string key = problem.pallet_mix_group.value()
                                         ? bx.platform
-                                        : bx.platform + "\x1f" + bx.group;
+                                        : bx.platform + "\x1f" + encode_groups(bx.groups);
             by_label[key].push_back(bx);
         }
         for (const auto& pt : problem.pallet_types)

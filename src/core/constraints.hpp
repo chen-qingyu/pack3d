@@ -140,7 +140,12 @@ struct TenderState
     const TenderState& ts, const std::set<std::string>& groups,
     const std::string& group) noexcept
 {
-    return check_tender_limit(ts, groups, effective_groups({}, group));
+    std::set<std::string> candidate;
+    if (!group.empty())
+    {
+        candidate.insert(group);
+    }
+    return check_tender_limit(ts, groups, candidate);
 }
 
 /// 校验全部容器的每个 tender 连通分量都不超过 limit（后处理候选整体复检用）

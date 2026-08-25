@@ -495,7 +495,7 @@ TEST_CASE("heavy_not_on_light: 上箱重量不得超过直接支撑箱", "[core]
     auto load = make_stack_load();
 
     // 支撑箱 20kg
-    load.placements.push_back({"", "heavy", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}, "", "", 20.0});
+    load.placements.push_back({"", "heavy", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}, "", 20.0});
     apply_stack_state({0, 0, 0}, {100, 100, 100}, 20.0, load);
     // 轻箱 10kg 压上：允许
     REQUIRE(check_heavy_not_on_light({0, 0, 100}, {100, 100, 100}, 10.0, load));
@@ -512,9 +512,9 @@ TEST_CASE("recompute_stack_state: 乱序重建", "[core][stack]")
     auto load = make_stack_load();
 
     // 乱序 push：顶层 b3、底层 b1、中层 b2，各重 50
-    load.placements.push_back({"b3", "bt", "", {0, 0, 200}, Orientation::XYZ, {100, 100, 100}, "", "", 50.0});
-    load.placements.push_back({"b1", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}, "", "", 50.0});
-    load.placements.push_back({"b2", "bt", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}, "", "", 50.0});
+    load.placements.push_back({"b3", "bt", "", {0, 0, 200}, Orientation::XYZ, {100, 100, 100}, "", 50.0});
+    load.placements.push_back({"b1", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}, "", 50.0});
+    load.placements.push_back({"b2", "bt", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}, "", 50.0});
 
     std::vector<std::string> errs;
     recompute_stack_state(load, btm, &errs);

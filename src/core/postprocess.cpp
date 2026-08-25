@@ -38,7 +38,7 @@ ContainerLoad without_platform(const ContainerLoad& src,
         {
             out.platforms.insert(pl.platform);
         }
-        for (const auto& group : effective_groups(pl.group_members, pl.group))
+        for (const auto& group : pl.groups)
         {
             out.groups.insert(group);
         }

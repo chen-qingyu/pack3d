@@ -153,7 +153,7 @@ PackResult solve(const GlobalContext& ctx,
             {
                 s0.constraint_load.platforms.insert(pl.platform);
             }
-            for (const auto& group : effective_groups(pl.group_members, pl.group))
+            for (const auto& group : pl.groups)
             {
                 s0.constraint_load.groups.insert(group);
             }

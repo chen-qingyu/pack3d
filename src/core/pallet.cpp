@@ -51,9 +51,8 @@ Box virtual_box(const PalletLoad& p) noexcept
     bx.id = p.pallet_id;
     bx.box_type_id = p.pallet_id;
     bx.weight = p.type->self_weight + p.goods_weight;
-    bx.group = (p.groups.size() == 1) ? *p.groups.begin() : std::string();
     bx.platform = (p.platforms.size() == 1) ? *p.platforms.begin() : std::string();
-    bx.group_members = p.groups;
+    bx.groups = p.groups;
     return bx;
 }
 
@@ -72,7 +71,7 @@ PalletLoad make_pallet_load(const ContainerLoad& load, const PalletType& pt,
         {
             p.goods_weight += pl.weight.value();
         }
-        for (const auto& group : effective_groups(pl.group_members, pl.group))
+        for (const auto& group : pl.groups)
         {
             p.groups.insert(group);
         }

@@ -15,11 +15,10 @@ struct SimpleBlock
     std::string key; // (box_type_id, platform, group 集合) 组合键，生成时预计算
     Orientation orientation = Orientation::XYZ;
     int nx = 0, ny = 0, nz = 0;
-    int box_count = 0;    // nx * ny * nz
-    OrientedSize osize;   // 块的外包尺寸
-    std::string platform; // 块内箱子共享的平台（空表示无）
-    std::string group;    // 块内箱子共享的分组（空表示无）
-    std::set<std::string> group_members;
+    int box_count = 0;            // nx * ny * nz
+    OrientedSize osize;           // 块的外包尺寸
+    std::string platform;         // 块内箱子共享的平台（空表示无）
+    std::set<std::string> groups; // 块内箱子共享的分组集合
 
     int64_t volume() const noexcept
     {
@@ -39,7 +38,7 @@ public:
         const std::string& box_type_id,
         const Size& container_size,
         const std::string& platform,
-        const std::set<std::string>& group_members,
+        const std::set<std::string>& groups,
         int available_count) const;
 
 private:

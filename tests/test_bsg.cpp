@@ -316,8 +316,8 @@ TEST_CASE("tender: 复合块逐叶 group 检查", "[bsg][tender]")
     ctx.box_types = {bt_a, bt_b};
 
     ctx.item_classes = {
-        {"a", "", 0.0, "g1", {}},
-        {"b", "", 0.0, "g2", {}},
+        {"a", "", 0.0, {}, {"g1"}},
+        {"b", "", 0.0, {}, {"g2"}},
     };
 
     GeneralBlock ba;

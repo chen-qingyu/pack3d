@@ -197,9 +197,8 @@ struct Box
     std::string id;
     std::string box_type_id;
     std::optional<double> weight = std::nullopt;
-    std::string group;                   // 空字符串表示未设置
-    std::string platform;                // 空字符串表示未设置
-    std::set<std::string> group_members; // 混合托盘的完整分组集合
+    std::string platform;         // 空字符串表示未设置
+    std::set<std::string> groups; // 所属分组集合（空=未设置；混组托盘=完整分组集合）
 };
 
 // 托盘类型（用户自定义，可多种并存，由装托循环选择）
@@ -246,9 +245,8 @@ struct ExistingPlacement
     Orientation orientation = Orientation::XYZ;
     std::optional<double> weight = std::nullopt;
     std::string platform;
-    std::string group;
     std::optional<OrientedSize> size = std::nullopt;
-    std::set<std::string> group_members;
+    std::set<std::string> groups; // 所属分组集合
 };
 
 struct ExistingContainer
@@ -298,10 +296,9 @@ struct Placement
     Orientation orientation = Orientation::XYZ;
     OrientedSize osize;   // 朝向后的实际尺寸
     std::string platform; // 空字符串表示未设置，输出时转为 null
-    std::string group;    // 空字符串表示未设置，输出时转为 null
     std::optional<double> weight = std::nullopt;
 
-    std::set<std::string> group_members; // 混合托盘的完整分组集合
+    std::set<std::string> groups; // 所属分组集合（空=未设置；混组托盘=完整分组集合）
 
     // 堆叠状态（内部字段，不序列化到输出）
     int stack_level = 1;          // 所在堆柱层号，地板层=1（max_stack 层号基准）
@@ -311,24 +308,14 @@ struct Placement
     std::vector<size_t> supports; // 直接支撑箱下标（本容器 placements 内，堆叠传播用）
 };
 
-inline std::set<std::string> effective_groups(
-    const std::set<std::string>& members, const std::string& group)
+/// 取集合中的唯一分组；集合为空或含多个分组时返回空串
+inline std::string single_group(const std::set<std::string>& groups) noexcept
 {
-    if (!members.empty())
-    {
-        return members;
-    }
-    if (!group.empty())
-    {
-        return {group};
-    }
-    return {};
+    return groups.size() == 1 ? *groups.begin() : std::string();
 }
 
-inline std::string encode_groups(
-    const std::set<std::string>& members, const std::string& group)
+inline std::string encode_groups(const std::set<std::string>& groups)
 {
-    const auto groups = effective_groups(members, group);
     std::string encoded;
     for (const auto& value : groups)
     {

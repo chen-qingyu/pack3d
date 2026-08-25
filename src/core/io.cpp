@@ -151,7 +151,7 @@ LabelSources detect_label_sources(const Problem& problem,
     return {
         detect_three_way_source("group", problem.box_types, problem.boxes, [](const BoxType& bt)
                                 { return bt.group; }, [](const Box& bx)
-                                { return optional_string(bx.group); }, errors),
+                                { return optional_string(single_group(bx.groups)); }, errors),
         detect_three_way_source("platform", problem.box_types, problem.boxes, [](const BoxType& bt)
                                 { return bt.platform; }, [](const Box& bx)
                                 { return optional_string(bx.platform); }, errors),
@@ -319,11 +319,10 @@ void from_json(const json& j, Box& bx)
     j["id"].get_to(bx.id);
     j["box_type_id"].get_to(bx.box_type_id);
     bx.weight = json_opt<double>(j, "weight");
-    bx.group = json_opt<std::string>(j, "group").value_or(std::string());
     bx.platform = json_opt<std::string>(j, "platform").value_or(std::string());
-    if (!bx.group.empty())
+    if (auto g = json_opt<std::string>(j, "group"); g.has_value() && !g->empty())
     {
-        bx.group_members.insert(bx.group);
+        bx.groups.insert(*g);
     }
 }
 
@@ -337,10 +336,9 @@ void from_json(const json& j, ExistingPlacement& ep)
     ep.orientation = orientation_from_string(j["orientation"].get<std::string>());
     ep.weight = json_opt<double>(j, "weight");
     ep.platform = json_opt<std::string>(j, "platform").value_or(std::string());
-    ep.group = json_opt<std::string>(j, "group").value_or(std::string());
-    if (!ep.group.empty())
+    if (auto g = json_opt<std::string>(j, "group"); g.has_value() && !g->empty())
     {
-        ep.group_members.insert(ep.group);
+        ep.groups.insert(*g);
     }
     if (j.contains("dx"))
     {
@@ -583,7 +581,7 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         [](const BoxType& bt)
         { return bt.group; },
         [](const ExistingPlacement& ep)
-        { return optional_string(ep.group); },
+        { return optional_string(single_group(ep.groups)); },
         std::equal_to<std::string>{}, out);
     check_snapshot_consistency<std::string>(
         "platform", label_sources.platform, bt_map, problem.existing_containers,
@@ -624,14 +622,14 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
     bool any_group = false;
     for (const auto& bx : problem.boxes)
     {
-        any_group |= !input_label(bx.box_type_id, bx.group, label_sources.group, true).empty();
+        any_group |= !input_label(bx.box_type_id, single_group(bx.groups), label_sources.group, true).empty();
     }
     for (const auto& ec : problem.existing_containers)
     {
         for (const auto& ep : ec.placements)
         {
-            any_group |= !input_label(ep.box_type_id, ep.group, label_sources.group, true).empty() ||
-                         !ep.group_members.empty();
+            any_group |= !input_label(ep.box_type_id, single_group(ep.groups), label_sources.group, true).empty() ||
+                         !ep.groups.empty();
         }
     }
 
@@ -955,8 +953,8 @@ void resolve_type_fields(Problem& p) noexcept
                                { bx.weight = value; });
     inherit_type_field<std::string>(label_sources.group, type_map, p.boxes, [](const BoxType& bt)
                                     { return bt.group; }, [](const Box& bx)
-                                    { return optional_string(bx.group); }, [](Box& bx, const std::string& value)
-                                    { bx.group = value; });
+                                    { return optional_string(single_group(bx.groups)); }, [](Box& bx, const std::string& value)
+                                    { bx.groups.insert(value); });
     inherit_type_field<std::string>(label_sources.platform, type_map, p.boxes, [](const BoxType& bt)
                                     { return bt.platform; }, [](const Box& bx)
                                     { return optional_string(bx.platform); }, [](Box& bx, const std::string& value)
@@ -969,8 +967,8 @@ void resolve_type_fields(Problem& p) noexcept
                                    { ep.weight = value; });
         inherit_type_field<std::string>(label_sources.group, type_map, ec.placements, [](const BoxType& bt)
                                         { return bt.group; }, [](const ExistingPlacement& ep)
-                                        { return optional_string(ep.group); }, [](ExistingPlacement& ep, const std::string& value)
-                                        { ep.group = value; });
+                                        { return optional_string(single_group(ep.groups)); }, [](ExistingPlacement& ep, const std::string& value)
+                                        { ep.groups.insert(value); });
         inherit_type_field<std::string>(label_sources.platform, type_map, ec.placements, [](const BoxType& bt)
                                         { return bt.platform; }, [](const ExistingPlacement& ep)
                                         { return optional_string(ep.platform); }, [](ExistingPlacement& ep, const std::string& value)
@@ -1010,8 +1008,11 @@ ContainerLoad build_load_from_existing(
         pl.orientation = ep.orientation;
         pl.osize = bt_it->second.size.orient(ep.orientation);
         pl.platform = ep.platform.empty() ? bt_it->second.platform.value_or(std::string()) : ep.platform;
-        pl.group = ep.group.empty() ? bt_it->second.group.value_or(std::string()) : ep.group;
-        pl.group_members = effective_groups(ep.group_members, pl.group);
+        pl.groups = ep.groups;
+        if (pl.groups.empty() && bt_it->second.group.has_value())
+        {
+            pl.groups.insert(*bt_it->second.group);
+        }
         pl.weight = ep.weight;
         // 箱型级重量缺省：已有放置未显式给重量时取箱型重量
         if (!pl.weight.has_value() && bt_it->second.weight.has_value())
@@ -1040,7 +1041,7 @@ ContainerLoad build_load_from_existing(
         {
             load.platforms.insert(ep.platform);
         }
-        for (const auto& group : pl.group_members)
+        for (const auto& group : pl.groups)
         {
             load.groups.insert(group);
         }
@@ -1068,7 +1069,8 @@ void to_json(json& j, const Placement& pl)
     j["dy"] = pl.osize.dy;
     j["dz"] = pl.osize.dz;
     j["platform"] = pl.platform.empty() ? json(nullptr) : json(pl.platform);
-    j["group"] = pl.group.empty() ? json(nullptr) : json(pl.group);
+    const std::string group = single_group(pl.groups);
+    j["group"] = group.empty() ? json(nullptr) : json(group);
     j["weight"] = opt_json(pl.weight);
 }
 

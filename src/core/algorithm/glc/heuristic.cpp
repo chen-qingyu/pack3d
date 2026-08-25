@@ -94,7 +94,7 @@ bool Heuristic::check_block_feasible(
     // ---- per-block 检查 ----
 
     // tender 约束：块内同组，只查一次
-    if (!check_tender_limit(tender_, state.groups, block.group_members))
+    if (!check_tender_limit(tender_, state.groups, block.groups))
     {
         return false;
     }
@@ -213,8 +213,7 @@ bool Heuristic::check_block_feasible(
                 pl.orientation = block.orientation;
                 pl.osize = single;
                 pl.platform = block.platform;
-                pl.group = block.group;
-                pl.group_members = block.group_members;
+                pl.groups = block.groups;
                 if (has_weight_info_ && (problem_.has_max_load || problem_.heavy_not_on_light))
                 {
                     pl.weight = box_weight;
@@ -273,7 +272,7 @@ void Heuristic::place_block(
                 pl.orientation = block.orientation;
                 pl.osize = single;
                 pl.platform = block.platform;
-                pl.group = block.group;
+                pl.groups = block.groups;
                 if (has_weight_info_ && (problem_.has_max_load || problem_.heavy_not_on_light))
                 {
                     pl.weight = box_weight;
@@ -291,7 +290,7 @@ void Heuristic::place_block(
                     state.platforms.insert(block.platform);
                 }
 
-                for (const auto& group : block.group_members)
+                for (const auto& group : block.groups)
                 {
                     state.groups.insert(group);
                 }
@@ -501,20 +500,20 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
     for (const auto& bx : boxes)
     {
         all_available[bx.box_type_id + "\t" + bx.platform + "\t" +
-                      encode_groups(bx.group_members, bx.group)]
+                      encode_groups(bx.groups)]
             .push_back(
                 bx.weight.has_value() ? bx.weight.value() : 0.0);
     }
 
     // 块按 (type, platform, group 集合) 分组生成
     std::map<std::string, int> group_counts;
-    std::map<std::string, std::set<std::string>> group_members;
+    std::map<std::string, std::set<std::string>> groups;
     for (const auto& bx : boxes)
     {
         const std::string key = bx.box_type_id + "\t" + bx.platform + "\t" +
-                                encode_groups(bx.group_members, bx.group);
+                                encode_groups(bx.groups);
         group_counts[key]++;
-        group_members[key] = effective_groups(bx.group_members, bx.group);
+        groups[key] = bx.groups;
     }
 
     std::vector<SimpleBlock> all_blocks;
@@ -525,7 +524,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
         auto tid = key.substr(0, tab1);
         auto plat = key.substr(tab1 + 1, tab2 - tab1 - 1);
         auto type_blocks = block_gen_.generate_for_type(
-            tid, container_.inner_size, plat, group_members[key], count);
+            tid, container_.inner_size, plat, groups[key], count);
         all_blocks.insert(all_blocks.end(), type_blocks.begin(), type_blocks.end());
     }
 
@@ -683,11 +682,13 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
         place_block(*best, space, state, available, stack);
     }
 
-    // 回填真实 box_id：按 (type, platform, group) 分组分配
+    // 回填真实 box_id：按 (type, platform, group 集合) 分组分配
     std::map<std::string, std::vector<std::string>> real_ids_by_group;
     for (const auto& bx : boxes)
     {
-        real_ids_by_group[bx.box_type_id + "\t" + bx.platform + "\t" + bx.group].push_back(bx.id);
+        real_ids_by_group[bx.box_type_id + "\t" + bx.platform + "\t" +
+                          encode_groups(bx.groups)]
+            .push_back(bx.id);
     }
 
     std::map<std::string, size_t> consume_idx;
@@ -695,7 +696,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
     {
         if (pl.box_id.compare(0, kBlockIdPrefix.size(), kBlockIdPrefix) == 0)
         {
-            auto key = pl.box_type_id + "\t" + pl.platform + "\t" + pl.group;
+            auto key = pl.box_type_id + "\t" + pl.platform + "\t" + encode_groups(pl.groups);
             auto& ids = real_ids_by_group[key];
             size_t& idx = consume_idx[key];
             if (idx < ids.size())

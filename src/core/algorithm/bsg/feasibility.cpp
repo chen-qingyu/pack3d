@@ -116,7 +116,7 @@ bool can_place_block(
             return false;
         }
         const auto& item = ctx.item_classes[leaf.item_class_idx];
-        const auto item_groups = effective_groups(item.group_members, item.group);
+        const auto& item_groups = item.groups;
         if (ctx.tender.limit > 0 && !item_groups.empty())
         {
             if (!check_tender_limit(ctx.tender, next_load.groups, item_groups))
@@ -164,9 +164,9 @@ bool can_place_block(
         }
 
         next_load.placements.push_back({"", item.box_type_id, "", leaf.position,
-                                        leaf.orientation, leaf.osize, item.platform, ""});
+                                        leaf.orientation, leaf.osize, item.platform, std::nullopt});
         next_load.placements.back().weight = item.weight;
-        next_load.placements.back().group_members = item_groups;
+        next_load.placements.back().groups = item_groups;
         if (ctx.has_max_stack || ctx.has_max_load)
         {
             apply_stack_state(leaf.position, leaf.osize, item.weight, next_load);
