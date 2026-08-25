@@ -74,9 +74,9 @@ export interface Obstacle {
 }
 
 export interface Facet {
-  dx?: number
-  dy?: number
-  dz?: number
+  dx: number
+  dy: number
+  dz: number
 }
 
 export interface ContainerResult {

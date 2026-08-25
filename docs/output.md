@@ -11,7 +11,7 @@ JSON，顶层四个字段：
 }
 ```
 
-> **字段恒存在（消费契约）**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`group`/`platform`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）。下游（web/server/SDK）**依赖此契约**，不再对缺失字段做防御（如 `?.`/`?? []`/`.get("x", [])`）。唯一例外：斜面 `facets[].dx/dy/dz` 按格式只输出非零截距（天然缺省），消费方须容忍缺键。输出**不含** `box_types`（箱子类型仅在输入中出现；放置信息自带 `box_type_id` 与朝向尺寸 `dx/dy/dz`）。
+> **字段恒存在（消费契约）**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`group`/`platform`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）。下游（web/server/SDK）**依赖此契约**，不再对缺失字段做防御（如 `?.`/`?? []`/`.get("x", [])`）。输出**不含** `box_types`（箱子类型仅在输入中出现；放置信息自带 `box_type_id` 与朝向尺寸 `dx/dy/dz`）。
 
 ## `status` 状态枚举
 
@@ -150,7 +150,7 @@ JSON，顶层四个字段：
 
 `obstacles` 为本容器实例的障碍物（从容器类型继承，自包含），结构与输入一致；未配置时为 `[]`。
 
-`facets` 为本容器实例的斜面（从容器类型继承，自包含），结构与输入一致（`dx`/`dy`/`dz` 恰好两个非零截距）；未配置时为 `[]`。
+`facets` 为本容器实例的斜面（从容器类型继承，自包含），恒输出 `dx`/`dy`/`dz` 三键，其中平行贯穿轴为 `0`（输入省略该键时语义等价）；未配置时为 `[]`。
 
 `tender` 为该容器所属 tender 的序号（1-based）：容器按有效 `group` 连通，每个连通分量即一个 tender，按容器顺序首次出现编号。因输入 `group` 采用三选一来源规则（见 input.md），全无时 `tender` 为 `null`，有 group 时相关容器带数字编号。如容器 A{g1,g2}、B{g2,g3}、C{g3,g4}、D{g5}，则 A/B/C 的 `tender` 均为 1，D 为 2。
 

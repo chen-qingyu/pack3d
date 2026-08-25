@@ -1132,18 +1132,9 @@ void to_json(json& j, const Solution& sol)
         for (const auto& f : cs.facets)
         {
             json fj;
-            if (f.dx != 0)
-            {
-                fj["dx"] = f.dx;
-            }
-            if (f.dy != 0)
-            {
-                fj["dy"] = f.dy;
-            }
-            if (f.dz != 0)
-            {
-                fj["dz"] = f.dz;
-            }
+            fj["dx"] = f.dx;
+            fj["dy"] = f.dy;
+            fj["dz"] = f.dz;
             fac_json.push_back(std::move(fj));
         }
         cj["facets"] = std::move(fac_json);

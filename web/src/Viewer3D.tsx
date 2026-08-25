@@ -131,13 +131,11 @@ function Viewer3D({ containers, pallets = [] }: {
             { key: 'dy' as const, extent: container.sy },
             { key: 'dz' as const, extent: container.sz },
           ]
-          const present = axes.filter((a) => facet[a.key] !== undefined && facet[a.key] !== 0)
-          if (present.length !== 2) return
-          const [u, v] = present
-          const w = axes.find((a) => !present.includes(a))
-          if (!w) return
-          const su = facet[u.key] ?? 0
-          const sv = facet[v.key] ?? 0
+          // 契约：每面恰好两个非零截距，恒有第三轴为 0（平行贯穿轴）
+          const [u, v] = axes.filter((a) => facet[a.key] !== 0)
+          const w = axes.find((a) => facet[a.key] === 0)!
+          const su = facet[u.key]
+          const sv = facet[v.key]
           const cornerU = su > 0 ? u.extent : 0
           const cornerV = sv > 0 ? v.extent : 0
           // 斜面矩形面两个端点：A 在 u 墙上（距 v 角 sv），B 在 v 墙上（距 u 角 su）；沿 w 贯穿
