@@ -498,6 +498,13 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             {
                 out.push_back(opfx + ": out of container bounds");
             }
+            // 障碍物是容器内实体，不得侵入斜面楔形禁区（面贴面允许为合法）
+            if (!ct.facets.empty() &&
+                check_facet(Position{o.x, o.y, o.z}, OrientedSize{o.dx, o.dy, o.dz},
+                            ct.inner_size, ct.facets))
+            {
+                out.push_back(opfx + ": intrudes into container facet forbidden zone");
+            }
             for (size_t oj = 0; oj < oi; ++oj)
             {
                 const auto& q = ct.obstacles[oj];

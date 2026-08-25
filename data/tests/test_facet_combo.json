@@ -6,7 +6,7 @@
       "sy": 10,
       "sz": 10,
       "facets": [{ "dx": 10, "dz": 10 }],
-      "obstacles": [{ "x": 15, "y": 0, "z": 0, "dx": 5, "dy": 10, "dz": 5 }]
+      "obstacles": [{ "x": 10, "y": 0, "z": 0, "dx": 5, "dy": 10, "dz": 5 }]
     }
   ],
   "box_types": [

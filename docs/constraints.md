@@ -122,7 +122,7 @@ $$\text{weight}(B) \le \text{weight}(S)$$
 
 体积口径：障碍物计入 `volume_rate` 分母（可用容积定义见 [output.md](output.md)）。
 
-预校验（违反 -> `invalid`）：障碍物完全在容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠。
+预校验（违反 -> `invalid`）：障碍物完全在容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠、障碍物不侵入斜面楔形禁区（面贴面允许，见 1.12）。
 
 实现：共享 `check_obstacle`（相交）与 `check_support`（顶面支撑）为四个算法统一兜底；各算法的候选点/空间雕刻策略见 [algorithms.md](algorithms.md)。
 
@@ -133,8 +133,8 @@ $$\text{weight}(B) \le \text{weight}(S)$$
 - **禁入**：斜面切掉角附近**楔形禁区**（凸半空间），箱子不得侵入（面贴面允许）。
 - **不参与支撑**：斜面是斜坡，`support_rate`/`max_stack`/`max_load` 均不与其交互。
 - **体积口径**：斜面计入 `volume_rate` 分母（可用容积定义见 [output.md](output.md)）；楔形占的空间已从分母扣除，可用空间装满即 100%。
-- 斜面之间允许重叠（独立禁区，重叠只是更禁）；与障碍物相互独立、无交叉校验。
+- 斜面之间允许重叠（独立禁区，重叠只是更禁）；障碍物不得侵入斜面楔形禁区（面贴面允许，见 1.11）。
 
-预校验（违反 -> `invalid`）：恰好两个非零截距、`1 <= |截距| <= 容器该轴尺寸`、`existing_containers` 已有放置不侵入斜面禁区。
+预校验（违反 -> `invalid`）：恰好两个非零截距、`1 <= |截距| <= 容器该轴尺寸`、`existing_containers` 已有放置不侵入斜面禁区、障碍物不侵入斜面禁区（见 1.11）。
 
 实现：共享 `check_facet`（箱子极角点 vs 平面单次点积）为四个算法统一兜底。GLC/BSG 默认不做阶梯雕刻（阶梯碎片会切碎空间栈/残余空间、降低装载），楔形禁区分别由 `check_block_feasible` / `can_place_block` 的逐箱 `check_facet` 兜底（过挖为 0）。**例外（禁区覆盖原点）**：某斜面两截距均为负（贴原点角）时，GEP/RGS 用地板扫描补首个可用起点、GLC/BSG 对贴角楔形做阶梯雕刻——否则原点不可用会导致零装载。
