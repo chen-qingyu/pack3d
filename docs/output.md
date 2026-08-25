@@ -61,26 +61,40 @@ JSON，顶层四个字段：
   "containers": [
     {
       "type_id": "big",
-      "sx": 110,
-      "sy": 50,
-      "sz": 50,
-      "payload": 50000.0,
-      "used_volume": 271000,
-      "used_weight": 25.0,
-      "volume_rate": 1.0,
-      "volume_rate_x": 1.0,
-      "weight_rate": 0.0005,
-      "packed_count": 3,
-      "platforms": ["A", "B"],
-      "groups": ["X"],
+      "sx": 1300,
+      "sy": 1100,
+      "sz": 600,
+      "payload": 100000.0,
+      "used_volume": 216125000,
+      "used_weight": 20.0,
+      "volume_rate": 0.2519,
+      "volume_rate_x": 0.262,
+      "weight_rate": 0.0002,
+      "packed_count": 2,
+      "platforms": ["P1"],
+      "groups": ["A"],
       "tender": 1,
-      "obstacles": [{ "x": 0, "y": 0, "z": 40, "dx": 3, "dy": 50, "dz": 10 }],
-      "facets": [{ "dx": 10, "dz": 10 }],
+      "obstacles": [],
+      "facets": [],
       "placements": [
+        {
+          "box_id": "pt1200#1",
+          "box_type_id": "pt1200#1",
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "dx": 1200,
+          "dy": 1000,
+          "dz": 180,
+          "orientation": "xyz",
+          "weight": 10.0,
+          "platform": "P1",
+          "group": "A"
+        },
         {
           "box_id": "a1",
           "box_type_id": "big_box",
-          "x": 0,
+          "x": 1200,
           "y": 0,
           "z": 0,
           "dx": 50,
@@ -103,9 +117,9 @@ JSON，顶层四个字段：
       "sz": 150,
       "payload": 1000,
       "max_height": 1500,
-      "used_height": 400,
-      "used_weight": 25.0,
-      "volume_rate": 0.8333,
+      "used_height": 30,
+      "used_weight": 10.0,
+      "volume_rate": 0.001,
       "groups": ["A"],
       "platforms": ["P1"],
       "placements": [
@@ -119,7 +133,9 @@ JSON，顶层四个字段：
           "dy": 40,
           "dz": 30,
           "orientation": "xyz",
-          "weight": 10.0
+          "weight": 10.0,
+          "platform": "P1",
+          "group": "A"
         }
       ]
     }
@@ -131,15 +147,45 @@ JSON，顶层四个字段：
       "sy": 50,
       "sz": 50,
       "allowed_orientations": ["xyz"],
+      "loose": false,
       "max_stack": [3],
-      "max_load": [200.0]
+      "max_load": [200.0],
+      "weight": null,
+      "group": null,
+      "platform": null
+    },
+    {
+      "id": "loose",
+      "sx": 60,
+      "sy": 40,
+      "sz": 30,
+      "allowed_orientations": ["xyz"],
+      "loose": true,
+      "max_stack": [null],
+      "max_load": [null],
+      "weight": null,
+      "group": null,
+      "platform": null
+    },
+    {
+      "id": "pt1200#1",
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 180,
+      "allowed_orientations": ["xyz", "yxz"],
+      "loose": false,
+      "max_stack": [1, 1],
+      "max_load": [null, null],
+      "weight": null,
+      "group": "A",
+      "platform": "P1"
     }
   ],
   "unpacked_boxes": ["b30", "b31"]
 }
 ```
 
-容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；有效箱子未设置站点/分组时 `platform`/`group` 为 null）。
+容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；有效箱子未设置站点/分组时 `platform`/`group` 为 null）。混组托盘的虚拟箱 `group` 亦为 null，其分组见对应 `pallets[].groups`（按 `box_id == pallet_id` 关联）。
 
 `volume_rate_x` 为容器 X 方向口径的体积利用率，与 `volume_rate` 对齐、仅把"整个容器"换成"实际使用的 X 方向 slab"：分母 = slab [0, used_x]×[0,sy]×[0,sz] 的可用容积 = `used_x·sy·sz` − 障碍物（slab 内部分）− 斜面楔形（slab 内部分），分子 = 装箱体积（同 `volume_rate`）。其中 `used_x` = 所有箱子 `x+dx` 的最大值（含续装已有放置）；`used_x` 达容器全长时本值与 `volume_rate` 相等。容器未装任何箱时为 0。`summary.volume_rate_x` 为各容器该值的平均。
 
@@ -169,20 +215,20 @@ JSON，顶层四个字段：
 
 `result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`、`weight`、`group`、`platform`（承重字段与 `allowed_orientations` 对齐的数组，未配置为 `null`，字段恒存在）；装托模式下额外包含虚拟托盘箱型。箱型级 `group/platform` 会同时以有效值出现在对应 placement 中；箱子级模式下箱型字段为 `null`，placement 保留各实例值。
 
-装托模式下的虚拟托盘箱型是合成类型；单 group 托盘的箱型字段与 placement 使用相同的有效值。混合 group 托盘的虚拟箱 `group` 为 `null`。混合托盘内部的 group 集合仅用于求解阶段的约束和容器级聚合，不新增 placement 输出字段。
+装托模式下的虚拟托盘箱型是合成类型；单 group 托盘的箱型字段与 placement 使用相同的有效值。混合 group 托盘的虚拟箱 `group` 为 `null`（完整分组只存在于 `result.pallets[].groups`，下游用 `placement.box_id == pallet.pallet_id` 关联识别）。混合托盘内部的 group 集合仅用于求解阶段的约束和容器级聚合，不新增 placement 输出字段。
 
 placement 字段说明：
 
-| 字段           | 说明                                       |
-| -------------- | ------------------------------------------ |
-| `box_id`       | 箱子实例 ID                                |
-| `box_type_id`  | 箱子类型 ID                                |
-| `x`/`y`/`z`    | 放置位置（min corner）                     |
-| `dx`/`dy`/`dz` | 朝向后的实际尺寸（沿容器轴向）             |
-| `orientation`  | 朝向（`xyz`/`xzy`/...）                    |
-| `weight`       | 箱子重量，未设置时为 null                  |
-| `platform`     | 有效站点 ID（配送停靠点），未设置时为 null |
-| `group`        | 有效分组 ID，未设置时为 null               |
+| 字段           | 说明                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| `box_id`       | 箱子实例 ID                                                                              |
+| `box_type_id`  | 箱子类型 ID                                                                              |
+| `x`/`y`/`z`    | 放置位置（min corner）                                                                   |
+| `dx`/`dy`/`dz` | 朝向后的实际尺寸（沿容器轴向）                                                           |
+| `orientation`  | 朝向（`xyz`/`xzy`/...）                                                                  |
+| `weight`       | 箱子重量，未设置时为 null                                                                |
+| `platform`     | 有效站点 ID（配送停靠点），未设置时为 null                                               |
+| `group`        | 有效分组 ID，未设置时为 null；混组托盘的虚拟箱此处为 null，完整分组见 `pallets[].groups` |
 
 ## `violations` 说明（非 `complete` 时可能出现）
 
