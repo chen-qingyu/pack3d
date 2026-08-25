@@ -1175,44 +1175,6 @@ void to_json(json& j, const Solution& sol)
     // 恒输出（未启用装托为空数组）
     result["pallets"] = sol.pallets;
 
-    json box_types_json = json::array();
-    // max_stack/max_load 恒输出（未配置为 null，配置则按朝向数组）
-    auto optional_vec = [](const auto& vec) -> json
-    {
-        if (vec.empty())
-        {
-            return nullptr;
-        }
-        json arr = json::array();
-        for (const auto& v : vec)
-        {
-            arr.push_back(v.has_value() ? json(v.value()) : json(nullptr));
-        }
-        return arr;
-    };
-    for (const auto& bt : sol.box_types)
-    {
-        json bj;
-        bj["id"] = bt.id;
-        bj["sx"] = bt.size.x;
-        bj["sy"] = bt.size.y;
-        bj["sz"] = bt.size.z;
-        json orients = json::array();
-        for (auto o : bt.allowed_orientations)
-        {
-            orients.push_back(orientation_to_string(o));
-        }
-        bj["allowed_orientations"] = std::move(orients);
-        bj["loose"] = bt.loose;
-        bj["max_stack"] = optional_vec(bt.max_stack);
-        bj["max_load"] = optional_vec(bt.max_load);
-        bj["weight"] = opt_json(bt.weight);
-        bj["group"] = opt_json(bt.group);
-        bj["platform"] = opt_json(bt.platform);
-        box_types_json.push_back(std::move(bj));
-    }
-    result["box_types"] = std::move(box_types_json);
-
     result["unpacked_boxes"] = sol.unpacked_boxes;
 
     j["result"] = std::move(result);

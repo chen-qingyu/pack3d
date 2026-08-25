@@ -510,9 +510,6 @@ struct Solution
     std::vector<std::vector<Placement>> container_placements;
     std::vector<std::string> unpacked_boxes;
 
-    /// 输出 JSON 自包含所需的箱子类型定义
-    std::vector<BoxType> box_types;
-
     // 装托字段（未启用装托时全为 0 / 空数组，恒输出）
     std::vector<PalletLoad> pallets;
     int pallet_count = 0;         // 托盘单元数

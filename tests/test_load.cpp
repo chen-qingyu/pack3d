@@ -187,15 +187,18 @@ TEST_CASE("箱型级重量解析与输出回显", "[solver][weight]")
         REQUIRE(res["summary"]["packed_box_count"] == 5);
         REQUIRE(res["result"]["containers"][0]["used_weight"].get<double>() ==
                 Catch::Approx(70.0));
-        // 输出回显箱型重量
-        bool has_weight = false;
-        for (const auto& bt : res["result"]["box_types"])
+        // 箱型级重量传播到每个 placement（输出不再包含 box_types）
+        bool all_weighted = true;
+        for (const auto& c : res["result"]["containers"])
         {
-            if (bt.contains("weight"))
+            for (const auto& pl : c["placements"])
             {
-                has_weight = true;
+                if (!pl.contains("weight") || pl["weight"].is_null())
+                {
+                    all_weighted = false;
+                }
             }
         }
-        REQUIRE(has_weight);
+        REQUIRE(all_weighted);
     }
 }

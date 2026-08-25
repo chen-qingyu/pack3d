@@ -11,7 +11,7 @@ JSON，顶层四个字段：
 }
 ```
 
-> **字段恒存在（消费契约）**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`max_stack`/`max_load`/`group`/`platform`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）、`false`（`loose`）。下游（web/server/SDK）**依赖此契约**，不再对缺失字段做防御（如 `?.`/`?? []`/`.get("x", [])`）。唯一例外：斜面 `facets[].dx/dy/dz` 按格式只输出非零截距（天然缺省），消费方须容忍缺键。
+> **字段恒存在（消费契约）**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`group`/`platform`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）。下游（web/server/SDK）**依赖此契约**，不再对缺失字段做防御（如 `?.`/`?? []`/`.get("x", [])`）。唯一例外：斜面 `facets[].dx/dy/dz` 按格式只输出非零截距（天然缺省），消费方须容忍缺键。输出**不含** `box_types`（箱子类型仅在输入中出现；放置信息自带 `box_type_id` 与朝向尺寸 `dx/dy/dz`）。
 
 ## `status` 状态枚举
 
@@ -140,47 +140,6 @@ JSON，顶层四个字段：
       ]
     }
   ],
-  "box_types": [
-    {
-      "id": "big_box",
-      "sx": 50,
-      "sy": 50,
-      "sz": 50,
-      "allowed_orientations": ["xyz"],
-      "loose": false,
-      "max_stack": [3],
-      "max_load": [200.0],
-      "weight": null,
-      "group": null,
-      "platform": null
-    },
-    {
-      "id": "loose",
-      "sx": 60,
-      "sy": 40,
-      "sz": 30,
-      "allowed_orientations": ["xyz"],
-      "loose": true,
-      "max_stack": [null],
-      "max_load": [null],
-      "weight": null,
-      "group": null,
-      "platform": null
-    },
-    {
-      "id": "pt1200#1",
-      "sx": 1200,
-      "sy": 1000,
-      "sz": 180,
-      "allowed_orientations": ["xyz", "yxz"],
-      "loose": false,
-      "max_stack": [1, 1],
-      "max_load": [null, null],
-      "weight": null,
-      "group": "A",
-      "platform": "P1"
-    }
-  ],
   "unpacked_boxes": ["b30", "b31"]
 }
 ```
@@ -213,9 +172,7 @@ JSON，顶层四个字段：
 
 装托输入与行为详见 [architecture.md](architecture.md) §3。
 
-`result.box_types` 与输入 `box_types` 结构一致，并回显输入中配置的 `max_stack` / `max_load`、`weight`、`group`、`platform`（承重字段与 `allowed_orientations` 对齐的数组，未配置为 `null`，字段恒存在）；装托模式下额外包含虚拟托盘箱型。箱型级 `group/platform` 会同时以有效值出现在对应 placement 中；箱子级模式下箱型字段为 `null`，placement 保留各实例值。
-
-装托模式下的虚拟托盘箱型是合成类型；单 group 托盘的箱型字段与 placement 使用相同的有效值。混合 group 托盘的虚拟箱 `group` 为 `null`（完整分组只存在于 `result.pallets[].groups`，下游用 `placement.box_id == pallet.pallet_id` 关联识别）。混合托盘内部的 group 集合仅用于求解阶段的约束和容器级聚合，不新增 placement 输出字段。
+placement 的 `group`/`platform` 为有效值：箱型级模式下从对应箱型继承，箱子级模式下为实例值。混组托盘的虚拟箱 `group` 为 `null`（完整分组见 `result.pallets[].groups`，下游用 `placement.box_id == pallet.pallet_id` 关联识别）。
 
 placement 字段说明：
 

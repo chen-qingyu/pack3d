@@ -17,20 +17,6 @@ TEST_CASE("pallet 基本：全部装托 + 计数口径", "[solver][pallet]")
     REQUIRE(res["result"]["pallets"][1]["groups"] == json::array({"B"}));
     // 容器 packed_count 按原始散箱口径折算（5+3 装托 + 4 散装）
     REQUIRE(res["result"]["containers"][0]["packed_count"] == 12);
-    // 虚拟托盘箱型：仅平面旋转 + max_stack=[1,1]，高度含托盘
-    bool saw_virtual = false;
-    for (const auto& bt : res["result"]["box_types"])
-    {
-        if (bt["id"] == "pt1200#1")
-        {
-            saw_virtual = true;
-            REQUIRE(bt["allowed_orientations"] == json::array({"xyz", "yxz"}));
-            REQUIRE(bt["max_stack"] == json::array({1, 1}));
-            REQUIRE(bt["group"] == "A");
-            REQUIRE(bt["sz"] == 180); // loaded_height 30 + sz 150
-        }
-    }
-    REQUIRE(saw_virtual);
     // 托盘货物重 = 箱重合计（不含自重）
     REQUIRE(res["result"]["pallets"][0]["used_weight"] == 25.0);
     // 容器内托盘单元 box_id == pallet_id

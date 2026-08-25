@@ -49,21 +49,6 @@ TEST_CASE("输出字段恒存在", "[solver][output]")
         REQUIRE(c.contains("groups"));
     }
 
-    // 箱型级（demo 无承重/重量/散件）
-    for (const auto& bt : res["result"]["box_types"])
-    {
-        REQUIRE(bt.contains("max_stack"));
-        REQUIRE((bt["max_stack"].is_null() || bt["max_stack"].is_array()));
-        REQUIRE(bt.contains("max_load"));
-        REQUIRE((bt["max_load"].is_null() || bt["max_load"].is_array()));
-        REQUIRE(bt.contains("weight"));
-        REQUIRE(bt.contains("loose"));
-        REQUIRE(bt.contains("group"));
-        REQUIRE(bt.contains("platform"));
-        REQUIRE(bt["group"].is_null());
-        REQUIRE(bt["platform"].is_null());
-    }
-
     // 放置级
     for (const auto& c : res["result"]["containers"])
     {
@@ -87,28 +72,20 @@ TEST_CASE("箱型级 group/platform 传播到输出", "[solver][labels]")
 
     auto res = run(input);
     REQUIRE(res["status"] == "complete");
-    for (const auto& bt : res["result"]["box_types"])
-    {
-        if (bt["id"] == "box_s")
-        {
-            REQUIRE(bt["group"] == "g1");
-            REQUIRE(bt["platform"] == "P1");
-        }
-        else if (bt["id"] == "box_l")
-        {
-            REQUIRE(bt["group"] == "g2");
-            REQUIRE(bt["platform"] == "P2");
-        }
-    }
     for (const auto& container : res["result"]["containers"])
     {
         for (const auto& placement : container["placements"])
         {
-            const auto& type = placement["box_type_id"] == "box_s"
-                                   ? res["result"]["box_types"][0]
-                                   : res["result"]["box_types"][1];
-            REQUIRE(placement["group"] == type["group"]);
-            REQUIRE(placement["platform"] == type["platform"]);
+            // 箱型级 group/platform 应传播到每个 placement
+            for (const auto& bt : input["box_types"])
+            {
+                if (bt["id"] == placement["box_type_id"])
+                {
+                    REQUIRE(placement["group"] == bt["group"]);
+                    REQUIRE(placement["platform"] == bt["platform"]);
+                    break;
+                }
+            }
         }
     }
 }

@@ -298,7 +298,6 @@ Solution PackerBase::build_solution(
     }
 
     sol.objective = compute_objective(all_loads);
-    sol.box_types = problem_.box_types;
     sol.unpacked_boxes.reserve(remaining.size());
     for (const auto& bx : remaining)
     {

@@ -104,19 +104,6 @@ export interface ResultData {
   summary: Summary
   result: {
     containers: ContainerResult[]
-    box_types: Array<{
-      id: string
-      sx: number
-      sy: number
-      sz: number
-      allowed_orientations: string[]
-      max_stack: Array<number | null> | null
-      max_load: Array<number | null> | null
-      weight: number | null
-      loose: boolean
-      group: string | null
-      platform: string | null
-    }>
     pallets: PalletResult[]
     unpacked_boxes: string[]
   }
