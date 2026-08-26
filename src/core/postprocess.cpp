@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <set>
+#include <tuple>
 
 #include <spdlog/spdlog.h>
 
@@ -384,6 +385,78 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
     }
 }
 
+// 同型连续柱按重量稳定排序（更重在下）：只重排"同箱型、同朝向、同一底面(x,y)、连续堆叠"的
+// 规则柱；同型同朝向 → 各层 footprint 相同，仅改 z 顺序，几何与容积不变，让输出更合理。非约束。
+void sort_stack_weights(std::vector<ContainerLoad>& all_loads)
+{
+    for (auto& cl : all_loads)
+    {
+        if (cl.placements.size() < 2)
+        {
+            continue;
+        }
+        // 分组键：(box_type_id, osize, x, y) —— 同型、同朝向、同一底面的规则柱
+        std::map<std::tuple<std::string, int32_t, int32_t, int32_t, int32_t, int32_t>,
+                 std::vector<size_t>>
+            groups;
+        for (size_t i = 0; i < cl.placements.size(); ++i)
+        {
+            const auto& pl = cl.placements[i];
+            groups[{pl.box_type_id, pl.osize.dx, pl.osize.dy, pl.osize.dz,
+                    pl.position.x, pl.position.y}]
+                .push_back(i);
+        }
+        for (auto& entry : groups)
+        {
+            auto& idxs = entry.second;
+            if (idxs.size() < 2)
+            {
+                continue;
+            }
+            std::sort(idxs.begin(), idxs.end(), [&](size_t a, size_t b)
+                      { return cl.placements[a].position.z < cl.placements[b].position.z; });
+            const auto dz = cl.placements[idxs[0]].osize.dz;
+            bool contiguous = true;
+            for (size_t k = 1; k < idxs.size(); ++k)
+            {
+                if (cl.placements[idxs[k]].position.z - cl.placements[idxs[k - 1]].position.z != dz)
+                {
+                    contiguous = false;
+                    break;
+                }
+            }
+            if (!contiguous)
+            {
+                continue;
+            }
+            bool ordered = true;
+            for (size_t k = 1; k < idxs.size(); ++k)
+            {
+                if (cl.placements[idxs[k]].weight.value_or(0.0) >
+                    cl.placements[idxs[k - 1]].weight.value_or(0.0) + 1e-9)
+                {
+                    ordered = false;
+                    break;
+                }
+            }
+            if (ordered)
+            {
+                continue;
+            }
+            std::vector<size_t> sorted = idxs;
+            std::stable_sort(sorted.begin(), sorted.end(), [&](size_t a, size_t b)
+                             { return cl.placements[a].weight.value_or(0.0) >
+                                      cl.placements[b].weight.value_or(0.0); });
+            const auto base_z = cl.placements[idxs[0]].position.z;
+            for (size_t k = 0; k < sorted.size(); ++k)
+            {
+                cl.placements[sorted[k]].position.z =
+                    base_z + static_cast<int32_t>(k) * dz;
+            }
+        }
+    }
+}
+
 } // namespace
 
 void postprocess(std::vector<ContainerLoad>& all_loads,
@@ -392,24 +465,30 @@ void postprocess(std::vector<ContainerLoad>& all_loads,
                  const std::map<std::string, BoxType>& box_type_map,
                  const std::map<std::string, Box>& box_map)
 {
-    if (all_loads.empty() || !TimeChecker::check())
+    if (all_loads.empty())
     {
         return;
     }
 
     auto best_obj = compute_objective(all_loads);
 
-    reduce_platform_splits(all_loads, best_obj, packer, box_type_map, box_map,
-                           packer.support_rate(), packer.has_max_stack(),
-                           packer.has_max_load(), packer.tender_limit());
-
-    if (!TimeChecker::check() || all_loads.empty())
+    if (TimeChecker::check())
     {
-        return;
+        reduce_platform_splits(all_loads, best_obj, packer, box_type_map, box_map,
+                               packer.support_rate(), packer.has_max_stack(),
+                               packer.has_max_load(), packer.tender_limit());
     }
 
-    repack_last_smaller(all_loads, best_obj, packer, container_types, box_type_map, box_map,
-                        packer.tender_limit());
+    if (TimeChecker::check())
+    {
+        repack_last_smaller(all_loads, best_obj, packer, container_types,
+                            box_type_map, box_map, packer.tender_limit());
+    }
+
+    if (TimeChecker::check())
+    {
+        sort_stack_weights(all_loads);
+    }
 }
 
 } // namespace pack3d

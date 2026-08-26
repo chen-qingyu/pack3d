@@ -70,7 +70,7 @@
 
 B 与 S2 同型，`B.same_run = S2.same_run(3) + 1 = 4 ≤ 5` ✓；S1 为异型，不因 B 压上而增加 weak 的 run（`S1.same_run` 仍 = 1）→ 放行。若 B 为与 S1 同型的弱箱且 `S1.max_stack: 1`，则 `B.same_run = 2 > 1` → 拒绝。
 
-> `max_stack` 是**同型连续 run 的承重快速路径**：只要某箱型声明了 `max_stack`，同型连续 run 内不再做 `max_load`（A3/D）检查——`max_load` 只在**跨型接口**（箱 X 上方存在异型箱，直接/传递）或该箱型**未声明 `max_stack`** 时强制。
+> `max_stack` 是**同型连续 run 的承重快速路径**：只要某箱型声明了 `max_stack`，同型连续 run 内不再做 `max_load`（A3/D）检查——`max_load` 只在**跨型接口**（箱 X 上方存在异型箱，直接/传递）或该箱型**未声明 `max_stack`** 时强制。**同型柱的"更重在下"由后处理 `sort_stack_weights` 稳定排序实现**：同型同朝向、同一底面、连续堆叠的规则柱按重量降序重排 z，几何/容积不变，纯输出的合理性优化（非约束）。
 >
 > 预校验强制：声明 `max_stack` 必须**同朝向配置 `max_load`**（否则同型堆满后异型箱压上无承压兜底，报 `invalid`），且 `support_rate > 0`（否则悬空箱可绕过堆码/承重限制）。
 
