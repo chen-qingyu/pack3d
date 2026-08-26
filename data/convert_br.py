@@ -35,8 +35,6 @@ def parse_br_file(file):
 
         # 箱子类型
         box_types = []
-        box_type_map = {}
-        box_counts = []
 
         for i in range(num_box_types):
             parts = list(map(int, lines[current_line].split()))
@@ -60,25 +58,12 @@ def parse_br_file(file):
                 "sy": by,
                 "sz": bz,
                 "allowed_orientations": orients,
+                "quantity": parts[7],
             })
-            box_type_map[i] = bt_id
-            box_counts.append(parts[7])
-
-        # 箱子实例
-        boxes = []
-        box_id = 1
-        for i in range(num_box_types):
-            for _ in range(box_counts[i]):
-                boxes.append({
-                    "id": f"b{box_id}",
-                    "box_type_id": box_type_map[i],
-                })
-                box_id += 1
 
         result = {
             "container_types": [container_type],
             "box_types": box_types,
-            "boxes": boxes,
         }
         results.append((problem_num, result))
 
