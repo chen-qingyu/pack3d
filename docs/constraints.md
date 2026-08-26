@@ -70,7 +70,7 @@
 
 B 与 S2 同型，`B.same_run = S2.same_run(3) + 1 = 4 ≤ 5` ✓；S1 为异型，不因 B 压上而增加 weak 的 run（`S1.same_run` 仍 = 1）→ 放行。若 B 为与 S1 同型的弱箱且 `S1.max_stack: 1`，则 `B.same_run = 2 > 1` → 拒绝。
 
-> `support_rate > 0` 是物理有效前提（预校验强制：声明 `max_stack` 时 `support_rate = 0` 报 `invalid`，否则悬空箱可绕过堆码限制）。
+> 预校验强制：声明 `max_stack` 必须**同朝向配置 `max_load`**（否则同型堆满后异型箱压上无承压兜底，报 `invalid`），且 `support_rate > 0`（否则悬空箱可绕过堆码/承重限制）。
 
 ### 1.9 单箱承重上限约束（max_load，箱型字段）
 

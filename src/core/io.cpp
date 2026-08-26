@@ -737,6 +737,17 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                           std::to_string(bt.max_load.size()) + " != allowed_orientations length " +
                           std::to_string(bt.allowed_orientations.size()));
         }
+        // max_stack 必须有同朝向的 max_load：同箱型连续 run 只限同型层数，异型箱压上
+        // 的承压由 max_load（整柱累计）兜底；缺 max_load 会漏算"同型堆满后异构压上压坏"。
+        for (size_t i = 0; i < bt.max_stack.size(); ++i)
+        {
+            if (bt.max_stack[i].has_value() &&
+                (i >= bt.max_load.size() || !bt.max_load[i].has_value()))
+            {
+                out.push_back("box_type " + bt.id + ": max_stack requires max_load");
+                break;
+            }
+        }
     }
     if (any_max_load && !weight_info)
     {

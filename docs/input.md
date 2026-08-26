@@ -137,6 +137,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 - 标量：应用到全部朝向。
 - 数组：长度必须等于 `allowed_orientations` 长度，按朝向分别取值（如平放堆 3 层、立放只能堆 2 层）。
 - 任一箱型有非空值即启用对应约束（presence-based）。
+- `max_stack` 声明时必须在**同一朝向**同时配置 `max_load`（预校验强制，报 `max_stack requires max_load`）：同箱型连续 run 只限同型层数，异型箱压上的承压由 `max_load`（整柱累计）兜底，缺省会漏算"同型堆满后异构压坏"。
 
 **行业组合语义（朝上 / 易碎，无需专用字段）**：
 

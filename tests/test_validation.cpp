@@ -76,6 +76,39 @@ TEST_CASE("pre_validate_input 检测 max_stack 数组长度不匹配", "[validat
     REQUIRE(found);
 }
 
+TEST_CASE("pre_validate_input 检测 max_stack 需要 max_load", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    BoxType bt;
+    bt.id = "bt1";
+    bt.size = {100, 100, 100};
+    bt.allowed_orientations = {Orientation::XYZ};
+    bt.max_stack = {2}; // 无 max_load
+    p.box_types.push_back(bt);
+    p.boxes.push_back({"box1", "bt1", 10.0, "", {}});
+    p.support_rate = 1.0;
+
+    auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& v : violations)
+    {
+        if (v.find("max_stack requires max_load") != std::string::npos)
+        {
+            found = true;
+        }
+    }
+    REQUIRE(found);
+
+    // 补 max_load 后不再报该错
+    p.box_types[0].max_load = {100.0};
+    violations = pre_validate_input(p);
+    for (const auto& v : violations)
+    {
+        REQUIRE(v.find("max_stack requires max_load") == std::string::npos);
+    }
+}
+
 TEST_CASE("pre_validate_input 检测 max_load 需要重量", "[validation]")
 {
     Problem p;
@@ -109,6 +142,7 @@ TEST_CASE("pre_validate_input 检测 max_stack/max_load 需要 support_rate", "[
     bt.size = {100, 100, 100};
     bt.allowed_orientations = {Orientation::XYZ};
     bt.max_stack = {2};
+    bt.max_load = {100.0}; // max_stack 需配 max_load，此处只测 support_rate 前提
     p.box_types.push_back(bt);
     p.boxes.push_back({"box1", "bt1", 10.0, "", {}});
     p.support_rate = 0.0; // 默认即 0，显式写出

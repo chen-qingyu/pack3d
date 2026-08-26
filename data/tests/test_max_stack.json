@@ -4,7 +4,8 @@
       "id": "truck",
       "sx": 100,
       "sy": 100,
-      "sz": 300
+      "sz": 300,
+      "payload": 1000.0
     }
   ],
   "box_types": [
@@ -14,7 +15,9 @@
       "sy": 100,
       "sz": 100,
       "allowed_orientations": ["xyz"],
-      "max_stack": 2
+      "max_stack": 2,
+      "max_load": 200.0,
+      "weight": 10.0
     }
   ],
   "boxes": [
