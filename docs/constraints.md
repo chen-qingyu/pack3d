@@ -70,11 +70,15 @@
 
 B 与 S2 同型，`B.same_run = S2.same_run(3) + 1 = 4 ≤ 5` ✓；S1 为异型，不因 B 压上而增加 weak 的 run（`S1.same_run` 仍 = 1）→ 放行。若 B 为与 S1 同型的弱箱且 `S1.max_stack: 1`，则 `B.same_run = 2 > 1` → 拒绝。
 
+> `max_stack` 是**同型连续 run 的承重快速路径**：只要某箱型声明了 `max_stack`，同型连续 run 内不再做 `max_load`（A3/D）检查——`max_load` 只在**跨型接口**（箱 X 上方存在异型箱，直接/传递）或该箱型**未声明 `max_stack`** 时强制。
+>
 > 预校验强制：声明 `max_stack` 必须**同朝向配置 `max_load`**（否则同型堆满后异型箱压上无承压兜底，报 `invalid`），且 `support_rate > 0`（否则悬空箱可绕过堆码/承重限制）。
 
 ### 1.9 单箱承重上限约束（max_load，箱型字段）
 
 任一箱型声明了 `max_load`（非空）即启用。可配置为标量（全部朝向）或数组（与 `allowed_orientations` 对齐）。启用时要求有**重量信息**（箱型级 `box_types.weight` 或箱子级，输入重量三选一规则见 `docs/input.md` 预校验）。
+
+**适用范围**：`max_load` 在**跨型接口**强制——箱 X 上方（直接/传递）存在异型箱，或该箱型未声明 `max_stack`（无同型快速路径）时，才用 `max_load` 判定其承重。已声明 `max_stack` 的同型连续 run 内由 `max_stack` 兜底，不再做 `max_load`。
 
 两层判定，均为**沿支撑链**（直接支撑 + 传递支撑）传播：
 

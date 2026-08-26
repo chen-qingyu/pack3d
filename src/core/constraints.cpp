@@ -436,31 +436,44 @@ void aggregate_chain(const std::vector<Placement>& placements,
     }
 }
 
-// 沿同型支撑链向下收集某箱的同型连续 run 的全部箱（不含起点自身），并检查 run 高度
-// run_height <= run 内每个同型箱各自朝向的 max_stack。start_supports 为 run 顶层箱的
-// 同型直接支撑（可能为空 = run 只有起点一箱）。只沿 box_type_id 相同的支撑继续下行。
-bool check_same_run(const std::vector<size_t>& start_supports, int run_height,
-                    const std::string& box_type_id,
-                    const std::vector<Placement>& placements,
-                    const std::map<std::string, BoxType>& box_type_map) noexcept
+// 沿同型支撑链向下走某箱 B 的同型连续 run（不含 B 自身），检查 run 高度 <= run 内每个
+// 同型箱各自朝向的 max_stack；收集 run 内箱到 run_boxes；并推断 pure：若整条支撑链
+// （从 B 的直接支撑到地板/障碍物顶）全为同型且无"上方已有异型箱"的箱，则 pure=true，
+// 表示该柱为纯同型柱、可由 max_stack 快速路径兜底（可跳过 max_load）。
+// start_supports 为 B 的同型直接支撑（可能为空 = B 无同型支撑）。pure 只被置 false。
+bool walk_same_run(const std::vector<size_t>& start_supports, int run_height,
+                   const std::string& box_type_id,
+                   const std::vector<Placement>& placements,
+                   const std::map<std::string, BoxType>& box_type_map,
+                   std::vector<size_t>& run_boxes, bool& pure) noexcept
 {
+    run_boxes.clear();
     std::vector<size_t> stack(start_supports.begin(), start_supports.end());
     while (!stack.empty())
     {
         const size_t x = stack.back();
         stack.pop_back();
         const auto& X = placements[x];
+        run_boxes.push_back(x);
         const auto& bt = box_type_map.at(X.box_type_id);
-        const auto ms = bt.max_stack_for(X.orientation);
-        if (ms.has_value() && run_height > ms.value())
+        if (const auto ms = bt.max_stack_for(X.orientation);
+            ms.has_value() && run_height > ms.value())
         {
             return false;
+        }
+        if (X.has_cross_above)
+        {
+            pure = false; // X 上方已存在异型箱，需 max_load 兜底
         }
         for (const size_t s : X.supports)
         {
             if (placements[s].box_type_id == box_type_id)
             {
                 stack.push_back(s);
+            }
+            else
+            {
+                pure = false; // run 下压到异型箱
             }
         }
     }
@@ -479,28 +492,18 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
     {
         return true;
     }
+
+    // 为所有直接支撑计算份额（D 整柱累计仍需要完整份额向下传播）
     std::vector<double> shares(info.supports.size());
     for (size_t i = 0; i < info.supports.size(); ++i)
     {
         shares[i] = load_share(weight, info.areas[i], info.total_area);
-        const auto& S = load.placements[info.supports[i]];
-        const auto& bt = box_type_map.at(S.box_type_id);
-        // A3：分摊份额 <= 支撑箱按重叠面积比例分配到的容量
-        const auto ml = bt.max_load_for(S.orientation);
-        if (ml.has_value())
-        {
-            const double footprint = static_cast<double>(S.osize.dx) * S.osize.dy;
-            const double alloc = ml.value() * static_cast<double>(info.areas[i]) / footprint;
-            if (shares[i] > alloc + 1e-9)
-            {
-                return false;
-            }
-        }
     }
 
-    // max_stack（同箱型连续层数）：候选 B 的同型 run 高度
+    // max_stack（同箱型连续层数）：候选 B 的同型 run 高度；仅同型直接支撑计入 run
     int run = 1;
     std::vector<size_t> same_supports;
+    bool pure = true; // 整条支撑链是否全为同型（无任何跨型箱）；纯同型柱由 max_stack 快速路径兜底
     for (size_t i = 0; i < info.supports.size(); ++i)
     {
         const auto& S = load.placements[info.supports[i]];
@@ -508,6 +511,10 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
         {
             run = std::max(run, S.same_run + 1);
             same_supports.push_back(info.supports[i]);
+        }
+        else
+        {
+            pure = false; // 跨型直接支撑
         }
     }
     // 候选箱型可能不在 box_type_map（如仅承重、无 max_stack 声明的测试场景）；
@@ -520,12 +527,47 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
             return false;
         }
     }
-    if (!check_same_run(same_supports, run, box_type_id, load.placements, box_type_map))
+    std::vector<size_t> run_boxes;
+    if (!walk_same_run(same_supports, run, box_type_id, load.placements,
+                       box_type_map, run_boxes, pure))
     {
         return false;
     }
 
-    // max_load 整柱累计：新箱各路径份额之和流经该箱
+    // max_load A3 面积分摊：跨型直接支撑对，或同型但该箱型未声明 max_stack（无快速路径），都强制。
+    // 同型 + 声明了 max_stack → 属同型连续 run，由 max_stack 快速路径保证，免承重分摊。
+    for (size_t i = 0; i < info.supports.size(); ++i)
+    {
+        const auto& S = load.placements[info.supports[i]];
+        const auto& bt = box_type_map.at(S.box_type_id);
+        const bool same_type = (S.box_type_id == box_type_id);
+        if (same_type && bt.max_stack_for(S.orientation).has_value())
+        {
+            continue;
+        }
+        const auto ml = bt.max_load_for(S.orientation);
+        if (ml.has_value())
+        {
+            const double footprint = static_cast<double>(S.osize.dx) * S.osize.dy;
+            const double alloc = ml.value() * static_cast<double>(info.areas[i]) / footprint;
+            if (shares[i] > alloc + 1e-9)
+            {
+                return false;
+            }
+        }
+    }
+
+    // max_load D 整柱累计：只对"承重仍相关"的链上箱检查（上方存在异型箱，或该箱型未声明 max_stack）。
+    // 纯同型柱且该箱型声明了 max_stack → 快速路径，跳过。
+    bool b_has_stack = false;
+    if (const auto itB = box_type_map.find(box_type_id); itB != box_type_map.end())
+    {
+        b_has_stack = itB->second.max_stack_for(orientation).has_value();
+    }
+    if (pure && b_has_stack)
+    {
+        return true;
+    }
     std::vector<size_t> boxes;
     std::vector<double> delta;
     aggregate_chain(load.placements, info.supports, shares, boxes, delta);
@@ -533,6 +575,12 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
     {
         const auto& X = load.placements[boxes[k]];
         const auto& bt = box_type_map.at(X.box_type_id);
+        // 同型 run 内、该箱型声明了 max_stack、且上方无异型箱 → 快速路径，跳过承重累计校验
+        if (!X.has_cross_above && X.box_type_id == box_type_id &&
+            bt.max_stack_for(X.orientation).has_value())
+        {
+            continue;
+        }
         const auto ml = bt.max_load_for(X.orientation);
         if (ml.has_value() && X.cum_load + delta[k] > ml.value() + 1e-9)
         {
@@ -615,6 +663,10 @@ void apply_stack_state(const Position& pos, const OrientedSize& osize, double we
     {
         auto& X = load.placements[boxes[k]];
         X.cum_load += delta[k];
+        if (pl.box_type_id != X.box_type_id)
+        {
+            X.has_cross_above = true; // 本箱异型压上 → X 进入跨型接口，需 max_load 兜底
+        }
     }
 }
 
@@ -649,6 +701,7 @@ void recompute_stack_state(ContainerLoad& load,
         pl.stack_level = 1;
         pl.same_run = 1;
         pl.cum_load = 0.0;
+        pl.has_cross_above = false;
         pl.supports.clear();
     }
 
@@ -693,6 +746,10 @@ void recompute_stack_state(ContainerLoad& load,
         {
             auto& X = load.placements[boxes[j]];
             X.cum_load += delta[j];
+            if (pl.box_type_id != X.box_type_id)
+            {
+                X.has_cross_above = true; // 本箱异型压上 → X 进入跨型接口
+            }
         }
 
         if (errors)
@@ -705,22 +762,33 @@ void recompute_stack_state(ContainerLoad& load,
                                   " > max_stack " + std::to_string(ms.value()) +
                                   " for box " + pl.box_id);
             }
-            if (!check_same_run(same_supports, run, pl.box_type_id,
-                                load.placements, box_type_map))
+            bool dummy_pure = true;
+            std::vector<size_t> dummy_run;
+            if (!walk_same_run(same_supports, run, pl.box_type_id,
+                               load.placements, box_type_map, dummy_run, dummy_pure))
             {
                 errors->push_back("stack run exceeds max_stack under box " + pl.box_id);
             }
-            for (size_t j = 0; j < boxes.size(); ++j)
+        }
+    }
+
+    // max_load 整柱累计校验：后置遍历，只对"上方存在异型箱"的箱检查（跨型接口）。
+    // has_cross_above 在 z 序主循环中由各箱上方箱传播得到，主循环结束后即为最终值。
+    if (errors)
+    {
+        for (const auto& pl : load.placements)
+        {
+            if (!pl.has_cross_above)
             {
-                const auto& X = load.placements[boxes[j]];
-                const auto& btx = box_type_map.at(X.box_type_id);
-                const auto ml = btx.max_load_for(X.orientation);
-                if (ml.has_value() && X.cum_load > ml.value() + 1e-9)
-                {
-                    errors->push_back("load " + std::to_string(X.cum_load) +
-                                      " > max_load " + std::to_string(ml.value()) +
-                                      " for box " + pl.box_id);
-                }
+                continue;
+            }
+            const auto& bt = box_type_map.at(pl.box_type_id);
+            const auto ml = bt.max_load_for(pl.orientation);
+            if (ml.has_value() && pl.cum_load > ml.value() + 1e-9)
+            {
+                errors->push_back("load " + std::to_string(pl.cum_load) +
+                                  " > max_load " + std::to_string(ml.value()) +
+                                  " for box " + pl.box_id);
             }
         }
     }

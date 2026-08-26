@@ -308,6 +308,7 @@ struct Placement
     int stack_level = 1;          // 所在堆柱层号，地板层=1（信息性层号）
     int same_run = 1;             // 同箱型连续堆叠层数（含自身）；max_stack 同型连续堆叠用
     double cum_load = 0.0;        // 从上方流经本箱的整柱累计载荷（max_load 累计承重）
+    bool has_cross_above = false; // 本箱上方（直接/传递）是否存在异型箱；false=纯同型柱（max_stack 快速路径）
     std::vector<size_t> supports; // 直接支撑箱下标（本容器 placements 内，堆叠传播用）
 };
 

@@ -306,66 +306,91 @@ TEST_CASE("max_stack: 同箱型连续层数，异型不互计", "[core][stack]")
     REQUIRE_FALSE(check_stack_constraints({0, 0, 500}, {100, 100, 100}, "weak", Orientation::XYZ, 0.0, load, btm));
 }
 
-TEST_CASE("max_load: 面积重叠比例分配承重（A3）", "[core][stack]")
+TEST_CASE("max_load: A3 面积分摊（跨型直接支撑）", "[core][stack]")
 {
-    auto bt = make_stack_bt("bt", std::nullopt, 100.0);
-    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    BoxType base;
+    base.id = "base";
+    base.size = {200, 200, 100};
+    base.allowed_orientations = {Orientation::XYZ};
+    base.max_load = {100.0};
+    BoxType top;
+    top.id = "top";
+    top.size = {200, 100, 100};
+    top.allowed_orientations = {Orientation::XYZ};
+    std::map<std::string, BoxType> btm = {{"base", base}, {"top", top}};
     auto load = make_stack_load();
 
     // 底座 200x200，max_load 100：半面积覆盖只分配 100×20000/40000=50 容量
-    load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {200, 200, 100}});
+    load.placements.push_back({"", "base", "", {0, 0, 0}, Orientation::XYZ, {200, 200, 100}});
     apply_stack_state({0, 0, 0}, {200, 200, 100}, 0.0, load);
 
-    // 200x100 w100 占半面积：份额 100 > 分配 50 → 拒绝
-    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "bt", Orientation::XYZ, 100.0, load, btm));
-    // 200x100 w40 占半面积：份额 40 <= 分配 50 → 通过
-    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "bt", Orientation::XYZ, 40.0, load, btm));
-    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
+    // top 200x100 w100 占半面积（跨型）：A3 份额 100 > 分配 50 → 拒绝
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "top", Orientation::XYZ, 100.0, load, btm));
+    // top 200x100 w40 占半面积：份额 40 <= 分配 50 → 通过
+    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "top", Orientation::XYZ, 40.0, load, btm));
+    load.placements.push_back({"", "top", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
     apply_stack_state({0, 0, 100}, {200, 100, 100}, 40.0, load);
     REQUIRE(load.placements[0].cum_load == Catch::Approx(40.0));
-    // 并排第二个 w40（y=100）：A3 通过，整柱累计 80 <= 100 → 通过
-    REQUIRE(check_stack_constraints({0, 100, 100}, {200, 100, 100}, "bt", Orientation::XYZ, 40.0, load, btm));
-    load.placements.push_back({"", "bt", "", {0, 100, 100}, Orientation::XYZ, {200, 100, 100}});
+    REQUIRE(load.placements[0].has_cross_above);
+    // 并排第二个 top w40（y=100）：A3 通过，base 整柱累计 80 <= 100 → 通过
+    REQUIRE(check_stack_constraints({0, 100, 100}, {200, 100, 100}, "top", Orientation::XYZ, 40.0, load, btm));
+    load.placements.push_back({"", "top", "", {0, 100, 100}, Orientation::XYZ, {200, 100, 100}});
     apply_stack_state({0, 100, 100}, {200, 100, 100}, 40.0, load);
     REQUIRE(load.placements[0].cum_load == Catch::Approx(80.0));
-    // 第三个 w40：整柱累计 120 > 100 → 拒绝（D 整柱累计）
-    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "bt", Orientation::XYZ, 40.0, load, btm));
+    // 第三个 top w40：base 整柱累计 120 > 100 → 拒绝（D 整柱累计）
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "top", Orientation::XYZ, 40.0, load, btm));
 }
 
-TEST_CASE("max_load: 悬空半面积仍 100% 承重（A3 全覆盖分配全容量）", "[core][stack]")
+TEST_CASE("max_load: A3 全覆盖分配全容量（跨型）", "[core][stack]")
 {
-    auto bt = make_stack_bt("bt", std::nullopt, 100.0);
-    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    BoxType base;
+    base.id = "base";
+    base.size = {100, 100, 100};
+    base.allowed_orientations = {Orientation::XYZ};
+    base.max_load = {100.0};
+    BoxType top;
+    top.id = "top";
+    top.size = {200, 100, 100};
+    top.allowed_orientations = {Orientation::XYZ};
+    std::map<std::string, BoxType> btm = {{"base", base}, {"top", top}};
     auto load = make_stack_load();
 
     // 底座 100x100
-    load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    load.placements.push_back({"", "base", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
     apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load);
-    // 上箱 200x100 半悬空，但完全覆盖底座顶面 → A3 分配 100% 容量 → 通过
-    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "bt", Orientation::XYZ, 100.0, load, btm));
-    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
+    // top 200x100 半悬空，但完全覆盖底座顶面 → A3 分配 100% 容量 → 通过
+    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "top", Orientation::XYZ, 100.0, load, btm));
+    load.placements.push_back({"", "top", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
     apply_stack_state({0, 0, 100}, {200, 100, 100}, 100.0, load);
     REQUIRE(load.placements[0].cum_load == Catch::Approx(100.0));
-    // 再来一个 100kg：整柱累计 200 > max_load 100 → 拒绝
-    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "bt", Orientation::XYZ, 100.0, load, btm));
+    // 再来一个 100kg：base 整柱累计 200 > max_load 100 → 拒绝（D）
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "top", Orientation::XYZ, 100.0, load, btm));
 }
 
-TEST_CASE("max_load: 两支撑各 50%（A3 逐对分摊）", "[core][stack]")
+TEST_CASE("max_load: 两支撑各 50%（A3 逐对分摊，跨型）", "[core][stack]")
 {
-    auto bt = make_stack_bt("bt", std::nullopt, 40.0);
-    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    BoxType base;
+    base.id = "base";
+    base.size = {100, 100, 100};
+    base.allowed_orientations = {Orientation::XYZ};
+    base.max_load = {40.0};
+    BoxType top;
+    top.id = "top";
+    top.size = {200, 100, 100};
+    top.allowed_orientations = {Orientation::XYZ};
+    std::map<std::string, BoxType> btm = {{"base", base}, {"top", top}};
     auto load = make_stack_load();
 
-    load.placements.push_back({"", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    load.placements.push_back({"", "base", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
     apply_stack_state({0, 0, 0}, {100, 100, 100}, 0.0, load);
-    load.placements.push_back({"", "bt", "", {100, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    load.placements.push_back({"", "base", "", {100, 0, 0}, Orientation::XYZ, {100, 100, 100}});
     apply_stack_state({100, 0, 0}, {100, 100, 100}, 0.0, load);
 
-    // 上箱 200x100 w100 各占 50%：各支撑分配容量 40 < 份额 50 → 拒绝
-    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "bt", Orientation::XYZ, 100.0, load, btm));
+    // top 200x100 w100 各占 50%：各支撑分配容量 40 < 份额 50 → 拒绝
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "top", Orientation::XYZ, 100.0, load, btm));
     // w60：份额 30 <= 分配 40 → 通过，各支撑累计 30
-    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "bt", Orientation::XYZ, 60.0, load, btm));
-    load.placements.push_back({"", "bt", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
+    REQUIRE(check_stack_constraints({0, 0, 100}, {200, 100, 100}, "top", Orientation::XYZ, 60.0, load, btm));
+    load.placements.push_back({"", "top", "", {0, 0, 100}, Orientation::XYZ, {200, 100, 100}});
     apply_stack_state({0, 0, 100}, {200, 100, 100}, 60.0, load);
     REQUIRE(load.placements[0].cum_load == Catch::Approx(30.0));
     REQUIRE(load.placements[1].cum_load == Catch::Approx(30.0));
