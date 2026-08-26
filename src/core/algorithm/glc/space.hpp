@@ -45,7 +45,7 @@ void carve_out_space(const Space& space,
 void carve_obstacles(std::vector<Space>& stack,
                      const std::vector<Obstacle>& obstacles) noexcept;
 
-/// 阶梯雕刻"覆盖原点"的斜面贴角楔形（两负截距；其余斜面不雕刻、由 check_facet 兜底）
+/// 阶梯雕刻"覆盖原点"的斜面贴角楔形（两正截距；其余斜面不雕刻、由 check_facet 兜底）
 void carve_facets(std::vector<Space>& stack,
                   const Size& container_size,
                   const std::vector<Facet>& facets) noexcept;

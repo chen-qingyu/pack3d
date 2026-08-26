@@ -92,7 +92,7 @@ struct Obstacle
 };
 
 // 斜面（斜切角）：恰好两个带符号轴名截距非零，缺失轴 = 斜面平行贯穿轴；
-// 截距 + 从该轴 max 侧向内进深、- 从 min 侧向内；0 = 未设置
+// 截距 + 从该轴 min 侧向内进深、- 从 max 侧向内；0 = 未设置
 struct Facet
 {
     int32_t dx = 0;
@@ -427,14 +427,14 @@ struct ContainerLoad
             const int64_t mx = (x_idx == 0) ? m0 : m1; // X 轴截距
             const int64_t sx = (x_idx == 0) ? nf.su : nf.sv;
             const int64_t mq = (x_idx == 0) ? m1 : m0; // 另一截距轴
-            const int64_t wedge_x0 = (sx > 0) ? static_cast<int64_t>(extents[0]) - mx : 0;
+            const int64_t wedge_x0 = (sx < 0) ? static_cast<int64_t>(extents[0]) - mx : 0;
             int64_t x0 = std::max<int64_t>(wedge_x0, 0);
-            int64_t x1 = std::min<int64_t>((sx > 0) ? static_cast<int64_t>(extents[0]) : mx, ux);
+            int64_t x1 = std::min<int64_t>((sx < 0) ? static_cast<int64_t>(extents[0]) : mx, ux);
             if (x1 > x0)
             {
-                // 截面高度 dv(x) = mq·(x − wedge_x0)/mx（sx>0）或 mq·(mx − x)/mx（sx<0）
-                const double dv0 = static_cast<double>(mq) * (sx > 0 ? x0 - wedge_x0 : mx - x0) / mx;
-                const double dv1 = static_cast<double>(mq) * (sx > 0 ? x1 - wedge_x0 : mx - x1) / mx;
+                // 截面高度 dv(x) = mq·(x − wedge_x0)/mx（sx<0）或 mq·(mx − x)/mx（sx>0）
+                const double dv0 = static_cast<double>(mq) * (sx < 0 ? x0 - wedge_x0 : mx - x0) / mx;
+                const double dv1 = static_cast<double>(mq) * (sx < 0 ? x1 - wedge_x0 : mx - x1) / mx;
                 usable -= static_cast<int64_t>((dv0 + dv1) * 0.5 * extents[nf.w_axis] * (x1 - x0));
             }
         }

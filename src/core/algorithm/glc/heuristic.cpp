@@ -575,7 +575,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
     carve_obstacles(stack, container_.obstacles);
     // 斜面楔形禁区默认不做雕刻（阶梯碎片会切碎空间栈、降低装载），由
     // check_block_feasible 的 check_facet 逐箱兜底；仅当某斜面禁区覆盖原点
-    // （两负截距，初始空间 min corner 在禁区会导致零装载）时阶梯雕刻贴角楔形。
+    // （两正截距，初始空间 min corner 在禁区会导致零装载）时阶梯雕刻贴角楔形。
     carve_facets(stack, container_.inner_size, container_.facets);
 
     while (!stack.empty() && !available.empty())

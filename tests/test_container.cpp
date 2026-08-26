@@ -44,16 +44,16 @@ static bool invades_facet(const json& pl, const json& ct)
         const int64_t mu = (inter[u] < 0) ? -static_cast<int64_t>(inter[u]) : inter[u];
         const int64_t mv = (inter[v] < 0) ? -static_cast<int64_t>(inter[v]) : inter[v];
 
-        // 8 角点：截距轴取最靠禁区一端（正 = max 端、负 = min 端）
+        // 8 角点：截距轴取最靠禁区一端（负 = max 端、正 = min 端）
         for (int i = 0; i < 8; ++i)
         {
             int corner[3];
             for (int a = 0; a < 3; ++a)
             {
-                corner[a] = (inter[a] > 0) ? pos[a] + size[a] : pos[a];
+                corner[a] = (inter[a] < 0) ? pos[a] + size[a] : pos[a];
             }
-            const int64_t du = (inter[u] > 0) ? (ext[u] - corner[u]) : corner[u];
-            const int64_t dv = (inter[v] > 0) ? (ext[v] - corner[v]) : corner[v];
+            const int64_t du = (inter[u] < 0) ? (ext[u] - corner[u]) : corner[u];
+            const int64_t dv = (inter[v] < 0) ? (ext[v] - corner[v]) : corner[v];
             if (du * mv + dv * mu < mu * mv)
             {
                 return true;
@@ -185,7 +185,7 @@ TEST_CASE("obstacle 非法输入返回 invalid", "[solver][obstacle]")
     REQUIRE(has_resume);
 }
 
-// test_facet_chamfer.json — 顶前 45° 斜切 {dx:10,dz:10}（x+z>20 为楔形禁区）
+// test_facet_chamfer.json — 顶前 45° 斜切 {dx:-10,dz:-10}（x+z>20 为楔形禁区）
 // 物理最大/雕刻后均为 10 箱（后半 8 + 前下 2）；可用容积 = 2000 − 楔形 500 = 1500
 // 填充率（可用容积口径）= 1250/1500 ≈ 0.8333
 // 验证：禁入（无箱侵入楔形）、填充率达可用容积上限、输出 facets 自包含
@@ -203,8 +203,8 @@ TEST_CASE("facet 斜切禁入与填充率", "[solver][facet]")
         REQUIRE(res["summary"]["volume_rate"].get<double>() == Catch::Approx(1250.0 / 1500.0));
         // 输出自包含 facets
         REQUIRE(res["result"]["containers"][0]["facets"].size() == 1);
-        REQUIRE(res["result"]["containers"][0]["facets"][0]["dx"] == 10);
-        REQUIRE(res["result"]["containers"][0]["facets"][0]["dz"] == 10);
+        REQUIRE(res["result"]["containers"][0]["facets"][0]["dx"] == -10);
+        REQUIRE(res["result"]["containers"][0]["facets"][0]["dz"] == -10);
         // 无箱子侵入楔形禁区（x+z <= 20）
         for (const auto& p : res["result"]["containers"][0]["placements"])
         {
@@ -275,8 +275,8 @@ TEST_CASE("facet 非法输入返回 invalid", "[solver][facet]")
     REQUIRE(has_resume);
 }
 
-// test_facet_multi.json — 多斜面（正/负截距）：平行 Y {dx:10,dz:10} + 平行 X {dy:-8,dz:5}
-// 验证：四算法均不崩溃、所有放置不侵入任一楔形（check_facet 兜底对多斜面/负截距正确）
+// test_facet_multi.json — 多斜面（正/负截距）：平行 Y {dx:-10,dz:-10} + 平行 X {dy:8,dz:-5}
+// 验证：四算法均不崩溃、所有放置不侵入任一楔形（check_facet 兜底对多斜面与正负截距正确）
 TEST_CASE("facet 多斜面与负截距：四算法无侵入", "[solver][facet]")
 {
     auto input = load_data("data/tests/test_facet_multi.json");
@@ -334,7 +334,7 @@ TEST_CASE("facet 斜面+障碍物+支撑率组合", "[solver][facet]")
     }
 }
 
-// test_facet_origin.json — 两负截距 {dx:-10,dz:-10}，楔形禁区覆盖原点 (0,0,0)
+// test_facet_origin.json — 两正截距 {dx:10,dz:10}，楔形禁区覆盖原点 (0,0,0)
 // 验证：初始原点不可用时四算法均有备用起点（GEP/RGS 地板扫描、GLC/BSG 贴角雕刻），
 // 全部 8 箱装下且不侵入（无备用起点会零装载）
 TEST_CASE("facet 禁区覆盖原点：四算法仍可装载", "[solver][facet]")

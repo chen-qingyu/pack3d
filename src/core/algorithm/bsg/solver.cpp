@@ -111,7 +111,7 @@ PackResult solve(const GlobalContext& ctx,
     }
     // 斜面楔形禁区默认不做阶梯雕刻（阶梯碎片会切碎残余空间、降低装载），facets
     // 使 needs_leaf_validation 强制逐叶、由 can_place_block 的 check_facet 兜底；仅当
-    // 某斜面禁区覆盖原点（两负截距，残余空间 anchor 落在原点会被拒导致零装载）时
+    // 某斜面禁区覆盖原点（两正截距，残余空间 anchor 落在原点会被拒导致零装载）时
     // 阶梯雕刻贴角楔形，使可用空间的 min corner 避开禁区。
     if (facet_covers_origin(ctx.container_type.facets))
     {

@@ -641,7 +641,7 @@ TEST_CASE("usable_volume_x: 斜面贯穿 X", "[core]")
 {
     ContainerType ct;
     ct.inner_size = {10, 10, 10};
-    ct.facets = {{0, 10, 10}}; // y+z>10 禁区（贯穿 X 全长）
+    ct.facets = {{0, -10, -10}}; // y+z>10 禁区（贯穿 X 全长）
 
     ContainerLoad load;
     load.type = &ct;
@@ -658,7 +658,7 @@ TEST_CASE("usable_volume_x: 斜面非贯穿 X 按 X 向截断且与标准口径�
 {
     ContainerType ct;
     ct.inner_size = {20, 10, 10};
-    ct.facets = {{10, 0, 10}}; // x+z>20 禁区（贯穿 Y）
+    ct.facets = {{-10, 0, -10}}; // x+z>20 禁区（贯穿 Y）
 
     ContainerLoad load;
     load.type = &ct;

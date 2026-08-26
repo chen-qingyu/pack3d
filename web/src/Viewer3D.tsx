@@ -136,9 +136,9 @@ function Viewer3D({ containers, pallets = [] }: {
           const w = axes.find((a) => facet[a.key] === 0)!
           const su = facet[u.key]
           const sv = facet[v.key]
-          const cornerU = su > 0 ? u.extent : 0
-          const cornerV = sv > 0 ? v.extent : 0
-          // 斜面矩形面两个端点：A 在 u 墙上（距 v 角 sv），B 在 v 墙上（距 u 角 su）；沿 w 贯穿
+          const cornerU = su > 0 ? 0 : u.extent
+          const cornerV = sv > 0 ? 0 : v.extent
+          // 斜面矩形面两个端点：A 在 u 墙上（v=cornerV+sv），B 在 v 墙上（u=cornerU+su）；沿 w 贯穿
           const toThree = (cu: number, cv: number, cw: number) => {
             const coords: Record<string, number> = { dx: 0, dy: 0, dz: 0 }
             coords[u.key] = cu
@@ -146,10 +146,10 @@ function Viewer3D({ containers, pallets = [] }: {
             coords[w.key] = cw
             return new THREE.Vector3(offsetX + coords.dx, coords.dz, coords.dy)
           }
-          const A = toThree(cornerU, cornerV - sv, 0)
-          const A2 = toThree(cornerU, cornerV - sv, w.extent)
-          const B = toThree(cornerU - su, cornerV, 0)
-          const B2 = toThree(cornerU - su, cornerV, w.extent)
+          const A = toThree(cornerU, cornerV + sv, 0)
+          const A2 = toThree(cornerU, cornerV + sv, w.extent)
+          const B = toThree(cornerU + su, cornerV, 0)
+          const B2 = toThree(cornerU + su, cornerV, w.extent)
           const facetGeometry = new THREE.BufferGeometry()
           const positions = new Float32Array([
             A.x, A.y, A.z, B.x, B.y, B.z, A2.x, A2.y, A2.z,

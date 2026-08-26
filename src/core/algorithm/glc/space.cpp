@@ -285,7 +285,7 @@ void carve_facets(std::vector<Space>& stack,
                   const Size& container_size,
                   const std::vector<Facet>& facets) noexcept
 {
-    // 仅雕刻"禁区覆盖原点"的斜面（两负截距，贴原点角）：否则初始空间 min corner 在
+    // 仅雕刻"禁区覆盖原点"的斜面（两正截距，贴原点角）：否则初始空间 min corner 在
     // 禁区、所有块被 check_facet 拒、空间被 transfer 丢弃，导致零装载。其余斜面不雕刻，
     // 由 check_block_feasible 的 check_facet 逐箱兜底（阶梯碎片会切碎空间栈、降低装载）。
     for (const auto& f : facets)

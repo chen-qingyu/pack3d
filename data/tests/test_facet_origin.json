@@ -5,7 +5,7 @@
       "sx": 20,
       "sy": 10,
       "sz": 10,
-      "facets": [{ "dx": -10, "dz": -10 }]
+      "facets": [{ "dx": 10, "dz": 10 }]
     }
   ],
   "box_types": [

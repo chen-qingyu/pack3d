@@ -31,7 +31,7 @@ namespace pack3d
                                const Size& container_size,
                                const std::vector<Facet>& facets) noexcept;
 
-/// 单个斜面禁区是否覆盖原点 (0,0,0)：两截距均为负（从 min 侧切入，贴原点角）
+/// 单个斜面禁区是否覆盖原点 (0,0,0)：两截距均为正（从 min 侧切入，贴原点角）
 [[nodiscard]] bool facet_covers_origin(const Facet& f) noexcept;
 
 /// 是否存在覆盖原点的斜面（有则算法需备用起始点/雕刻贴角楔形，否则原点被禁会零装载）

@@ -108,12 +108,12 @@ bool check_facet(const Position& pos, const OrientedSize& osize,
         {
             continue; // 防御：预校验保证恰好两个非零截距
         }
-        // 极角点：最靠禁区的角；距禁区侧向内的距离
+        // 极角点：最靠禁区的角；距禁区侧向内的距离（负 = max 侧、正 = min 侧）
         auto corner_dist = [&](int axis, int64_t intercept) -> int64_t
         {
             int32_t lo = (axis == 0) ? pos.x : ((axis == 1) ? pos.y : pos.z);
             int32_t hi = lo + ((axis == 0) ? osize.dx : ((axis == 1) ? osize.dy : osize.dz));
-            return (intercept > 0) ? (static_cast<int64_t>(extents[axis]) - hi)
+            return (intercept < 0) ? (static_cast<int64_t>(extents[axis]) - hi)
                                    : static_cast<int64_t>(lo);
         };
         const int64_t d0 = corner_dist(nf.u_axis, nf.su);
@@ -132,16 +132,16 @@ bool check_facet(const Position& pos, const OrientedSize& osize,
 bool facet_covers_origin(const Facet& f) noexcept
 {
     int nonzero = 0;
-    int neg = 0;
+    int pos = 0;
     for (int v : {f.dx, f.dy, f.dz})
     {
         if (v != 0)
         {
             ++nonzero;
-            neg += (v < 0) ? 1 : 0;
+            pos += (v > 0) ? 1 : 0;
         }
     }
-    return nonzero == 2 && neg == 2;
+    return nonzero == 2 && pos == 2;
 }
 
 bool facet_covers_origin(const std::vector<Facet>& facets) noexcept
@@ -212,7 +212,7 @@ std::vector<FacetSlab> facet_staircase(const Facet& f, const Size& csize, int st
         out.emplace_back();
         // u 方向：本片最大进深（角侧向内）
         int64_t u_depth = mu * (steps - i + 1) / steps;
-        if (nf.su > 0)
+        if (nf.su < 0)
         {
             set_axis(nf.u_axis, extents[nf.u_axis] - u_depth, extents[nf.u_axis]);
         }
@@ -223,7 +223,7 @@ std::vector<FacetSlab> facet_staircase(const Facet& f, const Size& csize, int st
         // v 方向：距角侧 [(i-1)*mv/steps, i*mv/steps]
         int64_t v_lo = (i - 1) * mv / steps;
         int64_t v_hi = i * mv / steps;
-        if (nf.sv > 0)
+        if (nf.sv < 0)
         {
             set_axis(nf.v_axis, extents[nf.v_axis] - v_hi, extents[nf.v_axis] - v_lo);
         }
