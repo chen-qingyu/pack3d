@@ -400,9 +400,9 @@ double load_share(double weight, int64_t area, int64_t total_area) noexcept
 }
 
 // 聚合支撑链：把各直接支撑的份额沿其传递支撑链累计到每个链上箱。
-// out_boxes 去重（每箱一次，用于 col_height 新层 +1 与 max_stack 每柱检查），
-// out_delta 与之对齐，为该箱所有经过路径的份额之和（max_load 整柱累计）。
-// 链由每箱已维护的 supports 下标构成（apply/recompute 保证支撑箱状态先于本箱建立）。
+// out_boxes 去重（每箱一次），out_delta 与之对齐，为该箱所有经过路径的份额之和
+// （max_load 整柱累计）。链由每箱已维护的 supports 下标构成
+// （apply/recompute 保证支撑箱状态先于本箱建立）。
 void aggregate_chain(const std::vector<Placement>& placements,
                      const std::vector<size_t>& supports,
                      const std::vector<double>& shares,
@@ -436,11 +436,43 @@ void aggregate_chain(const std::vector<Placement>& placements,
     }
 }
 
-// 只读预检：A3 面积分摊（直接支撑逐对） + 沿支撑链 max_stack 每柱层数 / max_load 整柱累计。
-// 无支撑（地板/障碍物顶）直接通过（开新柱、不受承重约束）。
-// bottom_z = 候选箱底面 z（与柱顶 z 比较判断是否为新层，同层并排不增层）。
+// 沿同型支撑链向下收集某箱的同型连续 run 的全部箱（不含起点自身），并检查 run 高度
+// run_height <= run 内每个同型箱各自朝向的 max_stack。start_supports 为 run 顶层箱的
+// 同型直接支撑（可能为空 = run 只有起点一箱）。只沿 box_type_id 相同的支撑继续下行。
+bool check_same_run(const std::vector<size_t>& start_supports, int run_height,
+                    const std::string& box_type_id,
+                    const std::vector<Placement>& placements,
+                    const std::map<std::string, BoxType>& box_type_map) noexcept
+{
+    std::vector<size_t> stack(start_supports.begin(), start_supports.end());
+    while (!stack.empty())
+    {
+        const size_t x = stack.back();
+        stack.pop_back();
+        const auto& X = placements[x];
+        const auto& bt = box_type_map.at(X.box_type_id);
+        const auto ms = bt.max_stack_for(X.orientation);
+        if (ms.has_value() && run_height > ms.value())
+        {
+            return false;
+        }
+        for (const size_t s : X.supports)
+        {
+            if (placements[s].box_type_id == box_type_id)
+            {
+                stack.push_back(s);
+            }
+        }
+    }
+    return true;
+}
+
+// 只读预检：A3 面积分摊（直接支撑逐对） + max_load 整柱累计（沿支撑链） +
+// max_stack 同型连续 run。无支撑（地板/障碍物顶）直接通过（开新柱、不受承重约束）。
+// box_type_id / orientation 为候选箱 B 的类型与朝向。异型箱不互相计数：B 只与同型直接支撑
+// 组成连续 run，run 高度 = max(同型直接支撑.same_run)+1（无同型支撑 = 1）。
 bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, double weight,
-                       int32_t bottom_z,
+                       const std::string& box_type_id, Orientation orientation,
                        const std::map<std::string, BoxType>& box_type_map) noexcept
 {
     if (info.supports.empty())
@@ -465,6 +497,35 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
             }
         }
     }
+
+    // max_stack（同箱型连续层数）：候选 B 的同型 run 高度
+    int run = 1;
+    std::vector<size_t> same_supports;
+    for (size_t i = 0; i < info.supports.size(); ++i)
+    {
+        const auto& S = load.placements[info.supports[i]];
+        if (S.box_type_id == box_type_id)
+        {
+            run = std::max(run, S.same_run + 1);
+            same_supports.push_back(info.supports[i]);
+        }
+    }
+    // 候选箱型可能不在 box_type_map（如仅承重、无 max_stack 声明的测试场景）；
+    // 声明了 max_stack 的箱型必然在映射表中，故未命中时跳过该判定。
+    if (const auto itB = box_type_map.find(box_type_id); itB != box_type_map.end())
+    {
+        if (const auto ms = itB->second.max_stack_for(orientation);
+            ms.has_value() && run > ms.value())
+        {
+            return false;
+        }
+    }
+    if (!check_same_run(same_supports, run, box_type_id, load.placements, box_type_map))
+    {
+        return false;
+    }
+
+    // max_load 整柱累计：新箱各路径份额之和流经该箱
     std::vector<size_t> boxes;
     std::vector<double> delta;
     aggregate_chain(load.placements, info.supports, shares, boxes, delta);
@@ -472,13 +533,6 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
     {
         const auto& X = load.placements[boxes[k]];
         const auto& bt = box_type_map.at(X.box_type_id);
-        // max_stack 每柱层数：仅当本箱位于柱顶（底面 == 柱顶 z）时柱 +1 并检查；同层并排不增层
-        const auto ms = bt.max_stack_for(X.orientation);
-        if (ms.has_value() && bottom_z == X.col_top_z && X.col_height + 1 > ms.value())
-        {
-            return false;
-        }
-        // max_load 整柱累计：新箱各路径份额之和流经该箱
         const auto ml = bt.max_load_for(X.orientation);
         if (ml.has_value() && X.cum_load + delta[k] > ml.value() + 1e-9)
         {
@@ -491,13 +545,14 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
 } // namespace
 
 bool check_stack_constraints(
-    const Position& pos, const OrientedSize& osize, double weight,
+    const Position& pos, const OrientedSize& osize,
+    const std::string& box_type_id, Orientation orientation, double weight,
     const ContainerLoad& load,
     const std::map<std::string, BoxType>& box_type_map,
     const std::vector<size_t>* indices) noexcept
 {
     const SupportInfo info = collect_supports(pos, osize, load.placements, indices);
-    return check_stack_chain(load, info, weight, pos.z, box_type_map);
+    return check_stack_chain(load, info, weight, box_type_id, orientation, box_type_map);
 }
 
 bool check_heavy_not_on_light(const Position& pos, const OrientedSize& osize,
@@ -524,30 +579,29 @@ void apply_stack_state(const Position& pos, const OrientedSize& osize, double we
         return;
     }
     Placement& pl = load.placements.back();
-    const int32_t bottom_z = pos.z;
-    const int32_t top_z = pos.z + osize.dz;
 
     // 新箱顶面在 pos.z + dz，不会被 collect_supports 识别为支撑，可安全全量扫描
     const SupportInfo info = collect_supports(pos, osize, load.placements);
     pl.stack_level = info.supports.empty() ? 1 : info.max_level + 1;
     pl.cum_load = 0.0;
     pl.supports = info.supports;
-    pl.col_top_z = top_z;
     if (info.supports.empty())
     {
-        pl.col_height = 1;
+        pl.same_run = 1;
         return;
     }
 
-    // 本箱柱层数 = max(直接支撑柱层数 + (本箱为柱顶新层 ? 1 : 0))；同层并排不增层
-    int max_col = 1;
+    // 同型连续 run 高度 = max(同型直接支撑.same_run + 1)；无同型支撑 = 1（异型间不计数）
+    int run = 1;
     for (size_t i = 0; i < info.supports.size(); ++i)
     {
         const auto& S = load.placements[info.supports[i]];
-        const int base = S.col_height + (bottom_z == S.col_top_z ? 1 : 0);
-        max_col = std::max(max_col, base);
+        if (S.box_type_id == pl.box_type_id)
+        {
+            run = std::max(run, S.same_run + 1);
+        }
     }
-    pl.col_height = max_col;
+    pl.same_run = run;
 
     std::vector<double> shares(info.supports.size());
     for (size_t i = 0; i < info.supports.size(); ++i)
@@ -560,11 +614,6 @@ void apply_stack_state(const Position& pos, const OrientedSize& osize, double we
     for (size_t k = 0; k < boxes.size(); ++k)
     {
         auto& X = load.placements[boxes[k]];
-        if (bottom_z == X.col_top_z)
-        {
-            X.col_height += 1;
-            X.col_top_z = top_z;
-        }
         X.cum_load += delta[k];
     }
 }
@@ -598,8 +647,7 @@ void recompute_stack_state(ContainerLoad& load,
     for (auto& pl : load.placements)
     {
         pl.stack_level = 1;
-        pl.col_height = 1;
-        pl.col_top_z = 0;
+        pl.same_run = 1;
         pl.cum_load = 0.0;
         pl.supports.clear();
     }
@@ -608,29 +656,30 @@ void recompute_stack_state(ContainerLoad& load,
     {
         auto& pl = load.placements[order[k]];
         const double weight = pl.weight.value_or(0.0);
-        const int32_t bottom_z = pl.position.z;
-        const int32_t top_z = pl.position.z + pl.osize.dz;
 
         // 直接支撑箱顶面 == 本箱底面 z，其 z 严格更小，z 序中必已处理
         const SupportInfo info = collect_supports(pl.position, pl.osize, load.placements);
         pl.supports = info.supports;
         pl.stack_level = info.supports.empty() ? 1 : info.max_level + 1;
-        pl.col_top_z = top_z;
         if (info.supports.empty())
         {
-            pl.col_height = 1;
+            pl.same_run = 1;
             continue;
         }
 
-        // 本箱柱层数 = max(直接支撑柱层数 + (本箱为柱顶新层 ? 1 : 0))
-        int max_col = 1;
+        // 同型连续 run 高度 = max(同型直接支撑.same_run + 1)；无同型支撑 = 1
+        int run = 1;
+        std::vector<size_t> same_supports;
         for (size_t i = 0; i < info.supports.size(); ++i)
         {
             const auto& S = load.placements[info.supports[i]];
-            const int base = S.col_height + (bottom_z == S.col_top_z ? 1 : 0);
-            max_col = std::max(max_col, base);
+            if (S.box_type_id == pl.box_type_id)
+            {
+                run = std::max(run, S.same_run + 1);
+                same_supports.push_back(info.supports[i]);
+            }
         }
-        pl.col_height = max_col;
+        pl.same_run = run;
 
         std::vector<double> shares(info.supports.size());
         for (size_t i = 0; i < info.supports.size(); ++i)
@@ -643,23 +692,29 @@ void recompute_stack_state(ContainerLoad& load,
         for (size_t j = 0; j < boxes.size(); ++j)
         {
             auto& X = load.placements[boxes[j]];
-            if (bottom_z == X.col_top_z)
-            {
-                X.col_height += 1;
-                X.col_top_z = top_z;
-            }
             X.cum_load += delta[j];
-            if (errors)
+        }
+
+        if (errors)
+        {
+            const auto& bt = box_type_map.at(pl.box_type_id);
+            const auto ms = bt.max_stack_for(pl.orientation);
+            if (ms.has_value() && pl.same_run > ms.value())
             {
-                const auto& bt = box_type_map.at(X.box_type_id);
-                const auto ms = bt.max_stack_for(X.orientation);
-                if (ms.has_value() && X.col_height > ms.value())
-                {
-                    errors->push_back("stack " + std::to_string(X.col_height) +
-                                      " > max_stack " + std::to_string(ms.value()) +
-                                      " for box " + pl.box_id);
-                }
-                const auto ml = bt.max_load_for(X.orientation);
+                errors->push_back("stack " + std::to_string(pl.same_run) +
+                                  " > max_stack " + std::to_string(ms.value()) +
+                                  " for box " + pl.box_id);
+            }
+            if (!check_same_run(same_supports, run, pl.box_type_id,
+                                load.placements, box_type_map))
+            {
+                errors->push_back("stack run exceeds max_stack under box " + pl.box_id);
+            }
+            for (size_t j = 0; j < boxes.size(); ++j)
+            {
+                const auto& X = load.placements[boxes[j]];
+                const auto& btx = box_type_map.at(X.box_type_id);
+                const auto ml = btx.max_load_for(X.orientation);
                 if (ml.has_value() && X.cum_load > ml.value() + 1e-9)
                 {
                     errors->push_back("load " + std::to_string(X.cum_load) +

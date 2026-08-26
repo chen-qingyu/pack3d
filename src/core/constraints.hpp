@@ -72,10 +72,13 @@ inline constexpr int FACET_STAIR_STEPS = 2;
 
 /// 堆码层数/单箱承重只读预检（max_stack + max_load）。
 /// max_load：A3 面积分摊（直接支撑逐对） + 整柱累计（沿支撑链）；
-/// max_stack：每柱层数（沿支撑链，同层并排不增层）。
+/// max_stack（同箱型连续堆叠）：候选箱 box_type_id 位于某同型连续 run 时，
+/// run 高度 = max(同型直接支撑.same_run)+1（无同型支撑 = 1），须 <= run 内每个同型箱
+/// 各自朝向的 max_stack。异型箱不互相计数。
 /// indices 非空时只检查这些 placement 下标（网格加速的支撑带候选超集，结果不变）。
 [[nodiscard]] bool check_stack_constraints(
-    const Position& pos, const OrientedSize& osize, double weight,
+    const Position& pos, const OrientedSize& osize,
+    const std::string& box_type_id, Orientation orientation, double weight,
     const ContainerLoad& load,
     const std::map<std::string, BoxType>& box_type_map,
     const std::vector<size_t>* indices = nullptr) noexcept;
@@ -87,12 +90,11 @@ inline constexpr int FACET_STAIR_STEPS = 2;
                                             const std::vector<size_t>* indices = nullptr) noexcept;
 
 /// 放置提交后的堆叠状态副作用：新箱（load.placements.back()）的
-/// stack_level/col_height/col_top_z/cum_load/supports，及沿支撑链传播
-/// col_height 新层 +1、cum_load += 各路径份额。
+/// stack_level/same_run/cum_load/supports，及沿支撑链传播 cum_load += 各路径份额。
 void apply_stack_state(const Position& pos, const OrientedSize& osize, double weight,
                        ContainerLoad& load) noexcept;
 
-/// 按 z 排序重建全部放置的堆叠状态；errors 非空时同时校验 max_stack/max_load。
+/// 按 z 排序重建全部放置的堆叠状态；errors 非空时同时校验 max_stack（同型A）/max_load。
 /// 用于 resume、后处理合并、预校验等任意顺序构造的装载。
 void recompute_stack_state(ContainerLoad& load,
                            const std::map<std::string, BoxType>& box_type_map,

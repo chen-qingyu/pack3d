@@ -132,7 +132,8 @@ ContainerLoad GepPacker::pack_single_impl(
 
                 // 堆码层数 / 单箱承重检查
                 if ((problem_.has_max_stack || problem_.has_max_load) &&
-                    !check_stack_constraints(pos, os, box.weight.value_or(0.0), load,
+                    !check_stack_constraints(pos, os, box.box_type_id, orient,
+                                             box.weight.value_or(0.0), load,
                                              box_type_map_))
                 {
                     continue;

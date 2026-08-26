@@ -161,7 +161,7 @@ TEST_CASE("expand: enforces max_stack constraint", "[bsg][support]")
     state.constraint_load.type = &ctx.container_type;
     state.constraint_load.placements.push_back(
         {"", "base", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 50}});
-    // 重建堆叠状态：手工构造的已有放置需要正确的 col_height/col_top_z 供 max_stack 判定
+    // 重建堆叠状态：手工构造的已有放置需要正确的 same_run 供 max_stack 同型 run 判定
     recompute_stack_state(state.constraint_load, ctx.box_type_map, nullptr);
     run_kpa(state, ctx);
 

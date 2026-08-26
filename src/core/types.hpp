@@ -305,9 +305,8 @@ struct Placement
     std::set<std::string> groups; // 所属分组集合（空=未设置；混组托盘=完整分组集合）
 
     // 堆叠状态（内部字段，不序列化到输出）
-    int stack_level = 1;          // 所在堆柱层号，地板层=1（max_stack 层号基准）
-    int col_height = 1;           // 所在柱的层数（从地板起；同层并排不增层，max_stack 用）
-    int32_t col_top_z = 0;        // 所在柱顶面 z（同层并排取最高箱顶；新层判定用）
+    int stack_level = 1;          // 所在堆柱层号，地板层=1（信息性层号）
+    int same_run = 1;             // 同箱型连续堆叠层数（含自身）；max_stack 同型连续堆叠用
     double cum_load = 0.0;        // 从上方流经本箱的整柱累计载荷（max_load 累计承重）
     std::vector<size_t> supports; // 直接支撑箱下标（本容器 placements 内，堆叠传播用）
 };

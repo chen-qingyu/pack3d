@@ -186,7 +186,9 @@ bool Heuristic::check_block_feasible(
                     (cell < static_cast<int>(w->size())) ? (*w)[static_cast<size_t>(cell)] : 0.0;
                 ++cell;
                 if ((problem_.has_max_stack || problem_.has_max_load) &&
-                    !check_stack_constraints(pos, single, box_weight, sim, box_type_map_))
+                    !check_stack_constraints(pos, single, block.box_type_id,
+                                             block.orientation, box_weight, sim,
+                                             box_type_map_))
                 {
                     return false;
                 }

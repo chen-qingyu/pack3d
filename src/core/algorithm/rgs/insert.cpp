@@ -289,7 +289,8 @@ bool can_place(
     }
 
     if ((problem.has_max_stack || problem.has_max_load) &&
-        !check_stack_constraints(ep, osize, box.weight.value_or(0.0), load, box_type_map, sc))
+        !check_stack_constraints(ep, osize, box.box_type_id, orient,
+                                 box.weight.value_or(0.0), load, box_type_map, sc))
     {
         return false;
     }

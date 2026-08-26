@@ -24,7 +24,7 @@
 | GLC       | 块内逐箱模拟 | 块放置前对整个块逐箱模拟检查                                                               |
 | BSG       | 复合块逐叶   | `can_place_block` 递归展开叶子逐箱检查；无约束且无 facets 场景走块级 `is_supported` 快路径 |
 
-承重状态（`stack_level` / `col_height` / `col_top_z` / `cum_load` / 直接支撑下标 `supports`）由共享的 `check_stack_constraints` / `apply_stack_state` / `recompute_stack_state` 维护（机制见 [architecture.md](architecture.md) §6）。GEP/GLC/RGS 自底向上放置，用增量预检 + apply；BSG 通块可能带 z 间隙（先放悬空箱再放下方箱），逐叶增量会漏判，放置后整体 `recompute_stack_state` 校验。
+承重状态（`stack_level` / `same_run` / `cum_load` / 直接支撑下标 `supports`）由共享的 `check_stack_constraints` / `apply_stack_state` / `recompute_stack_state` 维护（机制见 [architecture.md](architecture.md) §6）。GEP/GLC/RGS 自底向上放置，用增量预检 + apply；BSG 通块可能带 z 间隙（先放悬空箱再放下方箱），逐叶增量会漏判，放置后整体 `recompute_stack_state` 校验。
 
 ---
 

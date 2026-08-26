@@ -142,8 +142,9 @@ bool can_place_block(
             return false;
         }
         if ((ctx.has_max_stack || ctx.has_max_load) &&
-            !check_stack_constraints(leaf.position, leaf.osize, item.weight,
-                                     next_load, ctx.box_type_map))
+            !check_stack_constraints(leaf.position, leaf.osize, item.box_type_id,
+                                     leaf.orientation, item.weight, next_load,
+                                     ctx.box_type_map))
         {
             return false;
         }
