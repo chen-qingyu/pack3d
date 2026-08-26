@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Pack3d Input Schema",
   "type": "object",
-  "required": ["container_types", "box_types", "boxes"],
+  "required": ["container_types", "box_types"],
   "additionalProperties": false,
   "properties": {
     "container_types": {
@@ -91,7 +91,8 @@
           "weight": { "type": ["number", "null"], "exclusiveMinimum": 0 },
           "loose": { "type": "boolean", "default": false },
           "group": { "type": ["string", "null"], "minLength": 1 },
-          "platform": { "type": ["string", "null"], "minLength": 1 }
+          "platform": { "type": ["string", "null"], "minLength": 1 },
+          "quantity": { "type": "integer", "minimum": 1 }
         }
       }
     },
@@ -237,6 +238,30 @@
         "properties": {
           "constraints": {
             "required": ["pallet_mix_group"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "not": { "required": ["boxes"] }
+      },
+      "then": {
+        "properties": {
+          "box_types": {
+            "items": { "required": ["quantity"] }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["boxes"]
+      },
+      "then": {
+        "properties": {
+          "box_types": {
+            "items": { "not": { "required": ["quantity"] } }
           }
         }
       }

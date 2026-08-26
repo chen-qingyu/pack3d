@@ -164,6 +164,7 @@ struct BoxType
     bool loose = false;                  // 该箱型是否为散件（true=先装托后装车，false=普通箱子直接装车）
     std::optional<std::string> group;    // 箱型级组 ID（与 boxes.group 三选一）
     std::optional<std::string> platform; // 箱型级站点 ID（与 boxes.platform 三选一）
+    std::optional<int> quantity;         // 数量展开模式：有值则顶层 boxes 省略，按此数量生成箱子实例
 
     /// 按朝向查堆码层数上限（无此朝向或未配置则返回 nullopt）
     [[nodiscard]] std::optional<int> max_stack_for(Orientation o) const noexcept
@@ -281,6 +282,9 @@ struct Problem
 
     // 算法
     Algorithm algorithm = Algorithm::GEP;
+
+    // 数量展开模式标志（解析时：有 quantity 无 boxes 字段时为 true）
+    bool quantity_mode = false;
 
     // 已有的中间状态（每个容器已放置的箱子）
     std::vector<ExistingContainer> existing_containers;

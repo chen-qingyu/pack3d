@@ -29,6 +29,20 @@ std::string enum_to_lower(auto val) noexcept
     return name;
 }
 
+// 生成不与箱型 id 冲突的箱子实例 id：{box_type_id}#{seq}（撞上则序号递增）
+std::string next_box_id(const std::string& type_id, int& seq,
+                        std::set<std::string>& used)
+{
+    while (true)
+    {
+        std::string id = type_id + "#" + std::to_string(seq++);
+        if (used.insert(id).second)
+        {
+            return id;
+        }
+    }
+}
+
 } // namespace
 
 std::string orientation_to_string(Orientation o) noexcept
@@ -312,6 +326,7 @@ void from_json(const json& j, BoxType& bt)
     bt.loose = j.value("loose", false);
     bt.group = json_opt<std::string>(j, "group");
     bt.platform = json_opt<std::string>(j, "platform");
+    bt.quantity = json_opt<int>(j, "quantity");
 }
 
 void from_json(const json& j, Box& bx)
@@ -373,7 +388,36 @@ void from_json(const json& j, Problem& p)
             p.has_max_load |= v.has_value();
         }
     }
-    j["boxes"].get_to(p.boxes);
+    if (j.contains("boxes"))
+    {
+        j["boxes"].get_to(p.boxes);
+    }
+    else
+    {
+        // 数量展开模式：schema 已保证每个 box_type 都有 quantity。
+        // 按数量生成箱子实例；weight/platform/group 留空，由 resolve_type_fields 从箱型继承。
+        p.quantity_mode = true;
+        std::set<std::string> used_ids;
+        for (const auto& bt : p.box_types)
+        {
+            used_ids.insert(bt.id);
+        }
+        for (const auto& bt : p.box_types)
+        {
+            if (!bt.quantity.has_value())
+            {
+                continue;
+            }
+            int seq = 1;
+            for (int i = 0; i < bt.quantity.value(); ++i)
+            {
+                Box bx;
+                bx.id = next_box_id(bt.id, seq, used_ids);
+                bx.box_type_id = bt.id;
+                p.boxes.push_back(std::move(bx));
+            }
+        }
+    }
 
     if (j.contains("pallet_types"))
     {
@@ -565,6 +609,28 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         if (!bt_ids.count(bx.box_type_id))
         {
             out.push_back("unknown box_type_id '" + bx.box_type_id + "' for box " + bx.id);
+        }
+    }
+
+    // 数量展开模式一致性：quantity_mode 要求全箱型带 quantity；实例模式禁止 quantity
+    if (problem.quantity_mode)
+    {
+        for (const auto& bt : problem.box_types)
+        {
+            if (!bt.quantity.has_value())
+            {
+                out.push_back("inconsistent quantity: quantity mode requires quantity on every box_type (no boxes field)");
+            }
+        }
+    }
+    else
+    {
+        for (const auto& bt : problem.box_types)
+        {
+            if (bt.quantity.has_value())
+            {
+                out.push_back("inconsistent quantity: quantity is not allowed when boxes field is present");
+            }
         }
     }
 

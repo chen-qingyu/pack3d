@@ -1,6 +1,6 @@
 # 输入格式
 
-JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_types`、`box_types`、`boxes`。输入示例见 [data/demo.json](../data/demo.json)。
+JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_types`、`box_types`；`boxes` 在数量展开模式下省略（见下文）。输入示例见 [data/demo.json](../data/demo.json)。
 
 ## 坐标系
 
@@ -77,17 +77,52 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段                   | 类型                     | 必填 | 说明                                      |
-| ---------------------- | ------------------------ | ---- | ----------------------------------------- |
-| `id`                   | string                   | 是   | 唯一标识                                  |
-| `sx`/`sy`/`sz`         | int>=1                   | 是   | 原始尺寸（箱体自身坐标）                  |
-| `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下                      |
-| `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限                   |
-| `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限               |
-| `weight`               | number>0                 |      | 箱型级重量（与箱子重量互斥，见下预校验）  |
-| `loose`                | boolean                  |      | true=散件（先装托后装车），默认 false     |
-| `group`                | string 或 null           |      | 箱型级分组 ID（与箱子级 group 三选一）    |
-| `platform`             | string 或 null           |      | 箱型级站点 ID（与箱子级 platform 三选一） |
+| 字段                   | 类型                     | 必填 | 说明                                              |
+| ---------------------- | ------------------------ | ---- | ------------------------------------------------- |
+| `id`                   | string                   | 是   | 唯一标识                                          |
+| `sx`/`sy`/`sz`         | int>=1                   | 是   | 原始尺寸（箱体自身坐标）                          |
+| `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下                              |
+| `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限                           |
+| `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限                       |
+| `weight`               | number>0                 |      | 箱型级重量（与箱子重量互斥，见下预校验）          |
+| `loose`                | boolean                  |      | true=散件（先装托后装车），默认 false             |
+| `group`                | string 或 null           |      | 箱型级分组 ID（与箱子级 group 三选一）            |
+| `platform`             | string 或 null           |      | 箱型级站点 ID（与箱子级 platform 三选一）         |
+| `quantity`             | int>=1                   |      | 数量展开模式（见下）；有值则顶层 `boxes` 必须省略 |
+
+### 数量展开 `quantity`（可选）
+
+`quantity` 用于按箱型批量声明待装箱子：某个箱型声明 `quantity: N`，即表示需要装入该箱型的 `N` 个箱子。
+
+- **两模式互斥**：数量展开模式（任一/所有 `box_types` 带 `quantity`）时，顶层 `boxes` 字段**必须省略**；反之提供 `boxes` 时，任何 `box_types` **不得**带 `quantity`。
+- **全覆盖**：数量展开模式下，每个 `box_types` 都必须配置 `quantity`（`>= 1`）。
+- **自动 id**：每个箱子实例自动分配唯一 id `{box_type_id}#{n}`（`n` 从 1 递增）。
+- **字段继承**：数量展开模式下箱子没有独立的 `boxes` 条目，因此 `weight`/`group`/`platform`/`loose` 只能配置在 `box_type` 级，并自动继承到每个生成的箱子实例。
+
+```json
+{
+  "box_types": [
+    {
+      "id": "box_s",
+      "sx": 30,
+      "sy": 20,
+      "sz": 20,
+      "allowed_orientations": ["xyz", "yxz"],
+      "quantity": 10
+    },
+    {
+      "id": "box_l",
+      "sx": 100,
+      "sy": 50,
+      "sz": 30,
+      "allowed_orientations": ["xyz"],
+      "quantity": 4
+    }
+  ]
+}
+```
+
+上述声明等价于生成 10 个 `box_s`（id `box_s#1`..`box_s#10`）与 4 个 `box_l`（id `box_l#1`..`box_l#4`）。可与 `existing_containers` 同时使用（已放置箱子快照独立）。
 
 `group` 和 `platform` 分别采用严格三选一模式，每个字段独立选择来源：
 
@@ -118,6 +153,8 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 - zyx: x->Z, y->Y, z->X
 
 ## 箱子实例 `boxes`
+
+逐箱列出待装实例；在数量展开模式下本字段省略，箱子由 `box_types.quantity` 生成（见上节）。
 
 ```json
 {
@@ -218,6 +255,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 Schema 校验后，代码还会检查：
 
 - ID 唯一性：`container_types`、`box_types`、`boxes` 中各自的 `id` 必须唯一
+- quantity 一致性：数量展开模式（任一带 `quantity`）要求全部 `box_types` 都带 `quantity` 且顶层 `boxes` 省略；实例模式（提供 `boxes`）禁止任何箱型带 `quantity`
 - 引用完整性：每个 `box` 的 `box_type_id` 必须在 `box_types` 中存在
 - 路线合法性：只要有箱子（含 `existing_containers` 中已有放置）的有效 `platform`，就必须提供 `route`；路线中无重复站点，箱子站点必须在路线中
 - 重量一致性（**三选一**）：要么全无重量且已有放置也无重量；要么**全部箱型**配置 `weight` 且**所有箱子不带**重量（箱子重量取箱型），已有放置可无重量或重复相同重量；要么**所有箱子**配置 `weight` 且箱型不带，已有放置也必须有重量。箱型与箱子重量混用、部分配置、已有放置与箱型值冲突均报错。**有重量信息时**（后两种模式）要求全部容器配置 `payload`，全无重量时不要求；`max_load`/装托模式要求有重量信息（箱型级或箱子级）
