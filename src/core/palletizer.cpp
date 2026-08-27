@@ -336,9 +336,10 @@ void expand_pallet_solution(Solution& sol,
         {
             sol.status = SolveStatus::Partial;
         }
-        sol.violations.push_back(
-            std::to_string(unpalletized.size()) +
-            " box(es) not palletized: cannot fit any pallet (set pallet_fallback=true to load loose)");
+        for (const auto& b : unpalletized)
+        {
+            sol.violations.push_back("box " + b.id + " not palletized: cannot fit any pallet (set pallet_fallback=true to load loose)");
+        }
     }
 }
 
