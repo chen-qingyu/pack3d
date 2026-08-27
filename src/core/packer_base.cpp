@@ -57,6 +57,44 @@ std::vector<std::vector<Box>> split_platform_buckets(const std::vector<Box>& ite
     return buckets;
 }
 
+// 容器内平台按**真实排列顺序**（沿 X 纵深）排序，即**装货顺序**：最深（X 最小）
+// 的平台先装。每个平台用其箱子的最深点 min(position.x) 代表位置，升序排列
+// （越小 X 越深、越先装）；并列按平台名升序保持确定性。
+std::vector<std::string> ordered_container_platforms(const ContainerLoad& load)
+{
+    std::map<std::string, int32_t> deep_x;
+    for (const auto& pl : load.placements)
+    {
+        if (pl.platform.empty())
+        {
+            continue;
+        }
+        auto it = deep_x.find(pl.platform);
+        if (it == deep_x.end() || pl.position.x < it->second)
+        {
+            deep_x[pl.platform] = pl.position.x;
+        }
+    }
+    std::vector<std::string> result;
+    result.reserve(deep_x.size());
+    for (const auto& [plat, x] : deep_x)
+    {
+        result.push_back(plat);
+    }
+    std::sort(result.begin(), result.end(),
+              [&](const std::string& a, const std::string& b)
+              {
+                  int32_t ax = deep_x[a];
+                  int32_t bx = deep_x[b];
+                  if (ax != bx)
+                  {
+                      return ax < bx;
+                  }
+                  return a < b;
+              });
+    return result;
+}
+
 } // namespace
 
 ContainerLoad PackerBase::pack_single(
@@ -324,7 +362,7 @@ Solution PackerBase::build_solution(
                 cs.weight_rate = cl.total_weight / cl.type->payload.value();
             }
         }
-        cs.platforms = std::vector<std::string>(cl.platforms.begin(), cl.platforms.end());
+        cs.platforms = ordered_container_platforms(cl);
         cs.groups = std::vector<std::string>(cl.groups.begin(), cl.groups.end());
         sol.container_summaries.push_back(std::move(cs));
         sol.container_placements.push_back(cl.placements);
