@@ -39,6 +39,9 @@ def draw_file(file_path: str):
     COLOR_MAP.clear()  # 清空全局颜色映射表，确保不同文件间颜色独立
 
     containers = data["result"]["containers"]
+    if not containers:
+        print(f"No containers to draw, skip: {file_path}")
+        return
 
     # 计算绘图相关参数
     max_dim = max(c[k] for c in containers for k in ("sx", "sy", "sz"))
@@ -51,10 +54,10 @@ def draw_file(file_path: str):
     for c in containers:
         title = f"Container {c['type_id']}<br>"
         title += f"<sub>Volume Rate: {c['volume_rate']:.2%}"
-        if c.get("weight_rate") is not None:
+        if c["weight_rate"] is not None:
             title += f", Weight Rate: {c['weight_rate']:.2%}"
         title += f"<br>Packed: {c['packed_count']}"
-        platforms = c.get("platforms", [])
+        platforms = c["platforms"]
         if platforms:
             title += f"<br>Route: {', '.join(platforms)}"
         title += "</sub>"
@@ -88,7 +91,7 @@ def draw_file(file_path: str):
     # 自动切换：如果某维度只有一种值，默认用下一个多样化的维度
     auto_key = None
     for k in ["platform", "group", "type"]:
-        if len(seen_values.get(k, set())) > 1:
+        if len(seen_values[k]) > 1:
             auto_key = k
             break
     if auto_key is not None and auto_key != "type":
@@ -174,8 +177,8 @@ def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
     ]
 
     # 收集各维度值用于自动切换判断
-    platform_val = placement.get("platform") or "(none)"
-    group_val = placement.get("group") or "(none)"
+    platform_val = placement["platform"] or "(none)"
+    group_val = placement["group"] or "(none)"
     seen_values["type"].add(box_type_id)
     seen_values["platform"].add(platform_val)
     seen_values["group"].add(group_val)
@@ -239,15 +242,15 @@ def get_text(placement: dict) -> str:
     text += f"pos: ({placement['x']}, {placement['y']}, {placement['z']})<br>"
     text += f"orient: {placement['orientation']}<br>"
     text += f"placed: {placement['dx']}x{placement['dy']}x{placement['dz']}<br>"
-    platform_val = placement.get("platform")
-    group_val = placement.get("group")
-    weight = placement.get("weight")
-    if platform_val:
-        text += f"platform: {platform_val}<br>"
-    if group_val:
-        text += f"group: {group_val}"
-    if weight:
-        text += f"<br>weight: {weight}"
+    extra = []
+    if placement["platform"]:
+        extra.append(f"platform: {placement['platform']}")
+    if placement["group"]:
+        extra.append(f"group: {placement['group']}")
+    if placement["weight"]:
+        extra.append(f"weight: {placement['weight']}")
+    if extra:
+        text += "<br>".join(extra)
     return text
 
 
