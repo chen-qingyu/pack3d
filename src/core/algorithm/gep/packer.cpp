@@ -37,11 +37,7 @@ ContainerLoad GepPacker::pack_single_impl(
         int32_t x, y, z;
         bool operator<(const Ep& o) const
         {
-            if (z != o.z)
-                return z < o.z;
-            if (y != o.y)
-                return y < o.y;
-            return x < o.x;
+            return std::tie(x, y, z) < std::tie(o.x, o.y, o.z);
         }
     };
     std::set<Ep> eps;
