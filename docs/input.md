@@ -167,13 +167,13 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段          | 类型   | 必填 | 说明                   |
-| ------------- | ------ | ---- | ---------------------- | ---------------------------------------------------------------- |
-| `id`          | string | 是   | 唯一标识               |
-| `box_type_id` | string | 是   | 引用 box_types 中的 id |
-| `weight`      | number |      | 单箱重量，null=无重量  |
-| `group`       | string | null |                        | 箱子级分组 ID；仅在该字段选择箱子级模式时填写，用于 tender_limit |
-| `platform`    | string | null |                        | 箱子级站点 ID；仅在该字段选择箱子级模式时填写，用于路线约束      |
+| 字段          | 类型   | 必填 | 说明                                                             |
+| ------------- | ------ | ---- | ---------------------------------------------------------------- |
+| `id`          | string | 是   | 唯一标识                                                         |
+| `box_type_id` | string | 是   | 引用 box_types 中的 id                                           |
+| `weight`      | number |      | 单箱重量，null=无重量                                            |
+| `group`       | string |      | 箱子级分组 ID；仅在该字段选择箱子级模式时填写，用于 tender_limit |
+| `platform`    | string |      | 箱子级站点 ID；仅在该字段选择箱子级模式时填写，用于路线约束      |
 
 ## 算法 `algorithm`（可选）
 
@@ -297,7 +297,7 @@ Schema 校验后，代码还会检查：
 ```
 
 | 字段                       | 类型   | 必填 | 说明                                           |
-| -------------------------- | ------ | ---- | ---------------------------------------------- | -------------------------------------- |
+| -------------------------- | ------ | ---- | ---------------------------------------------- |
 | `type_id`                  | string | 是   | 引用 container_types 中的 id                   |
 | `placements[].box_id`      | string | 是   | 箱子标识                                       |
 | `placements[].box_type_id` | string | 是   | 引用 box_types 中的 id                         |
@@ -305,8 +305,8 @@ Schema 校验后，代码还会检查：
 | `placements[].orientation` | string | 是   | 朝向，同 box_types 朝向枚举                    |
 | `placements[].dx/dy/dz`    | int>=1 |      | 朝向后的实际尺寸（可从 type+朝向推导，可省略） |
 | `placements[].weight`      | number |      | 箱子重量，未设置时为 null                      |
-| `placements[].platform`    | string | null |                                                | 站点 ID（配送停靠点），未设置时为 null |
-| `placements[].group`       | string | null |                                                | 分组 ID，未设置时为 null               |
+| `placements[].platform`    | string |      | 站点 ID（配送停靠点），未设置时为 null         |
+| `placements[].group`       | string |      | 分组 ID，未设置时为 null                       |
 
 `placements[].group` 和 `placements[].platform` 是已有快照中的有效值，字段类型为 `string|null`；它们不参与新输入的三选一来源判断，但必须遵守对应模式：无值模式不得填写，箱型级模式下可省略或填写所属箱型的相同值，箱子级模式下必须填写。
 
