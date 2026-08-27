@@ -130,63 +130,39 @@ cd web && npm install && npm run dev
 
 ## 文档索引
 
-| 主题           | 位置                                    |
-| -------------- | --------------------------------------- |
-| 整体架构与流程 | `docs/architecture.md`（含装托、续装）  |
-| 算法细节       | `docs/algorithms.md`（GEP/GLC/RGS/BSG） |
-| 输入格式       | `docs/input.md`                         |
-| 输出格式       | `docs/output.md`                        |
-| 约束条件       | `docs/constraints.md`                   |
-| HTTP API       | `docs/api.md`                           |
-| Web 工作台     | `docs/web.md`                           |
-| Python SDK     | `python/README.md`                      |
-| 编译期配置常量 | `src/core/algorithm/config.hpp`         |
+| 主题           | 位置                                                           |
+| -------------- | -------------------------------------------------------------- |
+| 整体架构与流程 | [docs/architecture.md](docs/architecture.md)                   |
+| 算法细节       | [docs/algorithms.md](docs/algorithms.md)                       |
+| 输入格式       | [docs/input.md](docs/input.md)                                 |
+| 输出格式       | [docs/output.md](docs/output.md)                               |
+| 约束条件       | [docs/constraints.md](docs/constraints.md)                     |
+| HTTP API       | [docs/api.md](docs/api.md)                                     |
+| Web 工作台     | [docs/web.md](docs/web.md)                                     |
+| Python SDK     | [python/README.md](python/README.md)                           |
+| 编译期配置常量 | [src/core/algorithm/config.hpp](src/core/algorithm/config.hpp) |
+| benchmark 报告 | [report/report.txt](report/report.txt)                         |
 
-## 代码结构
+## 目录结构
 
 ```text
 data/
-  demo.json          示例 JSON
-  input_schema.json  输入 JSON Schema（构建时嵌入为 C++ 头文件）
-  convert_br.py      BR 格式 benchmark 转 JSON
-  br-origin/         BR 格式 benchmark 数据
-  tests/             测试数据（含续装、承重、站点合并等专项场景）
+  br-origin/         BR 原始数据
+  tests/             测试数据
+  demo.json          示例输入
+  input_schema.json  输入 JSON Schema
 docs/                文档说明
-python/
-  README.md          Python SDK 说明
-  pack3d/            Python SDK 入口
-  setup.py           Python SDK 打包脚本
-server/
-  main.py            FastAPI 端点
-  manager.py         实例/运行生命周期
-  db.py              SQLite 持久化
-web/
-  index.html, ...    前端入口
-  src/               前端源码（App、组件、Viewer3D、hooks）
-report/
-  report.cpp         benchmark 报告程序
-  report.txt         benchmark 报告输出
-run.py               Python CLI 脚本
+python/              Python SDK 相关
+report/              benchmark 报告程序和结果
+scripts/
+  draw.py            可视化绘图脚本
+  generate_data.py   BR 原始数据转 JSON 脚本
+  run.py             Python SDK 命令行脚本
+server/              API 相关
 src/
   main.cpp           CLI 入口
-  python_module.cpp  Python 绑定入口
-  core/
-    app.hpp/.cpp              统一入口
-    packer_base.hpp/.cpp      多态基类
-    types.hpp                 共用类型
-    constraints.hpp/.cpp      约束模块
-    objectives.hpp/.cpp       目标向量
-    postprocess.hpp/.cpp      后处理
-    pallet.hpp/.cpp           装托类型与虚拟容器/箱型
-    palletizer.hpp/.cpp       装托流水线（散件->托盘）
-    io.hpp/.cpp               输入输出
-    select_container.hpp/.cpp 选车模块
-    tool.hpp/.cpp             常用工具
-    algorithm/
-      config.hpp              编译期常量
-      gep/                    Greedy Extreme Point
-      glc/                    Greedy Lookahead Construction
-      rgs/                    Randomized Greedy Search
-      bsg/                    Beam Search Greedy
-tests/               单元测试和集成测试
+  python_module.cpp  Python 绑定源码
+  core/              数据结构与核心算法
+tests/               单元测试与集成测试
+web/                 前端工作台
 ```
