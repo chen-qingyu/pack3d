@@ -20,8 +20,11 @@ struct SpaceSelection
 
 /// 根据八个对应角的 Manhattan 距离选择残差空间和 anchor（K3/K5）。
 /// 距离并列时选择体积更大的残差空间。
+/// route_aware：route 存在时把选中 cuboid 的 anchor 固定为 min-X（深角），
+/// 使分桶平台从深往门装载，避免最深平台散到门端占用近门区。
 SpaceSelection select_free_space(const std::vector<Cuboid>& spaces,
-                                 const Size& container_size) noexcept;
+                                 const Size& container_size,
+                                 bool route_aware) noexcept;
 
 /// 计算块 b 在 cuboid r 中的放置位置（min corner），以 anchor corner 对齐
 Position placement_position(const Cuboid& r, const GeneralBlock& b,

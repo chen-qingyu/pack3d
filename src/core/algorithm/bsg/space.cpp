@@ -7,14 +7,19 @@ namespace pack3d::bsg
 {
 
 SpaceSelection select_free_space(const std::vector<Cuboid>& spaces,
-                                 const Size& container_size) noexcept
+                                 const Size& container_size,
+                                 bool route_aware) noexcept
 {
-    SpaceSelection best;
-    best.distance = std::numeric_limits<int32_t>::max();
-
+    // 趟1：按标准 Manhattan 距离（x 也取最近壁面）选最优 cuboid，保留原有密度启发式；
+    //      不因 route 而强制选最深 cuboid（避免小碎块装不下导致分支死亡）。
+    size_t best_idx = 0;
+    Position best_anchor{};
+    int32_t best_dist = std::numeric_limits<int32_t>::max();
     for (size_t i = 0; i < spaces.size(); ++i)
     {
         const auto& r = spaces[i];
+        Position a{};
+        int32_t d = std::numeric_limits<int32_t>::max();
         for (int x_side = 0; x_side < 2; ++x_side)
         {
             for (int y_side = 0; y_side < 2; ++y_side)
@@ -26,21 +31,55 @@ SpaceSelection select_free_space(const std::vector<Cuboid>& spaces,
                         y_side == 0 ? r.pos.y : r.y_max(),
                         z_side == 0 ? r.pos.z : r.z_max(),
                     };
-                    int32_t distance =
+                    int32_t dist =
                         (x_side == 0 ? anchor.x : container_size.x - anchor.x) +
                         (y_side == 0 ? anchor.y : container_size.y - anchor.y) +
                         (z_side == 0 ? anchor.z : container_size.z - anchor.z);
-                    if (distance < best.distance ||
-                        (distance == best.distance && r.volume() > spaces[best.cuboid_index].volume()))
+                    if (dist < d)
                     {
-                        best = {i, anchor, distance};
+                        d = dist;
+                        a = anchor;
                     }
                 }
             }
         }
+        if (d < best_dist || (d == best_dist && r.volume() > spaces[best_idx].volume()))
+        {
+            best_dist = d;
+            best_idx = i;
+            best_anchor = a;
+        }
     }
 
-    return best;
+    // 趟2：route 存在时把选中 cuboid 的 anchor X 分量固定为 min-X（深角），Y/Z 仍取最近壁面。
+    const auto& r = spaces[best_idx];
+    if (route_aware)
+    {
+        Position a{};
+        int32_t best_yz = std::numeric_limits<int32_t>::max();
+        for (int y_side = 0; y_side < 2; ++y_side)
+        {
+            for (int z_side = 0; z_side < 2; ++z_side)
+            {
+                Position cand{
+                    r.pos.x,
+                    y_side == 0 ? r.pos.y : r.y_max(),
+                    z_side == 0 ? r.pos.z : r.z_max(),
+                };
+                int32_t yz =
+                    (y_side == 0 ? cand.y : container_size.y - cand.y) +
+                    (z_side == 0 ? cand.z : container_size.z - cand.z);
+                if (yz < best_yz)
+                {
+                    best_yz = yz;
+                    a = cand;
+                }
+            }
+        }
+        return {best_idx, a, best_dist};
+    }
+
+    return {best_idx, best_anchor, best_dist};
 }
 
 Position placement_position(const Cuboid& r, const GeneralBlock& b,

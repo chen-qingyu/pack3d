@@ -60,118 +60,138 @@ GreedyResult greedy_rollout(
             break;
         }
 
-        SpaceSelection selection = select_free_space(cur.R, ctx.container_size);
-        const Cuboid& r = cur.R[selection.cuboid_index];
+        // route-aware 选点优先，失败（无块可放）再回退标准选点，避免分支死亡或散门端。
+        auto try_place = [&](const SpaceSelection& selection) -> bool {
+            const Cuboid& r = cur.R[selection.cuboid_index];
 
-        // K4: 选 f(b, r) 最大的块；约束模式下候选循环已逐叶校验，胜出块的叶子状态随选中一起
-        // 保存，提交时直接复用，避免二次 can_place_block
-        int best_bi = -1;
-        int64_t best_f = std::numeric_limits<int64_t>::lowest();
-        ContainerLoad best_load;
-        std::vector<int> best_classes;
+            // K4: 选 f(b, r) 最大的块；约束模式下候选循环已逐叶校验，胜出块的叶子状态随选中一起
+            // 保存，提交时直接复用，避免二次 can_place_block
+            int best_bi = -1;
+            int64_t best_f = std::numeric_limits<int64_t>::lowest();
+            ContainerLoad best_load;
+            std::vector<int> best_classes;
 
-        for (int bi : cur.available_blocks)
-        {
-            const auto& b = ctx.blocks[bi];
-            if (b.osize.dx > r.lx || b.osize.dy > r.ly || b.osize.dz > r.lz)
+            for (int bi : cur.available_blocks)
             {
-                continue;
-            }
-            bool avail = true;
-            for (const auto& m : b.members)
-            {
-                if (m.count > cur.remaining_counts[m.type_idx])
-                {
-                    avail = false;
-                    break;
-                }
-            }
-            if (!avail)
-            {
-                continue;
-            }
-
-            Position place_pos = placement_position(r, b, selection.anchor);
-            ContainerLoad next_load;
-            std::vector<int> next_classes;
-            if (ctx.needs_leaf_validation())
-            {
-                if (!can_place_block(cur, bi, place_pos, ctx, next_load, next_classes))
+                const auto& b = ctx.blocks[bi];
+                if (b.osize.dx > r.lx || b.osize.dy > r.ly || b.osize.dz > r.lz)
                 {
                     continue;
                 }
-            }
-            else if (!is_supported(cur, place_pos, b.osize, ctx))
-            {
-                continue;
-            }
-
-            int64_t fv = compute_f(cur, r, b, ctx);
-            if (fv > best_f)
-            {
-                best_f = fv;
-                best_bi = bi;
-                if (ctx.needs_leaf_validation())
-                {
-                    best_load = std::move(next_load);
-                    best_classes = std::move(next_classes);
-                }
-            }
-        }
-
-        if (best_bi < 0)
-        {
-            break;
-        } // 无可放置的块
-
-        // 放置
-        const auto& b = ctx.blocks[best_bi];
-        Position place_pos = placement_position(r, b, selection.anchor);
-
-        if (ctx.needs_leaf_validation())
-        {
-            // best_bi 只在 can_place_block 通过时更新，此处必可成功，直接复用候选循环的校验结果
-            cur.constraint_load = std::move(best_load);
-            cur.item_class_indices = std::move(best_classes);
-        }
-
-        update_residual_space(cur.R, place_pos, b.osize);
-
-        for (const auto& m : b.members)
-        {
-            cur.remaining_counts[m.type_idx] -= m.count;
-            packed_counts[m.type_idx] += m.count;
-        }
-
-        cur.used_volume += b.single_box_volume;
-        cur.placements.push_back({best_bi, place_pos});
-
-        // 过滤可用块
-        {
-            size_t w = 0;
-            for (size_t i = 0; i < cur.available_blocks.size(); ++i)
-            {
-                int bi2 = cur.available_blocks[i];
-                const auto& b2 = ctx.blocks[bi2];
-                bool ok = true;
-                for (const auto& m : b2.members)
+                bool avail = true;
+                for (const auto& m : b.members)
                 {
                     if (m.count > cur.remaining_counts[m.type_idx])
                     {
-                        ok = false;
+                        avail = false;
                         break;
                     }
                 }
-                if (ok)
+                if (!avail)
                 {
-                    if (w != i)
+                    continue;
+                }
+
+                Position place_pos = placement_position(r, b, selection.anchor);
+                ContainerLoad next_load;
+                std::vector<int> next_classes;
+                if (ctx.needs_leaf_validation())
+                {
+                    if (!can_place_block(cur, bi, place_pos, ctx, next_load, next_classes))
                     {
-                        cur.available_blocks[w] = cur.available_blocks[i];
+                        continue;
                     }
-                    ++w;
+                }
+                else if (!is_supported(cur, place_pos, b.osize, ctx))
+                {
+                    continue;
+                }
+
+                int64_t fv = compute_f(cur, r, b, ctx);
+                if (fv > best_f)
+                {
+                    best_f = fv;
+                    best_bi = bi;
+                    if (ctx.needs_leaf_validation())
+                    {
+                        best_load = std::move(next_load);
+                        best_classes = std::move(next_classes);
+                    }
                 }
             }
-            cur.available_blocks.resize(w);
+
+            if (best_bi < 0)
+            {
+                return false;
+            } // 无可放置的块
+
+            // 放置
+            const auto& b = ctx.blocks[best_bi];
+            Position place_pos = placement_position(r, b, selection.anchor);
+
+            if (ctx.needs_leaf_validation())
+            {
+                // best_bi 只在 can_place_block 通过时更新，此处必可成功，直接复用候选循环的校验结果
+                cur.constraint_load = std::move(best_load);
+                cur.item_class_indices = std::move(best_classes);
+            }
+
+            update_residual_space(cur.R, place_pos, b.osize);
+
+            for (const auto& m : b.members)
+            {
+                cur.remaining_counts[m.type_idx] -= m.count;
+                packed_counts[m.type_idx] += m.count;
+            }
+
+            cur.used_volume += b.single_box_volume;
+            cur.placements.push_back({best_bi, place_pos});
+
+            // 过滤可用块
+            {
+                size_t w = 0;
+                for (size_t i = 0; i < cur.available_blocks.size(); ++i)
+                {
+                    int bi2 = cur.available_blocks[i];
+                    const auto& b2 = ctx.blocks[bi2];
+                    bool ok = true;
+                    for (const auto& m : b2.members)
+                    {
+                        if (m.count > cur.remaining_counts[m.type_idx])
+                        {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    if (ok)
+                    {
+                        if (w != i)
+                        {
+                            cur.available_blocks[w] = cur.available_blocks[i];
+                        }
+                        ++w;
+                    }
+                }
+                cur.available_blocks.resize(w);
+            }
+
+            return true;
+        };
+
+        if (ctx.route.has_value())
+        {
+            if (!try_place(select_free_space(cur.R, ctx.container_size, true)) &&
+                !try_place(select_free_space(cur.R, ctx.container_size, false)))
+            {
+                break;
+            }
+        }
+        else
+        {
+            if (!try_place(select_free_space(cur.R, ctx.container_size, false)))
+            {
+                break;
+            }
         }
 
         // 不重算 KPA：论文 "once per state"，初始 KPA 复用至 greedy 结束

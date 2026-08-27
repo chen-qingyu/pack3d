@@ -85,17 +85,32 @@ TEST_CASE("space selection: all corners and volume tie-break", "[bsg][space]")
         {{0, 2, 0}, 3, 3, 3},
     };
 
-    SpaceSelection selection = select_free_space(spaces, container);
+    SpaceSelection selection = select_free_space(spaces, container, false);
     CHECK(selection.cuboid_index == 1);
     CHECK(selection.anchor == Position{0, 2, 0});
 
     Cuboid cuboid{{2, 3, 4}, 5, 5, 5};
-    selection = select_free_space({cuboid}, container);
+    selection = select_free_space({cuboid}, container, false);
     CHECK(selection.anchor == Position{2, 8, 9});
 
     GeneralBlock block;
     block.osize = {1, 1, 1};
     CHECK(placement_position(cuboid, block, selection.anchor) == Position{2, 7, 8});
+}
+
+TEST_CASE("select_free_space route_aware 选深角", "[bsg][space]")
+{
+    Size container{500, 100, 100};
+    // 门侧 cuboid：x=[80,500]，cross-section 填满容器。
+    std::vector<Cuboid> spaces{{{80, 0, 0}, 420, 100, 100}};
+
+    // 标准：`x_side=1` 的门角（x=500）距离 0 → 选门角。
+    SpaceSelection standard = select_free_space(spaces, container, false);
+    CHECK(standard.anchor.x == 500);
+
+    // route_aware：X 固定 min-X（深角 x=80），Y/Z 仍取最近壁面。
+    SpaceSelection route = select_free_space(spaces, container, true);
+    CHECK(route.anchor.x == 80);
 }
 
 TEST_CASE("residual space: uses overlapping cover", "[bsg][space]")
