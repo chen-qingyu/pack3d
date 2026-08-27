@@ -43,6 +43,10 @@ def draw_file(file_path: str):
         print(f"No containers to draw, skip: {file_path}")
         return
 
+    # 散件 id 映射：pallet_id -> 托盘内散件 box_id 列表（装托单元悬浮提示用）
+    pallets = data["result"]["pallets"]
+    pallet_boxes = {p["pallet_id"]: [pl["box_id"] for pl in p["placements"]] for p in pallets}
+
     # 计算绘图相关参数
     max_dim = max(c[k] for c in containers for k in ("sx", "sy", "sz"))
     n = len(containers)
@@ -79,7 +83,7 @@ def draw_file(file_path: str):
         trace_start = len(fig.data)  # type: ignore
         row = i // cols + 1
         col = i % cols + 1
-        draw(container, fig, row, col, max_dim, shown_legends, mesh_trace_info, seen_values)
+        draw(container, fig, row, col, max_dim, shown_legends, mesh_trace_info, seen_values, pallet_boxes)
         trace_end = len(fig.data)  # type: ignore
         container_trace_ranges.append((trace_start, trace_end))
 
@@ -114,7 +118,8 @@ def draw_file(file_path: str):
 
 
 def draw(container: dict, fig: go.Figure, row: int, col: int, max_dim: int,
-         shown_legends: set, mesh_trace_info: list[dict], seen_values: dict[str, set]):
+         shown_legends: set, mesh_trace_info: list[dict], seen_values: dict[str, set],
+         pallet_boxes: dict):
     """绘制容器和箱子"""
 
     # 绘制容器
@@ -122,7 +127,7 @@ def draw(container: dict, fig: go.Figure, row: int, col: int, max_dim: int,
 
     # 绘制箱子
     for placement in container["placements"]:
-        draw_box(fig, placement, row, col, shown_legends, mesh_trace_info, seen_values)
+        draw_box(fig, placement, row, col, shown_legends, mesh_trace_info, seen_values, pallet_boxes)
 
     # 设置场景
     scene_config = dict(
@@ -152,7 +157,8 @@ def draw_container(fig: go.Figure, container: dict, row: int, col: int):
 
 
 def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
-             shown_legends: set, mesh_trace_info: list[dict], seen_values: dict[str, set]):
+             shown_legends: set, mesh_trace_info: list[dict], seen_values: dict[str, set],
+             pallet_boxes: dict):
     """绘制箱子"""
 
     x, y, z = placement["x"], placement["y"], placement["z"]
@@ -195,7 +201,7 @@ def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
             name=box_type_id,
             legendgroup=box_type_id,
             showlegend=box_type_id not in shown_legends,
-            text=get_text(placement),
+            text=get_text(placement, pallet_boxes),
             hoverinfo='text',
         ),
         row=row, col=col
@@ -209,7 +215,10 @@ def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
     shown_legends.add(box_type_id)
 
     # 绘制边框
-    line = dict(color='black', width=1)
+    if placement["is_pallet"]:
+        line = dict(color='gray', width=2, dash='longdash')
+    else:
+        line = dict(color='black', width=1)
     draw_edges(fig, vertices, line, row, col)
 
 
@@ -235,22 +244,22 @@ def draw_edges(fig: go.Figure, vertices: np.ndarray, line: dict, row: int, col: 
         )
 
 
-def get_text(placement: dict) -> str:
+def get_text(placement: dict, pallet_boxes: dict) -> str:
     """生成用于鼠标悬浮显示的文本信息"""
     text = f"box: {placement['box_id']}<br>"
     text += f"type: {placement['box_type_id']}<br>"
     text += f"pos: ({placement['x']}, {placement['y']}, {placement['z']})<br>"
     text += f"orient: {placement['orientation']}<br>"
     text += f"placed: {placement['dx']}x{placement['dy']}x{placement['dz']}<br>"
-    extra = []
     if placement["platform"]:
-        extra.append(f"platform: {placement['platform']}")
+        text += f"platform: {placement['platform']}<br>"
     if placement["group"]:
-        extra.append(f"group: {placement['group']}")
+        text += f"group: {placement['group']}<br>"
     if placement["weight"]:
-        extra.append(f"weight: {placement['weight']}")
-    if extra:
-        text += "<br>".join(extra)
+        text += f"weight: {placement['weight']}<br>"
+    if placement["is_pallet"]:
+        loose_ids = pallet_boxes[placement["box_id"]]
+        text += f"<b>loose boxes:</b><br>{'<br>'.join(loose_ids)}<br>"
     return text
 
 
