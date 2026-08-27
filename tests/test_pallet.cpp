@@ -50,14 +50,15 @@ TEST_CASE("pallet 续装：已有放置兼容 + 重量口径", "[solver][pallet]
     REQUIRE(containers[0]["used_weight"].get<double>() == Catch::Approx(50.0));
 }
 
-// test_pallet_oversize.json — 散件装不进任何托盘：默认 partial + violation；
-// 改写 constraints.pallet_fallback=true → 降级散装 complete
+// test_pallet_oversize.json — 散件装不进任何托盘
 TEST_CASE("pallet oversize/fallback 处理", "[solver][pallet]")
 {
     const auto base = load_data("data/tests/test_pallet_oversize.json");
 
-    // 默认（fallback=false）：partial + not palletized
-    auto res = run(base);
+    // 显式关闭降级（pallet_fallback=false）：partial + not palletized
+    auto nf = base;
+    nf["constraints"]["pallet_fallback"] = false;
+    auto res = run(nf);
     REQUIRE(res["status"] == "partial");
     REQUIRE(res["summary"]["pallet_count"] == 1);
     REQUIRE(res["summary"]["palletized_box_count"] == 4);
@@ -75,10 +76,8 @@ TEST_CASE("pallet oversize/fallback 处理", "[solver][pallet]")
     }
     REQUIRE(found);
 
-    // pallet_fallback=true：未装托散件降级散装 → complete
-    auto fb = base;
-    fb["constraints"]["pallet_fallback"] = true;
-    res = run(fb);
+    // 默认（pallet_fallback=true）：未装托散件降级散装 → complete
+    res = run(base);
     REQUIRE(res["status"] == "complete");
     REQUIRE(res["summary"]["pallet_count"] == 1);
     REQUIRE(res["summary"]["palletized_box_count"] == 4);
@@ -322,7 +321,7 @@ TEST_CASE("pallet 平台限制：对应平台才用对应托盘", "[solver][pall
     REQUIRE(type_by_platform["P2"] == "pt_all");
 }
 
-// 平台受限导致某平台无可用托盘 → 默认 partial + not palletized；pallet_fallback=true 降级散装
+// 平台受限导致某平台无可用托盘 → 显式关闭降级 partial + not palletized；默认降级散装 complete
 TEST_CASE("pallet 平台限制：无可用托盘走兜底", "[solver][pallet]")
 {
     auto base = load_data("data/tests/test_pallet_platform_restrict.json");
@@ -330,7 +329,10 @@ TEST_CASE("pallet 平台限制：无可用托盘走兜底", "[solver][pallet]")
     // 把 pt_all 也限制到 P1，使 P2 无可用托盘
     input["pallet_types"][1]["platforms"] = json::array({"P1"});
 
-    auto res = run(input);
+    // 显式关闭降级（pallet_fallback=false）：仅 P1 装托成功，P2 散件未装箱 → partial
+    auto nf = input;
+    nf["constraints"]["pallet_fallback"] = false;
+    auto res = run(nf);
     REQUIRE(res["status"] == "partial");
     bool has_violation = false;
     for (const auto& v : res["violations"])
@@ -344,8 +346,7 @@ TEST_CASE("pallet 平台限制：无可用托盘走兜底", "[solver][pallet]")
     // 仅 P1 装托成功
     REQUIRE(res["summary"]["pallet_count"] == 1);
 
-    // pallet_fallback=true → 未装托散件降级散装上车 → complete
-    input["constraints"]["pallet_fallback"] = true;
+    // 默认（pallet_fallback=true）：未装托散件降级散装上车 → complete
     auto fallback = run(input);
     REQUIRE(fallback["status"] == "complete");
     REQUIRE(fallback["summary"]["pallet_count"] == 1);

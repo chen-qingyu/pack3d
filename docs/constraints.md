@@ -149,4 +149,4 @@ $$\text{weight}(B) \le \text{weight}(S)$$
 - `platforms` 为空/缺省 → 该托盘可装任意平台货物。
 - `platforms` 非空 → 仅当分组平台命中列表时才可用；平台标识为一般字符串，空串 `""` 也视为普通平台（与 `"default"`、`"A74"` 等价），不做特殊处理。实际装载时一托 = 单平台（同平台/同 group 分组规则），故候选托盘只在分组平台命中时参与。
 - 若存在 `route`，`platforms` 引用的每个平台必须在 `route` 中（预校验，违反 -> `invalid`）。
-- 某平台散件无任何可用托盘时，沿用既有兜底：`pallet_fallback` 控制降级散装（true）或未装箱报 partial（false）。
+- 某平台散件无任何可用托盘时，沿用既有兜底：`pallet_fallback` 控制降级散装（默认 true）或未装箱报 partial（false）。

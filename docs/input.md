@@ -204,7 +204,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 | `support_rate`        | number 0-1 | 0     | 底面支撑率阈值，0=跳过；装托模式下必须 > 0（预校验强制，否则托盘可在车厢内悬空）          |
 | `platform_limit`      | int>=1     | null  | 单容器最大站点数                                                                          |
 | `tender_limit`        | int>=1     | null  | 每运输委托（tender）最多容器数（tender = 同 group 货物连通的容器连通分量）                |
-| `pallet_fallback`     | boolean    | false | 散件装不进任何托盘时降级散装上车；false=未装箱（partial）                                 |
+| `pallet_fallback`     | boolean    | true  | 散件装不进任何托盘时降级散装上车（默认开启）；false=未装箱（partial）                     |
 | `pallet_support_rate` | number 0-1 | 1     | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                          |
 | `pallet_mix_group`    | boolean    | 无    | 装托模式必填；true=允许同一 platform 混合 group，false=保持 group 隔离，不允许跨 platform |
 | `heavy_not_on_light`  | boolean    | false | 重不压轻：上箱重量不得超过直接支撑箱重量（需重量信息与 `support_rate > 0`）               |
@@ -244,7 +244,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 - 若声明了 `route`，`platforms` 引用的每个平台必须存在于 `route`，否则 `invalid`。
 - 装托模式要求显式配置 `constraints.pallet_mix_group`，并要求有重量信息（箱型级或箱子级）、所有容器带 `payload`，否则 `invalid`。
 - 散件箱型用 `box_types.loose: true` 标记；托盘内箱子底面支撑率用 `constraints.pallet_support_rate`。
-- 散件装不进任何托盘：`constraints.pallet_fallback` 控制降级散装（true）或未装箱报错（false）。
+- 散件装不进任何托盘：`constraints.pallet_fallback` 控制降级散装（默认 true）或未装箱报错（false）。
 
 ## 路线 `route`（可选）
 

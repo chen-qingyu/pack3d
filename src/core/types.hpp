@@ -277,7 +277,7 @@ struct Problem
 
     // 装托（palletizing）：pallet_types 非空即启用装托模式
     std::vector<PalletType> pallet_types;
-    bool pallet_fallback = false;         // 散件装不进任何托盘时是否降级散装
+    bool pallet_fallback = true;          // 散件装不进任何托盘时是否降级散装（默认开启：降级散装）
     double pallet_support_rate = 1.0;     // 装托阶段专用底面支撑率（默认完全支撑）
     std::optional<bool> pallet_mix_group; // 装托是否允许同一站点混合分组
 

@@ -5,6 +5,8 @@
 #include <set>
 #include <string>
 
+#include <spdlog/spdlog.h>
+
 #include "packer_base.hpp"
 #include "pallet.hpp"
 #include "tool.hpp"
@@ -267,6 +269,7 @@ Problem transform_pallet(
         for (const auto& bx : unpalletized)
         {
             new_boxes.push_back(bx);
+            spdlog::warn("loose box {} cannot fit any pallet, fallback to direct loading", bx.id);
         }
     }
     np.boxes = std::move(new_boxes);

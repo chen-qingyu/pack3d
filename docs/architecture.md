@@ -77,7 +77,7 @@ flowchart LR
 | 启用装托   | 顶层 `pallet_types`               | 无    | 任一存在即启用；`id`/`sx`/`sy`/`sz`/`payload`/`max_height` 必填，`self_weight` 默认 0         |
 | 散件标记   | `box_types.loose`                 | false | true = 散件（装托）；false = 普通箱子（直接装车）                                             |
 | 装托支撑率 | `constraints.pallet_support_rate` | 1.0   | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                              |
-| 装托兜底   | `constraints.pallet_fallback`     | false | 散件装不进任何托盘：false = 未装箱报错（partial）；true = 降级散装上车                        |
+| 装托兜底   | `constraints.pallet_fallback`     | true  | 散件装不进任何托盘（默认开启降级散装）：false = 未装箱报错（partial）；true = 降级散装上车    |
 | 混合分组   | `constraints.pallet_mix_group`    | 无    | 装托模式必填；true 允许同一 platform 混合 group，false 保持 group 隔离，不允许跨 platform     |
 | 平台限制   | `pallet_types[].platforms`        | 空    | 该托盘仅在列出的平台可用于装托；缺省/空（含 `[]`/`null`）= 全平台可用；空串 `""` 视为普通平台 |
 
