@@ -5,6 +5,7 @@
 #include <limits>
 #include <utility>
 
+#include "../config.hpp"
 #include "feasibility.hpp"
 #include "kpa.hpp"
 #include "space.hpp"
@@ -69,51 +70,59 @@ std::vector<BSGState> expand(
     // KPA 已计算（同论文 once per state）
     assert(s.kpa_L.has_value() && s.kpa_W.has_value() && s.kpa_H.has_value());
 
-    // 对给定 (cuboid, anchor) 选择生成后继；route-aware 选点失败时回退标准选点，
-    // 避免"最深 cuboid 装不下"或"min-X 角被约束拒"导致分支死亡。
-    auto gen = [&](const SpaceSelection& selection) {
+    // 多 cuboid 展开：遍历所有残差空间，为每个空间用其最佳 anchor 评块，取全局 top-w。
+    // 这样即使单个"最佳" cuboid（Manhattan 最近壁面）装不下某批箱，也能用另一块装得下
+    // 的空间，解决分桶下"下一平台放不进同一容器"的跨平台混装失败。
+    auto gen = [&](bool route_aware)
+    {
         std::vector<BSGState> out;
-        const Cuboid& r = s.R[selection.cuboid_index];
 
-        // K4: 对每个可用块计算 f(b, r)，取 top-w
+        // K4: 对每个 (cuboid, 可用块) 计算 f(b, r)，取全局 top-w
         struct Candidate
         {
             int block_idx;
+            size_t cuboid_index;
             int64_t f_value;
+            Position anchor;
         };
         std::vector<Candidate> candidates;
 
-        for (int bi : s.available_blocks)
+        for (size_t ci : top_cuboids_by_volume(s.R, config::BSG_SPACE_LIMIT))
         {
-            const auto& b = ctx.blocks[bi];
-
-            // 尺寸检查
-            if (b.osize.dx > r.lx || b.osize.dy > r.ly || b.osize.dz > r.lz)
+            const Cuboid& r = s.R[ci];
+            const Position anchor = best_anchor_for(r, ctx.container_size, route_aware).anchor;
+            for (int bi : s.available_blocks)
             {
-                continue;
-            }
+                const auto& b = ctx.blocks[bi];
 
-            // 库存检查
-            bool avail = true;
-            for (const auto& m : b.members)
-            {
-                if (m.count > s.remaining_counts[m.type_idx])
+                // 尺寸检查
+                if (b.osize.dx > r.lx || b.osize.dy > r.ly || b.osize.dz > r.lz)
                 {
-                    avail = false;
-                    break;
+                    continue;
                 }
-            }
-            if (!avail)
-            {
-                continue;
-            }
 
-            int64_t fv = compute_f(s, r, b, ctx);
-            if (fv == std::numeric_limits<int64_t>::lowest())
-            {
-                continue;
+                // 库存检查
+                bool avail = true;
+                for (const auto& m : b.members)
+                {
+                    if (m.count > s.remaining_counts[m.type_idx])
+                    {
+                        avail = false;
+                        break;
+                    }
+                }
+                if (!avail)
+                {
+                    continue;
+                }
+
+                int64_t fv = compute_f(s, r, b, ctx);
+                if (fv == std::numeric_limits<int64_t>::lowest())
+                {
+                    continue;
+                }
+                candidates.push_back({bi, ci, fv, anchor});
             }
-            candidates.push_back({bi, fv});
         }
 
         if (candidates.empty())
@@ -121,7 +130,7 @@ std::vector<BSGState> expand(
             return out;
         }
 
-        // 按 f 降序，取 top-w；并列按 block_idx 升序，保证跨平台确定性
+        // 按 f 降序取 top-w；并列按 cuboid_index 再 block_idx 升序，保证确定性
         int take = std::min(w, static_cast<int>(candidates.size()));
         std::partial_sort(candidates.begin(),
                           candidates.begin() + take,
@@ -132,6 +141,10 @@ std::vector<BSGState> expand(
                               {
                                   return a.f_value > b.f_value;
                               }
+                              if (a.cuboid_index != b.cuboid_index)
+                              {
+                                  return a.cuboid_index < b.cuboid_index;
+                              }
                               return a.block_idx < b.block_idx;
                           });
 
@@ -139,10 +152,11 @@ std::vector<BSGState> expand(
         for (size_t i = 0; i < candidates.size() && static_cast<int>(out.size()) < take; ++i)
         {
             int bi = candidates[i].block_idx;
+            const Cuboid& r = s.R[candidates[i].cuboid_index];
             const auto& b = ctx.blocks[bi];
 
             // K5: 计算放置位置
-            Position place_pos = placement_position(r, b, selection.anchor);
+            Position place_pos = placement_position(r, b, candidates[i].anchor);
             if (!ctx.needs_leaf_validation() && !is_supported(s, place_pos, b.osize, ctx))
             {
                 continue;
@@ -184,15 +198,15 @@ std::vector<BSGState> expand(
 
     if (ctx.route.has_value())
     {
-        successors = gen(select_free_space(s.R, ctx.container_size, true));
+        successors = gen(true);
         if (successors.empty())
         {
-            successors = gen(select_free_space(s.R, ctx.container_size, false));
+            successors = gen(false);
         }
     }
     else
     {
-        successors = gen(select_free_space(s.R, ctx.container_size, false));
+        successors = gen(false);
     }
 
     return successors;

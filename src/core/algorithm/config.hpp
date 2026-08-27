@@ -23,5 +23,6 @@ static constexpr double BSG_MAX_FR_WEAK = 1.00;   // box_types < 阈值
 static constexpr double BSG_MAX_FR_STRONG = 0.98; // box_types >= 阈值
 static constexpr int BSG_THRESHOLD_BOX_TYPES = 30;
 static constexpr int BSG_MAX_W = 15;
+static constexpr int BSG_SPACE_LIMIT = 12; // 多 cuboid 展开限界（按体积取大残差空间）
 
 } // namespace pack3d::config

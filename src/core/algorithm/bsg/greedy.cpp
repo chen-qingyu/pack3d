@@ -4,6 +4,7 @@
 #include <limits>
 #include <set>
 
+#include "../config.hpp"
 #include "feasibility.hpp"
 #include "kpa.hpp"
 #include "space.hpp"
@@ -60,62 +61,70 @@ GreedyResult greedy_rollout(
             break;
         }
 
-        // route-aware 选点优先，失败（无块可放）再回退标准选点，避免分支死亡或散门端。
-        auto try_place = [&](const SpaceSelection& selection) -> bool {
-            const Cuboid& r = cur.R[selection.cuboid_index];
-
-            // K4: 选 f(b, r) 最大的块；约束模式下候选循环已逐叶校验，胜出块的叶子状态随选中一起
-            // 保存，提交时直接复用，避免二次 can_place_block
+        // 多 cuboid 贪心：遍历所有残差空间，选 f(b, r) 最大的 (cuboid, 块)；
+        // route-aware 失败（无块可放）再回退标准选点，避免分支死亡或散门端。
+        auto try_place = [&](bool route_aware) -> bool
+        {
+            // K4: 约束模式下候选循环已逐叶校验，胜出块的叶子状态随选中一起保存，提交时直接复用。
             int best_bi = -1;
+            size_t best_ci = 0;
+            Position best_anchor{};
             int64_t best_f = std::numeric_limits<int64_t>::lowest();
             ContainerLoad best_load;
             std::vector<int> best_classes;
 
-            for (int bi : cur.available_blocks)
+            for (size_t ci : top_cuboids_by_volume(cur.R, config::BSG_SPACE_LIMIT))
             {
-                const auto& b = ctx.blocks[bi];
-                if (b.osize.dx > r.lx || b.osize.dy > r.ly || b.osize.dz > r.lz)
+                const Cuboid& r = cur.R[ci];
+                const Position anchor = best_anchor_for(r, ctx.container_size, route_aware).anchor;
+                for (int bi : cur.available_blocks)
                 {
-                    continue;
-                }
-                bool avail = true;
-                for (const auto& m : b.members)
-                {
-                    if (m.count > cur.remaining_counts[m.type_idx])
-                    {
-                        avail = false;
-                        break;
-                    }
-                }
-                if (!avail)
-                {
-                    continue;
-                }
-
-                Position place_pos = placement_position(r, b, selection.anchor);
-                ContainerLoad next_load;
-                std::vector<int> next_classes;
-                if (ctx.needs_leaf_validation())
-                {
-                    if (!can_place_block(cur, bi, place_pos, ctx, next_load, next_classes))
+                    const auto& b = ctx.blocks[bi];
+                    if (b.osize.dx > r.lx || b.osize.dy > r.ly || b.osize.dz > r.lz)
                     {
                         continue;
                     }
-                }
-                else if (!is_supported(cur, place_pos, b.osize, ctx))
-                {
-                    continue;
-                }
+                    bool avail = true;
+                    for (const auto& m : b.members)
+                    {
+                        if (m.count > cur.remaining_counts[m.type_idx])
+                        {
+                            avail = false;
+                            break;
+                        }
+                    }
+                    if (!avail)
+                    {
+                        continue;
+                    }
 
-                int64_t fv = compute_f(cur, r, b, ctx);
-                if (fv > best_f)
-                {
-                    best_f = fv;
-                    best_bi = bi;
+                    Position place_pos = placement_position(r, b, anchor);
+                    ContainerLoad next_load;
+                    std::vector<int> next_classes;
                     if (ctx.needs_leaf_validation())
                     {
-                        best_load = std::move(next_load);
-                        best_classes = std::move(next_classes);
+                        if (!can_place_block(cur, bi, place_pos, ctx, next_load, next_classes))
+                        {
+                            continue;
+                        }
+                    }
+                    else if (!is_supported(cur, place_pos, b.osize, ctx))
+                    {
+                        continue;
+                    }
+
+                    int64_t fv = compute_f(cur, r, b, ctx);
+                    if (fv > best_f)
+                    {
+                        best_f = fv;
+                        best_bi = bi;
+                        best_ci = ci;
+                        best_anchor = anchor;
+                        if (ctx.needs_leaf_validation())
+                        {
+                            best_load = std::move(next_load);
+                            best_classes = std::move(next_classes);
+                        }
                     }
                 }
             }
@@ -126,8 +135,9 @@ GreedyResult greedy_rollout(
             } // 无可放置的块
 
             // 放置
+            const Cuboid& r = cur.R[best_ci];
             const auto& b = ctx.blocks[best_bi];
-            Position place_pos = placement_position(r, b, selection.anchor);
+            Position place_pos = placement_position(r, b, best_anchor);
 
             if (ctx.needs_leaf_validation())
             {
@@ -180,15 +190,14 @@ GreedyResult greedy_rollout(
 
         if (ctx.route.has_value())
         {
-            if (!try_place(select_free_space(cur.R, ctx.container_size, true)) &&
-                !try_place(select_free_space(cur.R, ctx.container_size, false)))
+            if (!try_place(true) && !try_place(false))
             {
                 break;
             }
         }
         else
         {
-            if (!try_place(select_free_space(cur.R, ctx.container_size, false)))
+            if (!try_place(false))
             {
                 break;
             }

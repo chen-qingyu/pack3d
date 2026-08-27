@@ -77,7 +77,7 @@ TEST_CASE("KPA: considers all allowed dimensions", "[bsg][kpa]")
     CHECK((*state.kpa_L)[80] == 50);
 }
 
-TEST_CASE("space selection: all corners and volume tie-break", "[bsg][space]")
+TEST_CASE("space: best_anchor_for 与 top_cuboids_by_volume", "[bsg][space]")
 {
     Size container{10, 10, 10};
     std::vector<Cuboid> spaces{
@@ -85,32 +85,33 @@ TEST_CASE("space selection: all corners and volume tie-break", "[bsg][space]")
         {{0, 2, 0}, 3, 3, 3},
     };
 
-    SpaceSelection selection = select_free_space(spaces, container, false);
-    CHECK(selection.cuboid_index == 1);
-    CHECK(selection.anchor == Position{0, 2, 0});
-
+    // 单 cuboid 标准 anchor：Manhattan 最近壁面角。
     Cuboid cuboid{{2, 3, 4}, 5, 5, 5};
-    selection = select_free_space({cuboid}, container, false);
-    CHECK(selection.anchor == Position{2, 8, 9});
+    CHECK(best_anchor_for(cuboid, container, false).anchor == Position{2, 8, 9});
+
+    // 多 cuboid 按体积取 top（去掉碎片）：B(3³) 体积 27 > A(1³) 体积 1。
+    auto top = top_cuboids_by_volume(spaces, 1);
+    REQUIRE(top.size() == 1);
+    CHECK(top[0] == 1);
 
     GeneralBlock block;
     block.osize = {1, 1, 1};
-    CHECK(placement_position(cuboid, block, selection.anchor) == Position{2, 7, 8});
+    CHECK(placement_position(cuboid, block,
+                             best_anchor_for(cuboid, container, false).anchor) ==
+          Position{2, 7, 8});
 }
 
-TEST_CASE("select_free_space route_aware 选深角", "[bsg][space]")
+TEST_CASE("best_anchor_for route_aware 选深角", "[bsg][space]")
 {
     Size container{500, 100, 100};
     // 门侧 cuboid：x=[80,500]，cross-section 填满容器。
-    std::vector<Cuboid> spaces{{{80, 0, 0}, 420, 100, 100}};
+    Cuboid cuboid{{80, 0, 0}, 420, 100, 100};
 
     // 标准：`x_side=1` 的门角（x=500）距离 0 → 选门角。
-    SpaceSelection standard = select_free_space(spaces, container, false);
-    CHECK(standard.anchor.x == 500);
+    CHECK(best_anchor_for(cuboid, container, false).anchor.x == 500);
 
     // route_aware：X 固定 min-X（深角 x=80），Y/Z 仍取最近壁面。
-    SpaceSelection route = select_free_space(spaces, container, true);
-    CHECK(route.anchor.x == 80);
+    CHECK(best_anchor_for(cuboid, container, true).anchor.x == 80);
 }
 
 TEST_CASE("residual space: uses overlapping cover", "[bsg][space]")

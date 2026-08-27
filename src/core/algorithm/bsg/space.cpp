@@ -6,80 +6,62 @@
 namespace pack3d::bsg
 {
 
-SpaceSelection select_free_space(const std::vector<Cuboid>& spaces,
-                                 const Size& container_size,
-                                 bool route_aware) noexcept
+std::vector<size_t> top_cuboids_by_volume(const std::vector<Cuboid>& spaces,
+                                          size_t max_cuboids)
 {
-    // 趟1：按标准 Manhattan 距离（x 也取最近壁面）选最优 cuboid，保留原有密度启发式；
-    //      不因 route 而强制选最深 cuboid（避免小碎块装不下导致分支死亡）。
-    size_t best_idx = 0;
-    Position best_anchor{};
-    int32_t best_dist = std::numeric_limits<int32_t>::max();
-    for (size_t i = 0; i < spaces.size(); ++i)
+    std::vector<size_t> idx(spaces.size());
+    for (size_t i = 0; i < idx.size(); ++i)
     {
-        const auto& r = spaces[i];
-        Position a{};
-        int32_t d = std::numeric_limits<int32_t>::max();
-        for (int x_side = 0; x_side < 2; ++x_side)
-        {
-            for (int y_side = 0; y_side < 2; ++y_side)
-            {
-                for (int z_side = 0; z_side < 2; ++z_side)
-                {
-                    Position anchor{
-                        x_side == 0 ? r.pos.x : r.x_max(),
-                        y_side == 0 ? r.pos.y : r.y_max(),
-                        z_side == 0 ? r.pos.z : r.z_max(),
-                    };
-                    int32_t dist =
-                        (x_side == 0 ? anchor.x : container_size.x - anchor.x) +
-                        (y_side == 0 ? anchor.y : container_size.y - anchor.y) +
-                        (z_side == 0 ? anchor.z : container_size.z - anchor.z);
-                    if (dist < d)
-                    {
-                        d = dist;
-                        a = anchor;
-                    }
-                }
-            }
-        }
-        if (d < best_dist || (d == best_dist && r.volume() > spaces[best_idx].volume()))
-        {
-            best_dist = d;
-            best_idx = i;
-            best_anchor = a;
-        }
+        idx[i] = i;
     }
-
-    // 趟2：route 存在时把选中 cuboid 的 anchor X 分量固定为 min-X（深角），Y/Z 仍取最近壁面。
-    const auto& r = spaces[best_idx];
-    if (route_aware)
+    if (max_cuboids < idx.size())
     {
-        Position a{};
-        int32_t best_yz = std::numeric_limits<int32_t>::max();
+        std::partial_sort(idx.begin(), idx.begin() + max_cuboids, idx.end(),
+                          [&](size_t a, size_t b) noexcept
+                          {
+                              int64_t va = spaces[a].volume();
+                              int64_t vb = spaces[b].volume();
+                              if (va != vb)
+                              {
+                                  return va > vb;
+                              }
+                              return a < b;
+                          });
+        idx.resize(max_cuboids);
+    }
+    return idx;
+}
+
+AnchorPick best_anchor_for(const Cuboid& r,
+                           const Size& c,
+                           bool route_aware) noexcept
+{
+    Position a = r.pos;
+    int32_t best = std::numeric_limits<int32_t>::max();
+    for (int x_side = 0; x_side < 2; ++x_side)
+    {
         for (int y_side = 0; y_side < 2; ++y_side)
         {
             for (int z_side = 0; z_side < 2; ++z_side)
             {
                 Position cand{
-                    r.pos.x,
+                    x_side == 0 ? r.pos.x : r.x_max(),
                     y_side == 0 ? r.pos.y : r.y_max(),
                     z_side == 0 ? r.pos.z : r.z_max(),
                 };
-                int32_t yz =
-                    (y_side == 0 ? cand.y : container_size.y - cand.y) +
-                    (z_side == 0 ? cand.z : container_size.z - cand.z);
-                if (yz < best_yz)
+                int32_t dist =
+                    (route_aware ? cand.x : (x_side == 0 ? cand.x : c.x - cand.x)) +
+                    (y_side == 0 ? cand.y : c.y - cand.y) +
+                    (z_side == 0 ? cand.z : c.z - cand.z);
+                if (dist < best)
                 {
-                    best_yz = yz;
+                    best = dist;
                     a = cand;
                 }
             }
         }
-        return {best_idx, a, best_dist};
     }
-
-    return {best_idx, best_anchor, best_dist};
+    return {a, best};
 }
 
 Position placement_position(const Cuboid& r, const GeneralBlock& b,

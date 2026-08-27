@@ -284,7 +284,7 @@ flowchart TD
 - **块预处理**：先枚举致密 simple block，再迭代合并（X/Y/Z 方向，外包取 max），最多 `max_bl` 个。合并要求外包不超容器、成员需求不超库存、填充率 ≥ `max_fr`。BR 分组：BR0–7（1–20 箱型）`max_fr=1.00`，BR8–15（30–100 箱型）`max_fr=0.98`。
 - **障碍物雕刻**：初始空间/残差 cover 挖掉障碍物；`support_rate > 0` 时障碍物强制逐叶（快路径 `is_supported` 不认障碍物顶面支撑），`support_rate = 0` 时雕刻已保证空间无禁区、走快路径。**斜面不雕刻**——`facets` 存在即强制逐叶（`needs_leaf_validation`），由 `can_place_block` 的 `check_facet` 逐叶兜底（过挖为 0）；**例外**：某斜面禁区覆盖原点（两正截距）时对贴角楔形做阶梯雕刻，否则残余空间 anchor 落在原点会被拒而零装载。
 - **残余空间**：overlapping cover，**不能改成互不重叠 partition**。一个块放入后，对所有与其重叠的残余 cuboid 各做 6-slab（左右前后下上）分解挖除，删除被完全包含的 non-maximal cuboid。互不重叠的碎片化表达会严重损害强异构实例。
-- **anchor 与评分**：每个残余 cuboid 的 8 角与容器对应角算 Manhattan 距离，最小者为 anchor，优先 anchor 距离小的空间（并列取体积大者）。候选块用 $f(b,r)=V_{\text{box}}(b)-V_{\text{loss}}(b,r)$ 排序，`V_loss` 由三轴 KPA 估计块边缘可继续填补的最大范围。KPA 对每件箱建模"至多选一个允许朝向尺寸"的多选背包——不能只取该轴最大尺寸，否则最大尺寸不适配而较小朝向可适配时会错误排除可用箱。
+- **anchor 与评分（2026-08 多 cuboid 化）**：每个残余 cuboid 的 8 角与容器对应角算 Manhattan 距离，取最小者为该 cuboid 的 anchor（`best_anchor_for`）；`route` 存在时把 X 分量固定为 min-X（深角，使平台从深往门装）。展开/贪心**遍历按体积取 top-12 的残差空间**（`top_cuboids_by_volume`）而非只挑一个——多平台 route 场景中单个 Manhattan 最优空间常是装不下下一平台箱的小碎片，全量遍历又过慢，故按体积上限筛出能装下块的大空间。候选块用 $f(b,r)=V_{\text{box}}(b)-V_{\text{loss}}(b,r)$ 排序，`V_loss` 由三轴 KPA 估计块边缘可继续填补的最大范围。KPA 对每件箱建模"至多选一个允许朝向尺寸"的多选背包——不能只取该轴最大尺寸，否则最大尺寸不适配而较小朝向可适配时会错误排除可用箱。
 - **beam search**：根层最多扩展 $\min(w^2,|B|)$ 个块，后续层每状态最多 w 个；每个后继做一次 greedy rollout 评分；用 rollout 最终装入的箱型计数去相似状态（相似时保留已装体积更小者）；保留评分最高 w 个。外层从 w=1 开始，每次结束后 $w \leftarrow \lceil\sqrt{2}\,w\rceil$（相邻轮次搜索投入约翻倍），根层候选数自然限制并做 int 溢出保护。
 
 ### 约束集成
