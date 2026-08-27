@@ -206,10 +206,11 @@ struct Box
 struct PalletType
 {
     std::string id;
-    Size size;                // sx, sy, sz（sz = 托盘自身高度）
-    double payload = 0.0;     // 装载承重上限（货物总重，不含托盘自重）
-    int max_height = 0;       // 装载限高（货物堆高上限，不含托盘自身高度）
-    double self_weight = 0.0; // 托盘自重
+    Size size;                       // sx, sy, sz（sz = 托盘自身高度）
+    double payload = 0.0;            // 装载承重上限（货物总重，不含托盘自重）
+    int max_height = 0;              // 装载限高（货物堆高上限，不含托盘自身高度）
+    double self_weight = 0.0;        // 托盘自重
+    std::set<std::string> platforms; // 可用平台集合；空 = 全平台可用（含无平台货物）
 };
 
 // 路线

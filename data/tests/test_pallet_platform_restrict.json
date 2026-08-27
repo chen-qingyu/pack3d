@@ -1,0 +1,79 @@
+{
+  "container_types": [
+    {
+      "id": "truck",
+      "sx": 6000,
+      "sy": 2500,
+      "sz": 2500,
+      "payload": 20000
+    }
+  ],
+  "box_types": [
+    {
+      "id": "loose",
+      "sx": 200,
+      "sy": 200,
+      "sz": 200,
+      "allowed_orientations": ["xyz"],
+      "loose": true
+    }
+  ],
+  "boxes": [
+    {
+      "id": "p1a",
+      "box_type_id": "loose",
+      "weight": 5,
+      "platform": "P1",
+      "group": "G1"
+    },
+    {
+      "id": "p1b",
+      "box_type_id": "loose",
+      "weight": 5,
+      "platform": "P1",
+      "group": "G1"
+    },
+    {
+      "id": "p2a",
+      "box_type_id": "loose",
+      "weight": 5,
+      "platform": "P2",
+      "group": "G2"
+    },
+    {
+      "id": "p2b",
+      "box_type_id": "loose",
+      "weight": 5,
+      "platform": "P2",
+      "group": "G2"
+    }
+  ],
+  "pallet_types": [
+    {
+      "id": "pt_p1",
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 150,
+      "payload": 1000,
+      "max_height": 1500,
+      "self_weight": 30,
+      "platforms": ["P1"]
+    },
+    {
+      "id": "pt_all",
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 150,
+      "payload": 1000,
+      "max_height": 1500,
+      "self_weight": 30
+    }
+  ],
+  "route": ["P1", "P2"],
+  "constraints": {
+    "time_limit": 60,
+    "support_rate": 0.6,
+    "pallet_mix_group": false
+  },
+  "algorithm": "gep"
+}

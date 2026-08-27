@@ -21,6 +21,16 @@ bool is_palletize(const Box& bx, const std::map<std::string, BoxType>& bt_map)
     return it != bt_map.end() && it->second.loose;
 }
 
+// 托盘平台可用性：platforms 为空 = 全平台可用；非空仅命中平台可用（空串也视为普通平台）
+bool pallet_available_for(const PalletType& pt, const std::string& platform) noexcept
+{
+    if (pt.platforms.empty())
+    {
+        return true;
+    }
+    return pt.platforms.count(platform) != 0;
+}
+
 // 候选按（装入体积, 装入箱数）字典序取优（天然倾向大托盘装满，托数最少）
 struct Candidate
 {
@@ -140,6 +150,10 @@ std::vector<PalletLoad> palletize(
                 {
                     continue;
                 }
+                if (!pallet_available_for(pt, boxes.front().platform))
+                {
+                    continue;
+                }
                 ContainerLoad load = packer.pack_single(boxes, ct, {}, TenderState{});
                 load.type = nullptr; // ct 是栈上临时容器，避免悬挂指针
                 if (load.placements.size() == boxes.size())
@@ -173,6 +187,10 @@ std::vector<PalletLoad> palletize(
             for (const auto& entry : by_label)
             {
                 const auto& boxes = entry.second;
+                if (!pallet_available_for(pt, boxes.front().platform))
+                {
+                    continue;
+                }
                 ContainerLoad load = packer.pack_single(boxes, ct, {}, TenderState{});
                 load.type = nullptr; // ct 是栈上临时容器，避免悬挂指针
                 if (!load.placements.empty())

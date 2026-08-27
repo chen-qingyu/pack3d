@@ -130,7 +130,12 @@
           "sz": { "type": "integer", "minimum": 1 },
           "payload": { "type": "number", "exclusiveMinimum": 0 },
           "max_height": { "type": "integer", "minimum": 1 },
-          "self_weight": { "type": "number", "minimum": 0, "default": 0 }
+          "self_weight": { "type": "number", "minimum": 0, "default": 0 },
+          "platforms": {
+            "type": ["array", "null"],
+            "items": { "type": "string" },
+            "description": "该托盘仅在列出的平台可用（空串也算普通平台）；缺省/空 = 全平台可用"
+          }
         }
       }
     },

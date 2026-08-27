@@ -301,3 +301,86 @@ TEST_CASE("pallet 非法输入返回 invalid", "[solver][pallet]")
     missing_mix["constraints"].erase("pallet_mix_group");
     REQUIRE(run(missing_mix)["status"] == "invalid");
 }
+
+// test_pallet_platform_restrict.json — 受限托盘只在对应平台装托；其余平台落到全平台托盘
+TEST_CASE("pallet 平台限制：对应平台才用对应托盘", "[solver][pallet]")
+{
+    auto input = load_data("data/tests/test_pallet_platform_restrict.json");
+    auto res = run(input);
+    REQUIRE(res["status"] == "complete");
+    REQUIRE(res["summary"]["pallet_count"] == 2);
+
+    // 按实际的承载平台记录托盘 type_id
+    std::map<std::string, std::string> type_by_platform;
+    for (const auto& p : res["result"]["pallets"])
+    {
+        REQUIRE(p["platforms"].size() == 1);
+        type_by_platform[p["platforms"][0].get<std::string>()] = p["type_id"].get<std::string>();
+    }
+    // P1 命中 pt_p1（受限托盘只在 P1 可用）；P2 无匹配受限托盘，落到 pt_all
+    REQUIRE(type_by_platform["P1"] == "pt_p1");
+    REQUIRE(type_by_platform["P2"] == "pt_all");
+}
+
+// 平台受限导致某平台无可用托盘 → 默认 partial + not palletized；pallet_fallback=true 降级散装
+TEST_CASE("pallet 平台限制：无可用托盘走兜底", "[solver][pallet]")
+{
+    auto base = load_data("data/tests/test_pallet_platform_restrict.json");
+    auto input = base;
+    // 把 pt_all 也限制到 P1，使 P2 无可用托盘
+    input["pallet_types"][1]["platforms"] = json::array({"P1"});
+
+    auto res = run(input);
+    REQUIRE(res["status"] == "partial");
+    bool has_violation = false;
+    for (const auto& v : res["violations"])
+    {
+        if (v.get<std::string>().find("not palletized") != std::string::npos)
+        {
+            has_violation = true;
+        }
+    }
+    REQUIRE(has_violation);
+    // 仅 P1 装托成功
+    REQUIRE(res["summary"]["pallet_count"] == 1);
+
+    // pallet_fallback=true → 未装托散件降级散装上车 → complete
+    input["constraints"]["pallet_fallback"] = true;
+    auto fallback = run(input);
+    REQUIRE(fallback["status"] == "complete");
+    REQUIRE(fallback["summary"]["pallet_count"] == 1);
+}
+
+// 空串视为普通平台：限定 ["P1"] 时不用，限定 [""] 时可用作无平台货物
+TEST_CASE("pallet 平台限制：空串作为普通平台", "[solver][pallet]")
+{
+    auto input = load_data("data/tests/test_pallet_platform_restrict.json");
+    // 去掉所有箱子的 platform 与 route → 全部为无平台货物（内部 platform 为空串）
+    for (auto& b : input["boxes"])
+    {
+        b.erase("platform");
+    }
+    input.erase("route");
+
+    // 受限托盘限定在 ["P1"]：空串（无平台）货物不可用 → 只用 pt_all
+    auto res = run(input);
+    REQUIRE(res["status"] == "complete");
+    std::set<std::string> used;
+    for (const auto& p : res["result"]["pallets"])
+    {
+        used.insert(p["type_id"].get<std::string>());
+    }
+    REQUIRE(used.count("pt_p1") == 0);
+    REQUIRE(used.count("pt_all") == 1);
+
+    // 受限托盘限定在 [""]：空串视为普通平台 → 可装载无平台货物
+    input["pallet_types"][0]["platforms"] = json::array({""});
+    auto res2 = run(input);
+    REQUIRE(res2["status"] == "complete");
+    std::set<std::string> used2;
+    for (const auto& p : res2["result"]["pallets"])
+    {
+        used2.insert(p["type_id"].get<std::string>());
+    }
+    REQUIRE(used2.count("pt_p1") == 1);
+}

@@ -560,3 +560,35 @@ TEST_CASE("pre_validate_input 检测装托模式需要 support_rate", "[validati
         REQUIRE(v.find("pallet mode requires pallet_mix_group") == std::string::npos);
     }
 }
+
+TEST_CASE("pre_validate_input 检测托盘平台引用不在 route", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {1000, 1000, 1000}, 1000.0, std::nullopt});
+    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
+    p.boxes.push_back({"box1", "bt1", 10.0, "", {}});
+    // 托盘平台限制引用 P9，但 route 不存在 P9
+    p.pallet_types.push_back({"pt", {100, 100, 10}, 100.0, 100, 0.0, {"P9"}});
+    p.support_rate = 0.6;
+    p.pallet_mix_group = false;
+    p.route = RouteOrder{{"P1"}, {{"P1", 0}}};
+
+    auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& v : violations)
+    {
+        if (v.find("platform 'P9' not in route") != std::string::npos)
+        {
+            found = true;
+        }
+    }
+    REQUIRE(found);
+
+    // 平台在 route 中 → 不再报该错
+    p.route = RouteOrder{{"P1", "P9"}, {{"P1", 0}, {"P9", 1}}};
+    violations = pre_validate_input(p);
+    for (const auto& v : violations)
+    {
+        REQUIRE(v.find("platform 'P9' not in route") == std::string::npos);
+    }
+}

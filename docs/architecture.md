@@ -72,19 +72,21 @@ flowchart LR
 
 ### 3.2 输入与校验
 
-| 配置       | 位置                              | 默认  | 说明                                                                                      |
-| ---------- | --------------------------------- | ----- | ----------------------------------------------------------------------------------------- |
-| 启用装托   | 顶层 `pallet_types`               | 无    | 任一存在即启用；`id`/`sx`/`sy`/`sz`/`payload`/`max_height` 必填，`self_weight` 默认 0     |
-| 散件标记   | `box_types.loose`                 | false | true = 散件（装托）；false = 普通箱子（直接装车）                                         |
-| 装托支撑率 | `constraints.pallet_support_rate` | 1.0   | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                          |
-| 装托兜底   | `constraints.pallet_fallback`     | false | 散件装不进任何托盘：false = 未装箱报错（partial）；true = 降级散装上车                    |
-| 混合分组   | `constraints.pallet_mix_group`    | 无    | 装托模式必填；true 允许同一 platform 混合 group，false 保持 group 隔离，不允许跨 platform |
+| 配置       | 位置                              | 默认  | 说明                                                                                          |
+| ---------- | --------------------------------- | ----- | --------------------------------------------------------------------------------------------- |
+| 启用装托   | 顶层 `pallet_types`               | 无    | 任一存在即启用；`id`/`sx`/`sy`/`sz`/`payload`/`max_height` 必填，`self_weight` 默认 0         |
+| 散件标记   | `box_types.loose`                 | false | true = 散件（装托）；false = 普通箱子（直接装车）                                             |
+| 装托支撑率 | `constraints.pallet_support_rate` | 1.0   | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                              |
+| 装托兜底   | `constraints.pallet_fallback`     | false | 散件装不进任何托盘：false = 未装箱报错（partial）；true = 降级散装上车                        |
+| 混合分组   | `constraints.pallet_mix_group`    | 无    | 装托模式必填；true 允许同一 platform 混合 group，false 保持 group 隔离，不允许跨 platform     |
+| 平台限制   | `pallet_types[].platforms`        | 空    | 该托盘仅在列出的平台可用于装托；缺省/空（含 `[]`/`null`）= 全平台可用；空串 `""` 视为普通平台 |
 
-预校验：装托模式强制显式配置 `pallet_mix_group`、有重量信息、全部容器带 `payload`、装车 `support_rate > 0`；`loose: true` 但无 `pallet_types` -> `invalid`；有 `pallet_types` 但无散件 -> 等价普通装箱。
+预校验：装托模式强制显式配置 `pallet_mix_group`、有重量信息、全部容器带 `payload`、装车 `support_rate > 0`；`loose: true` 但无 `pallet_types` -> `invalid`；有 `pallet_types` 但无散件 -> 等价普通装箱；若声明了 `route`，`platforms` 引用的每个平台必须在 `route` 中，否则 `invalid`。
 
 ### 3.3 行为
 
 - **装托**：每轮对所有托盘类型试装，按（体积, 箱数）取优；同 `platform+group` 优先整组独占一托，装不下的进入兜底池。`pallet_mix_group=false` 时兜底池仍按 `platform+group` 分桶；为 true 时按 `platform` 分桶，允许同一站点混合 group，但不允许跨站点。混合托盘保留完整 group 集合，托盘单元参与装车阶段的 group_split、tender 和路线约束。
+- **平台可用性**：装托候选按 `pallet_types[].platforms` 与分组平台过滤——`platforms` 为空的托盘可用于任意平台；非空则仅当分组平台命中列表时参与，未命中平台的托盘不会装该平台的散件。平台标识为一般字符串，空串 `""` 也视为普通平台（与 `"default"`、`"A74"` 等价），不做特殊处理；某平台散件无任何可用托盘时沿用 `pallet_fallback` 兜底。
 - **装车**：托盘改写为虚拟箱——`max_stack=[1,1]` + `max_load=[0,0]`（其上不可放箱，单向不叠托）、仅 XY 平面 90° 旋转、重量含托盘自重；与普通箱子一起走现有求解器，主目标仍是用车数最少。
 - **时间**：装托分走 `min(20%×time_limit, 15s)`，剩余归装车。
 
@@ -110,6 +112,7 @@ flowchart LR
   2. 改写后**重建 `has_max_stack`/`has_max_load`**——虚拟箱自带 `max_stack`/`max_load`，解析时算出的标志不含它，"不叠托/不压托"会失效。
   3. `pack_single` 返回的 `load.type` 指向传入的临时容器，须在析构前消费。
   4. 无 `pallet_types` 分支**零新增求解调用**（RGS `s_call_id` 静态计数，防既有测试漂移）。
+  5. 装托候选按 `pallet_types[].platforms` 与分组平台过滤（`pallet_available_for`）：空集=全平台可用；非空需命中列表，空串也算普通平台。
 
 - **限制**：托盘数量上限未实现；托盘装不进车厢则该托未装箱。
 

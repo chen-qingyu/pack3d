@@ -16,6 +16,12 @@ void from_json(const json& j, PalletType& pt)
     pt.payload = j["payload"].get<double>();
     pt.max_height = j["max_height"].get<int>();
     pt.self_weight = j.value("self_weight", 0.0);
+    if (auto it = j.find("platforms"); it != j.end() && it->is_array())
+    {
+        std::vector<std::string> vec;
+        it->get_to(vec);
+        pt.platforms.insert(vec.begin(), vec.end());
+    }
 }
 
 ContainerType virtual_container(const PalletType& pt) noexcept

@@ -141,3 +141,12 @@ $$\text{weight}(B) \le \text{weight}(S)$$
 预校验（违反 -> `invalid`）：恰好两个非零截距、`1 <= |截距| <= 容器该轴尺寸`、`existing_containers` 已有放置不侵入斜面禁区、障碍物不侵入斜面禁区（见 1.11）。
 
 实现：共享 `check_facet`（箱子极角点 vs 平面单次点积）为四个算法统一兜底。GLC/BSG 默认不做阶梯雕刻（阶梯碎片会切碎空间栈/残余空间、降低装载），楔形禁区分别由 `check_block_feasible` / `can_place_block` 的逐箱 `check_facet` 兜底（过挖为 0）。**例外（禁区覆盖原点）**：某斜面两截距均为正（贴原点角）时，GEP/RGS 用地板扫描补首个可用起点、GLC/BSG 对贴角楔形做阶梯雕刻——否则原点不可用会导致零装载。
+
+### 1.13 装托-平台可用性约束（pallet_types.platforms）
+
+`pallet_types` 可声明 `platforms` 限定该托盘只在特定平台可用（如某些托盘只存放在某些站点）。装托时按散件分组平台过滤候选托盘：
+
+- `platforms` 为空/缺省 → 该托盘可装任意平台货物。
+- `platforms` 非空 → 仅当分组平台命中列表时才可用；平台标识为一般字符串，空串 `""` 也视为普通平台（与 `"default"`、`"A74"` 等价），不做特殊处理。实际装载时一托 = 单平台（同平台/同 group 分组规则），故候选托盘只在分组平台命中时参与。
+- 若存在 `route`，`platforms` 引用的每个平台必须在 `route` 中（预校验，违反 -> `invalid`）。
+- 某平台散件无任何可用托盘时，沿用既有兜底：`pallet_fallback` 控制降级散装（true）或未装箱报 partial（false）。

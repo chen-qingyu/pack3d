@@ -843,6 +843,17 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             {
                 out.push_back("duplicate pallet_type id: " + pt.id);
             }
+            // 平台限制引用的平台必须存在于 route（若声明了 route）
+            if (problem.route.has_value())
+            {
+                for (const auto& pf : pt.platforms)
+                {
+                    if (!problem.route->index_of.count(pf))
+                    {
+                        out.push_back("pallet_type '" + pt.id + "' platform '" + pf + "' not in route");
+                    }
+                }
+            }
         }
 
         // 装托模式强制有重量信息（箱型级或箱子级）；容器必须有 payload（max_height 下限由 schema 保证）

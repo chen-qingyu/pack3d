@@ -231,14 +231,17 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段           | 类型   | 必填 | 说明                                       |
-| -------------- | ------ | ---- | ------------------------------------------ |
-| `id`           | string | 是   | 唯一标识                                   |
-| `sx`/`sy`/`sz` | int>=1 | 是   | 托盘自身尺寸                               |
-| `payload`      | number | 是   | 托盘装载承重上限（货物总重，不含托盘自重） |
-| `max_height`   | int>=1 | 是   | 装载限高（货物堆高上限，不含托盘自身高度） |
-| `self_weight`  | number |      | 托盘自重，默认 0                           |
+| 字段           | 类型   | 必填 | 说明                                           |
+| -------------- | ------ | ---- | ---------------------------------------------- |
+| `id`           | string | 是   | 唯一标识                                       |
+| `sx`/`sy`/`sz` | int>=1 | 是   | 托盘自身尺寸                                   |
+| `payload`      | number | 是   | 托盘装载承重上限（货物总重，不含托盘自重）     |
+| `max_height`   | int>=1 | 是   | 装载限高（货物堆高上限，不含托盘自身高度）     |
+| `self_weight`  | number |      | 托盘自重，默认 0                               |
+| `platforms`    | array  |      | 该托盘仅在列出的平台可用；缺省/空 = 全平台可用 |
 
+- `platforms` 平台限制：非空时，该托盘只用于装载命中平台（`platform`）的散件；空/缺省表示全平台可用。平台标识是一般字符串，空串 `""` 也视为普通平台（与 `"default"`、`"A74"` 等价），不做特殊处理。
+- 若声明了 `route`，`platforms` 引用的每个平台必须存在于 `route`，否则 `invalid`。
 - 装托模式要求显式配置 `constraints.pallet_mix_group`，并要求有重量信息（箱型级或箱子级）、所有容器带 `payload`，否则 `invalid`。
 - 散件箱型用 `box_types.loose: true` 标记；托盘内箱子底面支撑率用 `constraints.pallet_support_rate`。
 - 散件装不进任何托盘：`constraints.pallet_fallback` 控制降级散装（true）或未装箱报错（false）。
@@ -262,7 +265,7 @@ Schema 校验后，代码还会检查：
 - 重量一致性（**三选一**）：要么全无重量且已有放置也无重量；要么**全部箱型**配置 `weight` 且**所有箱子不带**重量（箱子重量取箱型），已有放置可无重量或重复相同重量；要么**所有箱子**配置 `weight` 且箱型不带，已有放置也必须有重量。箱型与箱子重量混用、部分配置、已有放置与箱型值冲突均报错。**有重量信息时**（后两种模式）要求全部容器配置 `payload`，全无重量时不要求；`max_load`/装托模式要求有重量信息（箱型级或箱子级）
 - group/platform 一致性（**分别三选一**）：每个字段独立选择全无、全部箱型配置、或全部箱子配置；来源判断只看 `box_types` 和待装 `boxes`，箱型与箱子混用、部分配置均报错。`existing_containers` 是已解析快照：无值模式必须无值，箱型级模式可无值或重复相同值，箱子级模式必须有值；箱型级显式值冲突时均报错
 - `tender_limit` 配置但无任何 `group` -> 报错（无 group 时该约束静默失效）
-- 装托合法性：`pallet_types` id 唯一、`loose: true` 但未配置 `pallet_types` 报错；装托模式要求显式配置 `pallet_mix_group`、有重量信息（箱型级或箱子级）、全部容器带 `payload`、装车 `support_rate > 0`
+- 装托合法性：`pallet_types` id 唯一、`loose: true` 但未配置 `pallet_types` 报错；装托模式要求显式配置 `pallet_mix_group`、有重量信息（箱型级或箱子级）、全部容器带 `payload`、装车 `support_rate > 0`；若声明了 `route`，`pallet_types[].platforms` 引用的每个平台必须在 `route` 中
 - 障碍物合法性：每个障碍物必须完全在所属容器内、障碍物互不重叠、`existing_containers` 已有放置与障碍物不重叠
 - 斜面合法性：每个斜面必须恰好两个非零截距、截距不越界、`existing_containers` 已有放置不侵入斜面禁区
 
