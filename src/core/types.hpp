@@ -301,6 +301,7 @@ struct Placement
     OrientedSize osize;   // 朝向后的实际尺寸
     std::string platform; // 空字符串表示未设置，输出时转为 null
     std::optional<double> weight = std::nullopt;
+    bool is_pallet = false; // 是否为装托托盘单元（容器内虚拟箱，box_id == pallet_id）
 
     std::set<std::string> groups; // 所属分组集合（空=未设置；混组托盘=完整分组集合）
 

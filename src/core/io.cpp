@@ -1156,6 +1156,7 @@ void to_json(json& j, const Placement& pl)
     const std::string group = single_group(pl.groups);
     j["group"] = group.empty() ? json(nullptr) : json(group);
     j["weight"] = opt_json(pl.weight);
+    j["is_pallet"] = pl.is_pallet;
 }
 
 void to_json(json& j, const Solution& sol)

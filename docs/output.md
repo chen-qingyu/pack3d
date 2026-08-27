@@ -89,7 +89,8 @@ JSON，顶层四个字段：
           "orientation": "xyz",
           "weight": 10.0,
           "platform": "P1",
-          "group": "A"
+          "group": "A",
+          "is_pallet": true
         },
         {
           "box_id": "a1",
@@ -103,7 +104,8 @@ JSON，顶层四个字段：
           "orientation": "xyz",
           "weight": 10.0,
           "platform": "P1",
-          "group": "A"
+          "group": "A",
+          "is_pallet": false
         }
       ]
     }
@@ -172,7 +174,7 @@ JSON，顶层四个字段：
 
 装托输入与行为详见 [architecture.md](architecture.md) §3。
 
-placement 的 `group`/`platform` 为有效值：箱型级模式下从对应箱型继承，箱子级模式下为实例值。混组托盘的虚拟箱 `group` 为 `null`（完整分组见 `result.pallets[].groups`，下游用 `placement.box_id == pallet.pallet_id` 关联识别）。
+placement 的 `group`/`platform` 为有效值：箱型级模式下从对应箱型继承，箱子级模式下为实例值。混组托盘的虚拟箱 `group` 为 `null`（完整分组见 `result.pallets[].groups`）。装托托盘单元可直接用 `is_pallet == true` 识别（等价于 `placement.box_id == pallet.pallet_id`）。
 
 placement 字段说明：
 
@@ -186,6 +188,7 @@ placement 字段说明：
 | `weight`       | 箱子重量，未设置时为 null                                                                |
 | `platform`     | 有效站点 ID（配送停靠点），未设置时为 null                                               |
 | `group`        | 有效分组 ID，未设置时为 null；混组托盘的虚拟箱此处为 null，完整分组见 `pallets[].groups` |
+| `is_pallet`    | 是否为装托托盘单元：容器内虚拟箱（`box_id == pallet_id`）为 `true`，其余为 `false`        |
 
 ## `violations` 说明（非 `complete` 时可能出现）
 

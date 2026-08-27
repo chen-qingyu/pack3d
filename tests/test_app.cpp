@@ -57,6 +57,7 @@ TEST_CASE("输出字段恒存在", "[solver][output]")
             REQUIRE(pl.contains("platform"));
             REQUIRE(pl.contains("group"));
             REQUIRE(pl.contains("weight"));
+            REQUIRE(pl.contains("is_pallet"));
         }
     }
 }

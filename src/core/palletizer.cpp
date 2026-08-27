@@ -273,6 +273,18 @@ void expand_pallet_solution(Solution& sol,
     }
     sol.palletized_box_count = palletized;
 
+    // 标记容器内的托盘单元（虚拟箱 box_id == pallet_id），供下游（web/draw）区分装托与散装
+    for (auto& load : sol.container_placements)
+    {
+        for (auto& pl : load)
+        {
+            if (inner_count.count(pl.box_id) != 0)
+            {
+                pl.is_pallet = true;
+            }
+        }
+    }
+
     // packed_box_count 折算原始散箱口径
     const int stage2_packed = sol.packed_box_count;
     for (size_t i = 0; i < sol.container_placements.size(); ++i)
