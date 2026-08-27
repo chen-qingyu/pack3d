@@ -58,17 +58,16 @@ void split_space(const Space& space, const OrientedSize& block_osize,
     spaceY.parent_id = space.id;
     spaceY.kind = SpaceKind::Y;
 
-    // GLC 切分策略：比较 mx/my，选择一个地面剩余空间扩展为整条带状空间。
+    // GLC 空间引导：优先 z 方向堆叠，再 y 方向装满，最后 x 方向装（对齐 GEP 的
+    // z -> y -> x 建造顺序，避免先平铺横放导致装载率下降）。
+    // 空间栈为 LIFO，故 Z 最后入栈（栈顶最先处理），X/Y 的入栈顺序保持
+    // 主条/碎片关系（碎片在栈顶，供 transfer_space 回收合并）。
     if (mx >= my)
     {
         spaceX.ly = space.ly;
         spaceY.lx = dx;
         spaceY.ly = my;
 
-        if (spaceZ.lz > 0)
-        {
-            stack.push_back(spaceZ);
-        }
         if (spaceX.lx > 0 && spaceX.ly > 0 && spaceX.lz > 0)
         {
             stack.push_back(spaceX);
@@ -76,6 +75,10 @@ void split_space(const Space& space, const OrientedSize& block_osize,
         if (spaceY.lx > 0 && spaceY.ly > 0 && spaceY.lz > 0)
         {
             stack.push_back(spaceY);
+        }
+        if (spaceZ.lz > 0)
+        {
+            stack.push_back(spaceZ);
         }
     }
     else
@@ -84,10 +87,6 @@ void split_space(const Space& space, const OrientedSize& block_osize,
         spaceY.lx = space.lx;
         spaceY.ly = my;
 
-        if (spaceZ.lz > 0)
-        {
-            stack.push_back(spaceZ);
-        }
         if (spaceY.lx > 0 && spaceY.ly > 0 && spaceY.lz > 0)
         {
             stack.push_back(spaceY);
@@ -95,6 +94,10 @@ void split_space(const Space& space, const OrientedSize& block_osize,
         if (spaceX.lx > 0 && spaceX.ly > 0 && spaceX.lz > 0)
         {
             stack.push_back(spaceX);
+        }
+        if (spaceZ.lz > 0)
+        {
+            stack.push_back(spaceZ);
         }
     }
 }
