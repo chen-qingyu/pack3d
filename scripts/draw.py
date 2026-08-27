@@ -241,10 +241,13 @@ def get_text(placement: dict) -> str:
     text += f"placed: {placement['dx']}x{placement['dy']}x{placement['dz']}<br>"
     platform_val = placement.get("platform")
     group_val = placement.get("group")
+    weight = placement.get("weight")
     if platform_val:
         text += f"platform: {platform_val}<br>"
     if group_val:
         text += f"group: {group_val}"
+    if weight:
+        text += f"<br>weight: {weight}"
     return text
 
 
