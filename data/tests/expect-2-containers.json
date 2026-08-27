@@ -1,0 +1,1683 @@
+{
+  "container_types": [
+    {
+      "id": "20GP",
+      "sx": 5890,
+      "sy": 2318,
+      "sz": 2230,
+      "payload": 18000.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "40GP",
+      "sx": 11960,
+      "sy": 2318,
+      "sz": 2250,
+      "payload": 23000.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "40HQ",
+      "sx": 11960,
+      "sy": 2318,
+      "sz": 2600,
+      "payload": 23000.0,
+      "quantity_limit": null
+    }
+  ],
+  "box_types": [
+    {
+      "id": "t1",
+      "sx": 1200,
+      "sy": 800,
+      "sz": 755,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 50.0
+    },
+    {
+      "id": "t2",
+      "sx": 610,
+      "sy": 445,
+      "sz": 432,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 30.0
+    },
+    {
+      "id": "t3",
+      "sx": 530,
+      "sy": 320,
+      "sz": 330,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 30.0
+    },
+    {
+      "id": "t4",
+      "sx": 490,
+      "sy": 490,
+      "sz": 200,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 150.0
+    },
+    {
+      "id": "t5",
+      "sx": 440,
+      "sy": 440,
+      "sz": 210,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 150.0
+    },
+    {
+      "id": "t6",
+      "sx": 2320,
+      "sy": 720,
+      "sz": 590,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 5,
+      "max_load": 10.0
+    },
+    {
+      "id": "t7",
+      "sx": 480,
+      "sy": 480,
+      "sz": 170,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 150.0
+    },
+    {
+      "id": "t8",
+      "sx": 420,
+      "sy": 420,
+      "sz": 200,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 150.0
+    },
+    {
+      "id": "t9",
+      "sx": 440,
+      "sy": 440,
+      "sz": 200,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 150.0
+    },
+    {
+      "id": "t10",
+      "sx": 765,
+      "sy": 725,
+      "sz": 835,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 0.0
+    },
+    {
+      "id": "t11",
+      "sx": 550,
+      "sy": 360,
+      "sz": 90,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 10,
+      "max_load": 0.0
+    },
+    {
+      "id": "t12",
+      "sx": 1150,
+      "sy": 770,
+      "sz": 1170,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 10.0
+    },
+    {
+      "id": "t13",
+      "sx": 800,
+      "sy": 600,
+      "sz": 985,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 2,
+      "max_load": 30.0
+    },
+    {
+      "id": "t14",
+      "sx": 430,
+      "sy": 430,
+      "sz": 210,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 150.0
+    },
+    {
+      "id": "t15",
+      "sx": 460,
+      "sy": 460,
+      "sz": 160,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 150.0
+    },
+    {
+      "id": "t16",
+      "sx": 800,
+      "sy": 600,
+      "sz": 695,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 150.0
+    },
+    {
+      "id": "t17",
+      "sx": 1200,
+      "sy": 800,
+      "sz": 645,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 20.0
+    },
+    {
+      "id": "t18",
+      "sx": 1200,
+      "sy": 800,
+      "sz": 890,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 80.0
+    },
+    {
+      "id": "t19",
+      "sx": 1200,
+      "sy": 800,
+      "sz": 1272,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 80.0
+    },
+    {
+      "id": "t20",
+      "sx": 1200,
+      "sy": 800,
+      "sz": 1265,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 80.0
+    },
+    {
+      "id": "t21",
+      "sx": 1920,
+      "sy": 810,
+      "sz": 1040,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 10.0
+    },
+    {
+      "id": "t22",
+      "sx": 800,
+      "sy": 600,
+      "sz": 910,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 20.0
+    },
+    {
+      "id": "t23",
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 990,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 2,
+      "max_load": 150.0
+    },
+    {
+      "id": "t24",
+      "sx": 2310,
+      "sy": 1140,
+      "sz": 381,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 100.0
+    },
+    {
+      "id": "t25",
+      "sx": 770,
+      "sy": 770,
+      "sz": 601,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 30.0
+    },
+    {
+      "id": "t26",
+      "sx": 770,
+      "sy": 770,
+      "sz": 495,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 30.0
+    },
+    {
+      "id": "t27",
+      "sx": 1150,
+      "sy": 770,
+      "sz": 510,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 30.0
+    },
+    {
+      "id": "t28",
+      "sx": 1230,
+      "sy": 1230,
+      "sz": 740,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 2,
+      "max_load": 50.0
+    },
+    {
+      "id": "t29",
+      "sx": 375,
+      "sy": 225,
+      "sz": 95,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 12,
+      "max_load": 30.0,
+      "loose": true
+    },
+    {
+      "id": "t30",
+      "sx": 345,
+      "sy": 255,
+      "sz": 95,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 12,
+      "max_load": 150.0
+    },
+    {
+      "id": "t31",
+      "sx": 490,
+      "sy": 370,
+      "sz": 310,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 8,
+      "max_load": 30.0,
+      "loose": true
+    },
+    {
+      "id": "t32",
+      "sx": 375,
+      "sy": 365,
+      "sz": 175,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 7,
+      "max_load": 30.0
+    },
+    {
+      "id": "t33",
+      "sx": 385,
+      "sy": 355,
+      "sz": 100,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 10,
+      "max_load": 30.0
+    },
+    {
+      "id": "t34",
+      "sx": 662,
+      "sy": 342,
+      "sz": 120,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 10,
+      "max_load": 30.0
+    },
+    {
+      "id": "t35",
+      "sx": 590,
+      "sy": 490,
+      "sz": 335,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 30.0,
+      "loose": true
+    },
+    {
+      "id": "t36",
+      "sx": 780,
+      "sy": 540,
+      "sz": 285,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 5,
+      "max_load": 0.0
+    },
+    {
+      "id": "t37",
+      "sx": 395,
+      "sy": 395,
+      "sz": 345,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 150.0
+    },
+    {
+      "id": "t38",
+      "sx": 375,
+      "sy": 375,
+      "sz": 350,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 3,
+      "max_load": 30.0
+    },
+    {
+      "id": "t39",
+      "sx": 1875,
+      "sy": 760,
+      "sz": 130,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 5,
+      "max_load": 150.0,
+      "loose": true
+    },
+    {
+      "id": "t40",
+      "sx": 625,
+      "sy": 570,
+      "sz": 275,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 30.0
+    },
+    {
+      "id": "t41",
+      "sx": 370,
+      "sy": 295,
+      "sz": 100,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 13,
+      "max_load": 30.0
+    },
+    {
+      "id": "t42",
+      "sx": 353,
+      "sy": 330,
+      "sz": 228,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 5,
+      "max_load": 150.0
+    },
+    {
+      "id": "t43",
+      "sx": 2240,
+      "sy": 435,
+      "sz": 221,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 8,
+      "max_load": 10.0,
+      "loose": true
+    },
+    {
+      "id": "t44",
+      "sx": 530,
+      "sy": 380,
+      "sz": 355,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 4,
+      "max_load": 30.0
+    }
+  ],
+  "boxes": [
+    {
+      "id": "b1",
+      "box_type_id": "t1",
+      "weight": 56.0,
+      "group": "g1",
+      "platform": "p8"
+    },
+    {
+      "id": "b2",
+      "box_type_id": "t2",
+      "weight": 12.46,
+      "group": "g1",
+      "platform": "p10"
+    },
+    {
+      "id": "b3",
+      "box_type_id": "t3",
+      "weight": 12.16,
+      "group": "g1",
+      "platform": "p10"
+    },
+    {
+      "id": "b4",
+      "box_type_id": "t4",
+      "weight": 73.72,
+      "group": "g2",
+      "platform": "p5"
+    },
+    {
+      "id": "b5",
+      "box_type_id": "t5",
+      "weight": 70.2,
+      "group": "g2",
+      "platform": "p6"
+    },
+    {
+      "id": "b6",
+      "box_type_id": "t6",
+      "weight": 208.5,
+      "group": "g2",
+      "platform": "p4"
+    },
+    {
+      "id": "b7",
+      "box_type_id": "t5",
+      "weight": 70.3,
+      "group": "g3",
+      "platform": "p6"
+    },
+    {
+      "id": "b8",
+      "box_type_id": "t4",
+      "weight": 73.61,
+      "group": "g3",
+      "platform": "p5"
+    },
+    {
+      "id": "b9",
+      "box_type_id": "t6",
+      "weight": 209.5,
+      "group": "g3",
+      "platform": "p4"
+    },
+    {
+      "id": "b10",
+      "box_type_id": "t7",
+      "weight": 65.66,
+      "group": "g4",
+      "platform": "p5"
+    },
+    {
+      "id": "b11",
+      "box_type_id": "t8",
+      "weight": 66.27,
+      "group": "g4",
+      "platform": "p5"
+    },
+    {
+      "id": "b12",
+      "box_type_id": "t6",
+      "weight": 207.5,
+      "group": "g4",
+      "platform": "p4"
+    },
+    {
+      "id": "b13",
+      "box_type_id": "t5",
+      "weight": 70.2,
+      "group": "g5",
+      "platform": "p6"
+    },
+    {
+      "id": "b14",
+      "box_type_id": "t4",
+      "weight": 73.54,
+      "group": "g5",
+      "platform": "p5"
+    },
+    {
+      "id": "b15",
+      "box_type_id": "t6",
+      "weight": 205.0,
+      "group": "g5",
+      "platform": "p4"
+    },
+    {
+      "id": "b16",
+      "box_type_id": "t9",
+      "weight": 73.48,
+      "group": "g6",
+      "platform": "p5"
+    },
+    {
+      "id": "b17",
+      "box_type_id": "t4",
+      "weight": 72.64,
+      "group": "g6",
+      "platform": "p5"
+    },
+    {
+      "id": "b18",
+      "box_type_id": "t6",
+      "weight": 206.0,
+      "group": "g6",
+      "platform": "p4"
+    },
+    {
+      "id": "b19",
+      "box_type_id": "t10",
+      "weight": 101.0,
+      "group": "g7",
+      "platform": "p4"
+    },
+    {
+      "id": "b20",
+      "box_type_id": "t10",
+      "weight": 101.5,
+      "group": "g7",
+      "platform": "p4"
+    },
+    {
+      "id": "b21",
+      "box_type_id": "t11",
+      "weight": 3.02,
+      "group": "g8",
+      "platform": "p10"
+    },
+    {
+      "id": "b22",
+      "box_type_id": "t12",
+      "weight": 167.0,
+      "group": "g9",
+      "platform": "p2"
+    },
+    {
+      "id": "b23",
+      "box_type_id": "t12",
+      "weight": 175.0,
+      "group": "g9",
+      "platform": "p2"
+    },
+    {
+      "id": "b24",
+      "box_type_id": "t12",
+      "weight": 175.0,
+      "group": "g9",
+      "platform": "p2"
+    },
+    {
+      "id": "b25",
+      "box_type_id": "t12",
+      "weight": 175.0,
+      "group": "g9",
+      "platform": "p2"
+    },
+    {
+      "id": "b26",
+      "box_type_id": "t12",
+      "weight": 175.0,
+      "group": "g9",
+      "platform": "p2"
+    },
+    {
+      "id": "b27",
+      "box_type_id": "t12",
+      "weight": 175.0,
+      "group": "g9",
+      "platform": "p2"
+    },
+    {
+      "id": "b28",
+      "box_type_id": "t12",
+      "weight": 175.0,
+      "group": "g9",
+      "platform": "p2"
+    },
+    {
+      "id": "b29",
+      "box_type_id": "t13",
+      "weight": 102.0,
+      "group": "g10",
+      "platform": "p9"
+    },
+    {
+      "id": "b30",
+      "box_type_id": "t13",
+      "weight": 102.0,
+      "group": "g10",
+      "platform": "p9"
+    },
+    {
+      "id": "b31",
+      "box_type_id": "t13",
+      "weight": 102.0,
+      "group": "g10",
+      "platform": "p9"
+    },
+    {
+      "id": "b32",
+      "box_type_id": "t14",
+      "weight": 55.4,
+      "group": "g11",
+      "platform": "p6"
+    },
+    {
+      "id": "b33",
+      "box_type_id": "t14",
+      "weight": 55.7,
+      "group": "g11",
+      "platform": "p6"
+    },
+    {
+      "id": "b34",
+      "box_type_id": "t14",
+      "weight": 55.6,
+      "group": "g11",
+      "platform": "p6"
+    },
+    {
+      "id": "b35",
+      "box_type_id": "t14",
+      "weight": 55.7,
+      "group": "g11",
+      "platform": "p6"
+    },
+    {
+      "id": "b36",
+      "box_type_id": "t14",
+      "weight": 55.7,
+      "group": "g11",
+      "platform": "p6"
+    },
+    {
+      "id": "b37",
+      "box_type_id": "t15",
+      "weight": 58.94,
+      "group": "g12",
+      "platform": "p6"
+    },
+    {
+      "id": "b38",
+      "box_type_id": "t15",
+      "weight": 58.88,
+      "group": "g12",
+      "platform": "p6"
+    },
+    {
+      "id": "b39",
+      "box_type_id": "t15",
+      "weight": 58.96,
+      "group": "g12",
+      "platform": "p6"
+    },
+    {
+      "id": "b40",
+      "box_type_id": "t15",
+      "weight": 58.88,
+      "group": "g12",
+      "platform": "p6"
+    },
+    {
+      "id": "b41",
+      "box_type_id": "t15",
+      "weight": 58.93,
+      "group": "g12",
+      "platform": "p6"
+    },
+    {
+      "id": "b42",
+      "box_type_id": "t16",
+      "weight": 43.0,
+      "group": "g13",
+      "platform": "p5"
+    },
+    {
+      "id": "b43",
+      "box_type_id": "t15",
+      "weight": 58.97,
+      "group": "g14",
+      "platform": "p6"
+    },
+    {
+      "id": "b44",
+      "box_type_id": "t15",
+      "weight": 58.99,
+      "group": "g14",
+      "platform": "p6"
+    },
+    {
+      "id": "b45",
+      "box_type_id": "t15",
+      "weight": 59.02,
+      "group": "g14",
+      "platform": "p6"
+    },
+    {
+      "id": "b46",
+      "box_type_id": "t15",
+      "weight": 58.98,
+      "group": "g14",
+      "platform": "p6"
+    },
+    {
+      "id": "b47",
+      "box_type_id": "t15",
+      "weight": 58.77,
+      "group": "g14",
+      "platform": "p6"
+    },
+    {
+      "id": "b48",
+      "box_type_id": "t17",
+      "weight": 102.5,
+      "group": "g15",
+      "platform": "p9"
+    },
+    {
+      "id": "b49",
+      "box_type_id": "t17",
+      "weight": 103.5,
+      "group": "g15",
+      "platform": "p9"
+    },
+    {
+      "id": "b50",
+      "box_type_id": "t1",
+      "weight": 137.5,
+      "group": "g15",
+      "platform": "p9"
+    },
+    {
+      "id": "b51",
+      "box_type_id": "t1",
+      "weight": 135.5,
+      "group": "g15",
+      "platform": "p9"
+    },
+    {
+      "id": "b52",
+      "box_type_id": "t18",
+      "weight": 123.0,
+      "group": "g16",
+      "platform": "p5"
+    },
+    {
+      "id": "b53",
+      "box_type_id": "t19",
+      "weight": 171.5,
+      "group": "g16",
+      "platform": "p5"
+    },
+    {
+      "id": "b54",
+      "box_type_id": "t20",
+      "weight": 171.0,
+      "group": "g16",
+      "platform": "p5"
+    },
+    {
+      "id": "b55",
+      "box_type_id": "t19",
+      "weight": 171.5,
+      "group": "g16",
+      "platform": "p5"
+    },
+    {
+      "id": "b56",
+      "box_type_id": "t21",
+      "weight": 360.0,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b57",
+      "box_type_id": "t21",
+      "weight": 360.0,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b58",
+      "box_type_id": "t21",
+      "weight": 360.0,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b59",
+      "box_type_id": "t21",
+      "weight": 360.0,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b60",
+      "box_type_id": "t21",
+      "weight": 360.0,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b61",
+      "box_type_id": "t21",
+      "weight": 360.0,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b62",
+      "box_type_id": "t21",
+      "weight": 360.0,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b63",
+      "box_type_id": "t21",
+      "weight": 360.0,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b64",
+      "box_type_id": "t1",
+      "weight": 64.0,
+      "group": "g18",
+      "platform": "p9"
+    },
+    {
+      "id": "b65",
+      "box_type_id": "t22",
+      "weight": 94.2,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b66",
+      "box_type_id": "t22",
+      "weight": 95.0,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b67",
+      "box_type_id": "t22",
+      "weight": 94.6,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b68",
+      "box_type_id": "t22",
+      "weight": 94.8,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b69",
+      "box_type_id": "t22",
+      "weight": 94.0,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b70",
+      "box_type_id": "t22",
+      "weight": 94.0,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b71",
+      "box_type_id": "t22",
+      "weight": 95.8,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b72",
+      "box_type_id": "t22",
+      "weight": 96.0,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b73",
+      "box_type_id": "t22",
+      "weight": 95.8,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b74",
+      "box_type_id": "t22",
+      "weight": 95.8,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b75",
+      "box_type_id": "t22",
+      "weight": 95.6,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b76",
+      "box_type_id": "t22",
+      "weight": 95.2,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b77",
+      "box_type_id": "t22",
+      "weight": 95.0,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b78",
+      "box_type_id": "t22",
+      "weight": 95.4,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b79",
+      "box_type_id": "t22",
+      "weight": 95.4,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b80",
+      "box_type_id": "t22",
+      "weight": 95.8,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b81",
+      "box_type_id": "t22",
+      "weight": 94.8,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b82",
+      "box_type_id": "t22",
+      "weight": 95.0,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b83",
+      "box_type_id": "t22",
+      "weight": 95.4,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b84",
+      "box_type_id": "t22",
+      "weight": 96.2,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b85",
+      "box_type_id": "t22",
+      "weight": 95.8,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b86",
+      "box_type_id": "t22",
+      "weight": 96.0,
+      "group": "g19",
+      "platform": "p9"
+    },
+    {
+      "id": "b87",
+      "box_type_id": "t23",
+      "weight": 182.0,
+      "group": "g20",
+      "platform": "p1"
+    },
+    {
+      "id": "b88",
+      "box_type_id": "t24",
+      "weight": 130.0,
+      "group": "g21",
+      "platform": "p7"
+    },
+    {
+      "id": "b89",
+      "box_type_id": "t25",
+      "weight": 59.5,
+      "group": "g22",
+      "platform": "p5"
+    },
+    {
+      "id": "b90",
+      "box_type_id": "t26",
+      "weight": 68.0,
+      "group": "g23",
+      "platform": "p5"
+    },
+    {
+      "id": "b91",
+      "box_type_id": "t27",
+      "weight": 61.0,
+      "group": "g24",
+      "platform": "p4"
+    },
+    {
+      "id": "b92",
+      "box_type_id": "t28",
+      "weight": 815.9,
+      "group": "g25",
+      "platform": "p3"
+    },
+    {
+      "id": "b93",
+      "box_type_id": "t29",
+      "weight": 0.94,
+      "group": "g1",
+      "platform": "p10"
+    },
+    {
+      "id": "b94",
+      "box_type_id": "t30",
+      "weight": 1.58,
+      "group": "g1",
+      "platform": "p4"
+    },
+    {
+      "id": "b95",
+      "box_type_id": "t29",
+      "weight": 1.26,
+      "group": "g1",
+      "platform": "p10"
+    },
+    {
+      "id": "b96",
+      "box_type_id": "t31",
+      "weight": 16.0,
+      "group": "g2",
+      "platform": "p6"
+    },
+    {
+      "id": "b97",
+      "box_type_id": "t30",
+      "weight": 1.2,
+      "group": "g2",
+      "platform": "p4"
+    },
+    {
+      "id": "b98",
+      "box_type_id": "t32",
+      "weight": 10.7,
+      "group": "g2",
+      "platform": "p5"
+    },
+    {
+      "id": "b99",
+      "box_type_id": "t31",
+      "weight": 16.0,
+      "group": "g3",
+      "platform": "p6"
+    },
+    {
+      "id": "b100",
+      "box_type_id": "t32",
+      "weight": 9.7,
+      "group": "g3",
+      "platform": "p5"
+    },
+    {
+      "id": "b101",
+      "box_type_id": "t30",
+      "weight": 1.04,
+      "group": "g3",
+      "platform": "p4"
+    },
+    {
+      "id": "b102",
+      "box_type_id": "t33",
+      "weight": 2.7,
+      "group": "g3",
+      "platform": "p5"
+    },
+    {
+      "id": "b103",
+      "box_type_id": "t32",
+      "weight": 9.72,
+      "group": "g4",
+      "platform": "p5"
+    },
+    {
+      "id": "b104",
+      "box_type_id": "t30",
+      "weight": 0.84,
+      "group": "g4",
+      "platform": "p4"
+    },
+    {
+      "id": "b105",
+      "box_type_id": "t34",
+      "weight": 3.92,
+      "group": "g4",
+      "platform": "p5"
+    },
+    {
+      "id": "b106",
+      "box_type_id": "t32",
+      "weight": 9.7,
+      "group": "g5",
+      "platform": "p5"
+    },
+    {
+      "id": "b107",
+      "box_type_id": "t30",
+      "weight": 0.96,
+      "group": "g5",
+      "platform": "p4"
+    },
+    {
+      "id": "b108",
+      "box_type_id": "t34",
+      "weight": 4.2,
+      "group": "g5",
+      "platform": "p5"
+    },
+    {
+      "id": "b109",
+      "box_type_id": "t32",
+      "weight": 9.7,
+      "group": "g6",
+      "platform": "p5"
+    },
+    {
+      "id": "b110",
+      "box_type_id": "t30",
+      "weight": 0.94,
+      "group": "g6",
+      "platform": "p4"
+    },
+    {
+      "id": "b111",
+      "box_type_id": "t34",
+      "weight": 4.08,
+      "group": "g6",
+      "platform": "p5"
+    },
+    {
+      "id": "b112",
+      "box_type_id": "t30",
+      "weight": 0.8,
+      "group": "g26",
+      "platform": "p4"
+    },
+    {
+      "id": "b113",
+      "box_type_id": "t30",
+      "weight": 0.48,
+      "group": "g7",
+      "platform": "p4"
+    },
+    {
+      "id": "b114",
+      "box_type_id": "t30",
+      "weight": 0.48,
+      "group": "g7",
+      "platform": "p4"
+    },
+    {
+      "id": "b115",
+      "box_type_id": "t33",
+      "weight": 0.66,
+      "group": "g7",
+      "platform": "p5"
+    },
+    {
+      "id": "b116",
+      "box_type_id": "t33",
+      "weight": 0.64,
+      "group": "g7",
+      "platform": "p5"
+    },
+    {
+      "id": "b117",
+      "box_type_id": "t35",
+      "weight": 17.08,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b118",
+      "box_type_id": "t35",
+      "weight": 17.04,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b119",
+      "box_type_id": "t35",
+      "weight": 17.02,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b120",
+      "box_type_id": "t35",
+      "weight": 17.08,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b121",
+      "box_type_id": "t35",
+      "weight": 17.06,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b122",
+      "box_type_id": "t35",
+      "weight": 17.06,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b123",
+      "box_type_id": "t35",
+      "weight": 17.08,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b124",
+      "box_type_id": "t35",
+      "weight": 17.06,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b125",
+      "box_type_id": "t35",
+      "weight": 17.06,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b126",
+      "box_type_id": "t35",
+      "weight": 17.04,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b127",
+      "box_type_id": "t35",
+      "weight": 17.08,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b128",
+      "box_type_id": "t35",
+      "weight": 17.08,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b129",
+      "box_type_id": "t35",
+      "weight": 17.04,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b130",
+      "box_type_id": "t35",
+      "weight": 17.02,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b131",
+      "box_type_id": "t35",
+      "weight": 17.08,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b132",
+      "box_type_id": "t35",
+      "weight": 17.04,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b133",
+      "box_type_id": "t35",
+      "weight": 17.04,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b134",
+      "box_type_id": "t35",
+      "weight": 17.08,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b135",
+      "box_type_id": "t35",
+      "weight": 17.08,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b136",
+      "box_type_id": "t35",
+      "weight": 17.04,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b137",
+      "box_type_id": "t35",
+      "weight": 17.06,
+      "group": "g27",
+      "platform": "p10"
+    },
+    {
+      "id": "b138",
+      "box_type_id": "t36",
+      "weight": 30.72,
+      "group": "g10",
+      "platform": "p9"
+    },
+    {
+      "id": "b139",
+      "box_type_id": "t37",
+      "weight": 5.3,
+      "group": "g28",
+      "platform": "p1"
+    },
+    {
+      "id": "b140",
+      "box_type_id": "t38",
+      "weight": 5.98,
+      "group": "g16",
+      "platform": "p5"
+    },
+    {
+      "id": "b141",
+      "box_type_id": "t39",
+      "weight": 45.11,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b142",
+      "box_type_id": "t39",
+      "weight": 45.11,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b143",
+      "box_type_id": "t39",
+      "weight": 45.11,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b144",
+      "box_type_id": "t39",
+      "weight": 45.11,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b145",
+      "box_type_id": "t39",
+      "weight": 45.11,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b146",
+      "box_type_id": "t39",
+      "weight": 45.11,
+      "group": "g17",
+      "platform": "p6"
+    },
+    {
+      "id": "b147",
+      "box_type_id": "t40",
+      "weight": 11.3,
+      "group": "g29",
+      "platform": "p1"
+    },
+    {
+      "id": "b148",
+      "box_type_id": "t40",
+      "weight": 11.3,
+      "group": "g30",
+      "platform": "p1"
+    },
+    {
+      "id": "b149",
+      "box_type_id": "t41",
+      "weight": 1.82,
+      "group": "g31",
+      "platform": "p4"
+    },
+    {
+      "id": "b150",
+      "box_type_id": "t42",
+      "weight": 21.44,
+      "group": "g32",
+      "platform": "p5"
+    },
+    {
+      "id": "b151",
+      "box_type_id": "t43",
+      "weight": 32.5,
+      "group": "g21",
+      "platform": "p7"
+    },
+    {
+      "id": "b152",
+      "box_type_id": "t33",
+      "weight": 1.74,
+      "group": "g33",
+      "platform": "p5"
+    },
+    {
+      "id": "b153",
+      "box_type_id": "t44",
+      "weight": 6.8,
+      "group": "g34",
+      "platform": "p9"
+    }
+  ],
+  "route": ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"],
+  "pallet_types": [
+    {
+      "id": "pt1",
+      "sx": 1220,
+      "sy": 820,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 1700,
+      "self_weight": 20.0,
+      "platforms": ["p1", "p3", "p10", "p2", "p7", "p8", "p4", "p6", "p5", "p9"]
+    },
+    {
+      "id": "pt2",
+      "sx": 1230,
+      "sy": 1150,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 1600,
+      "self_weight": 25.0,
+      "platforms": ["p6"]
+    },
+    {
+      "id": "pt3",
+      "sx": 1600,
+      "sy": 770,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 1300,
+      "self_weight": 30.0,
+      "platforms": ["p6"]
+    },
+    {
+      "id": "pt4",
+      "sx": 2440,
+      "sy": 850,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 1100,
+      "self_weight": 35.0,
+      "platforms": ["p4", "p6"]
+    },
+    {
+      "id": "pt5",
+      "sx": 1800,
+      "sy": 920,
+      "sz": 130,
+      "payload": 1000,
+      "max_height": 1200,
+      "self_weight": 30.0,
+      "platforms": ["p8"]
+    },
+    {
+      "id": "pt6",
+      "sx": 2640,
+      "sy": 920,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 800,
+      "self_weight": 45.0,
+      "platforms": ["p6"]
+    },
+    {
+      "id": "pt7",
+      "sx": 1360,
+      "sy": 920,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 1600,
+      "self_weight": 40.0,
+      "platforms": ["p4"]
+    },
+    {
+      "id": "pt8",
+      "sx": 1220,
+      "sy": 830,
+      "sz": 130,
+      "payload": 1000,
+      "max_height": 1700,
+      "self_weight": 20.0,
+      "platforms": ["p8"]
+    },
+    {
+      "id": "pt9",
+      "sx": 1810,
+      "sy": 1140,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 1600,
+      "self_weight": 40.0,
+      "platforms": ["p7", "p6"]
+    },
+    {
+      "id": "pt10",
+      "sx": 2300,
+      "sy": 1140,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 1200,
+      "self_weight": 30.0,
+      "platforms": ["p6"]
+    },
+    {
+      "id": "pt11",
+      "sx": 1500,
+      "sy": 950,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 1600,
+      "self_weight": 25.0,
+      "platforms": ["p6"]
+    },
+    {
+      "id": "pt12",
+      "sx": 2580,
+      "sy": 980,
+      "sz": 140,
+      "payload": 1000,
+      "max_height": 1200,
+      "self_weight": 45.0,
+      "platforms": ["p6"]
+    },
+    {
+      "id": "pt13",
+      "sx": 800,
+      "sy": 480,
+      "sz": 125,
+      "payload": 1000,
+      "max_height": 1680,
+      "self_weight": 10.0,
+      "platforms": ["p9"]
+    },
+    {
+      "id": "pt14",
+      "sx": 800,
+      "sy": 600,
+      "sz": 130,
+      "payload": 1000,
+      "max_height": 1800,
+      "self_weight": 10.0,
+      "platforms": ["p6", "p9"]
+    },
+    {
+      "id": "pt15",
+      "sx": 2400,
+      "sy": 850,
+      "sz": 130,
+      "payload": 1000,
+      "max_height": 1200,
+      "self_weight": 40.0,
+      "platforms": ["p6"]
+    },
+    {
+      "id": "pt16",
+      "sx": 1100,
+      "sy": 1100,
+      "sz": 130,
+      "payload": 1000,
+      "max_height": 1700,
+      "self_weight": 10.0,
+      "platforms": ["p1", "p3", "p10", "p2", "p7", "p8", "p4", "p6", "p5", "p9"]
+    },
+    {
+      "id": "pt17",
+      "sx": 770,
+      "sy": 770,
+      "sz": 130,
+      "payload": 1000,
+      "max_height": 1700,
+      "self_weight": 10.0,
+      "platforms": ["p1", "p3", "p10", "p2", "p7", "p8", "p4", "p6", "p5", "p9"]
+    }
+  ],
+  "constraints": {
+    "pallet_mix_group": true,
+    "support_rate": 1.0,
+    "pallet_support_rate": 1,
+    "pallet_fallback": true
+  }
+}
