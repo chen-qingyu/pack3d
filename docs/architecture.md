@@ -85,7 +85,7 @@ flowchart LR
 ### 3.3 行为
 
 - **装托**：每轮对所有托盘类型试装，按（体积, 箱数）取优；同 `platform+group` 优先整组独占一托，装不下的进入兜底池。`pallet_mix_group=false` 时兜底池仍按 `platform+group` 分桶；为 true 时按 `platform` 分桶，允许同一站点混合 group，但不允许跨站点。混合托盘保留完整 group 集合，托盘单元参与装车阶段的 group_split、tender 和路线约束。
-- **装车**：托盘改写为虚拟箱——`max_stack=[1,1]`（其上不可放箱，单向不叠托）、仅 XY 平面 90° 旋转、重量含托盘自重；与普通箱子一起走现有求解器，主目标仍是用车数最少。
+- **装车**：托盘改写为虚拟箱——`max_stack=[1,1]` + `max_load=[0,0]`（其上不可放箱，单向不叠托）、仅 XY 平面 90° 旋转、重量含托盘自重；与普通箱子一起走现有求解器，主目标仍是用车数最少。
 - **时间**：装托分走 `min(20%×time_limit, 15s)`，剩余归装车。
 
 | 结果                                    | 情形                                  |
@@ -107,7 +107,7 @@ flowchart LR
 - **代码**：`pallet.hpp/cpp`（类型 io + 虚拟容器/箱型生成）、`palletizer.hpp/cpp`（装托循环 / 问题改写 / 输出展开）；入口 `app.cpp` 两级流水线；`io.cpp` 与 `input_schema.json` 负责解析/校验。
 - **关键点**：
   1. 装托 packer 绑定 problem 副本：`support_rate = pallet_support_rate`，**清除 `route`/`platform_limit`**——否则小托盘内被强加车厢卸货顺序/站点数约束。
-  2. 改写后**重建 `has_max_stack`/`has_max_load`**——虚拟箱自带 `max_stack`，解析时算出的标志不含它，"不叠托"会失效。
+  2. 改写后**重建 `has_max_stack`/`has_max_load`**——虚拟箱自带 `max_stack`/`max_load`，解析时算出的标志不含它，"不叠托/不压托"会失效。
   3. `pack_single` 返回的 `load.type` 指向传入的临时容器，须在析构前消费。
   4. 无 `pallet_types` 分支**零新增求解调用**（RGS `s_call_id` 静态计数，防既有测试漂移）。
 

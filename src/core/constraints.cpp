@@ -548,6 +548,10 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
         const auto ml = bt.max_load_for(S.orientation);
         if (ml.has_value())
         {
+            if (ml.value() <= 0.0)
+            {
+                return false; // max_load<=0：任何箱都不能压上（其上不可放箱）
+            }
             const double footprint = static_cast<double>(S.osize.dx) * S.osize.dy;
             const double alloc = ml.value() * static_cast<double>(info.areas[i]) / footprint;
             if (shares[i] > alloc + 1e-9)
@@ -582,7 +586,8 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
             continue;
         }
         const auto ml = bt.max_load_for(X.orientation);
-        if (ml.has_value() && X.cum_load + delta[k] > ml.value() + 1e-9)
+        if (ml.has_value() &&
+            (ml.value() <= 0.0 || X.cum_load + delta[k] > ml.value() + 1e-9))
         {
             return false;
         }
@@ -784,7 +789,8 @@ void recompute_stack_state(ContainerLoad& load,
             }
             const auto& bt = box_type_map.at(pl.box_type_id);
             const auto ml = bt.max_load_for(pl.orientation);
-            if (ml.has_value() && pl.cum_load > ml.value() + 1e-9)
+            if (ml.has_value() &&
+                (ml.value() <= 0.0 || pl.cum_load > ml.value() + 1e-9))
             {
                 errors->push_back("load " + std::to_string(pl.cum_load) +
                                   " > max_load " + std::to_string(ml.value()) +

@@ -33,7 +33,9 @@ BoxType virtual_box_type(const PalletLoad& p) noexcept
     bt.id = p.pallet_id;
     bt.size = {p.type->size.x, p.type->size.y, p.loaded_height + p.type->size.z};
     bt.allowed_orientations = {Orientation::XYZ, Orientation::YXZ};
+    // max_stack=[1,1] 限同型不叠托；max_load=[0,0] 限异型不能压上（不缺则异型箱会叠放托盘上）
     bt.max_stack = {std::optional<int>(1), std::optional<int>(1)};
+    bt.max_load = {std::optional<double>(0.0), std::optional<double>(0.0)};
     if (p.groups.size() == 1)
     {
         bt.group = *p.groups.begin();
