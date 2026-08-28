@@ -142,8 +142,11 @@ function Viewer3D({ containers, pallets = [] }: { containers: ContainerResult[];
           }),
         );
         mesh.add(new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: '#8c2f22', transparent: true, opacity: 0.6 })));
-        mesh.scale.set(obstacle.dx, obstacle.dz, obstacle.dy);
-        mesh.position.set(offsetX + obstacle.x + obstacle.dx / 2, obstacle.z + obstacle.dz / 2, obstacle.y + obstacle.dy / 2);
+        const sdx = Math.max(obstacle.dx, 0.05);
+        const sdy = Math.max(obstacle.dy, 0.05);
+        const sdz = Math.max(obstacle.dz, 0.05);
+        mesh.scale.set(sdx, sdz, sdy);
+        mesh.position.set(offsetX + obstacle.x + sdx / 2, obstacle.z + sdz / 2, obstacle.y + sdy / 2);
         root.add(mesh);
       });
       container.facets.forEach((facet) => {
@@ -299,10 +302,10 @@ function Viewer3D({ containers, pallets = [] }: { containers: ContainerResult[];
           current?.pallet.pallet_id === placement.box_id
             ? null
             : {
-                pallet: palletMap.get(placement.box_id)!,
-                placement: info.placement,
-                containerIndex: info.containerIndex,
-              },
+              pallet: palletMap.get(placement.box_id)!,
+              placement: info.placement,
+              containerIndex: info.containerIndex,
+            },
         );
         setContainerIndex(info.containerIndex);
         return;

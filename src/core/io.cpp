@@ -535,6 +535,10 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         {
             const auto& o = ct.obstacles[oi];
             std::string opfx = "container_type " + ct.id + " obstacles[" + std::to_string(oi) + "]";
+            if ((o.dx == 0) + (o.dy == 0) + (o.dz == 0) > 1)
+            {
+                out.push_back(opfx + ": must have at most one zero dimension (dx/dy/dz)");
+            }
             if (o.x < 0 || o.y < 0 || o.z < 0 ||
                 o.x + o.dx > ct.inner_size.x ||
                 o.y + o.dy > ct.inner_size.y ||
@@ -552,9 +556,11 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             for (size_t oj = 0; oj < oi; ++oj)
             {
                 const auto& q = ct.obstacles[oj];
-                if (o.x < q.x + q.dx && o.x + o.dx > q.x &&
-                    o.y < q.y + q.dy && o.y + o.dy > q.y &&
-                    o.z < q.z + q.dz && o.z + o.dz > q.z)
+                // 正体积交集判定：某维为 0 的零厚膜与任何障碍物交集在该维无厚度，不视为重叠
+                const int32_t ix = std::min(o.x + o.dx, q.x + q.dx) - std::max(o.x, q.x);
+                const int32_t iy = std::min(o.y + o.dy, q.y + q.dy) - std::max(o.y, q.y);
+                const int32_t iz = std::min(o.z + o.dz, q.z + q.dz) - std::max(o.z, q.z);
+                if (ix > 0 && iy > 0 && iz > 0)
                 {
                     out.push_back(opfx + ": overlaps with obstacles[" + std::to_string(oj) + "]");
                 }

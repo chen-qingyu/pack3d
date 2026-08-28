@@ -592,3 +592,37 @@ TEST_CASE("pre_validate_input 检测托盘平台引用不在 route", "[validatio
         REQUIRE(v.find("platform 'P9' not in route") == std::string::npos);
     }
 }
+
+TEST_CASE("pre_validate_input 检测零厚膜最多一个零维度", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct", {1000, 1000, 1000}, 10000.0});
+    p.box_types.push_back({"bt", {100, 100, 100}, {Orientation::XYZ}});
+    p.boxes.push_back({"box1", "bt", 10.0, "", {}});
+
+    auto has_zero_msg = [](const std::vector<std::string>& vs)
+    {
+        for (const auto& v : vs)
+        {
+            if (v.find("at most one zero dimension") != std::string::npos)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // 合法：恰好一个零维度（垂直墙膜）
+    p.container_types[0].obstacles = {{500, 0, 0, 0, 1000, 1000}};
+    REQUIRE(pre_validate_input(p).empty());
+
+    // 非法：两个零维度（线）
+    p.container_types[0].obstacles = {{500, 0, 0, 0, 0, 1000}};
+    auto violations = pre_validate_input(p);
+    REQUIRE(has_zero_msg(violations));
+
+    // 非法：三个零维度（点）
+    p.container_types[0].obstacles = {{500, 0, 0, 0, 0, 0}};
+    violations = pre_validate_input(p);
+    REQUIRE(has_zero_msg(violations));
+}

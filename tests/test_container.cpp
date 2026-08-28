@@ -185,6 +185,62 @@ TEST_CASE("obstacle 非法输入返回 invalid", "[solver][obstacle]")
     REQUIRE(has_resume);
 }
 
+// test_obstacle_membrane.json — 零厚膜垂直墙 {10,0,0,0,10,10}（dx=0, 平面 x=10）
+// 膜只拦截"严格横跨 x=10"的箱子，贴面/单侧均放行；不占容积、不参与支撑
+// 验证：4 算法完整装载 12 箱、无箱横跨膜、输出自包含膜几何（dx==0）
+TEST_CASE("obstacle 零厚膜穿越拦截", "[solver][obstacle]")
+{
+    auto input = load_data("data/tests/test_obstacle_membrane.json");
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        input["algorithm"] = algo;
+        auto res = run(input);
+        INFO("algo=" << algo);
+        REQUIRE(res["status"] == "complete");
+        REQUIRE(res["summary"]["packed_box_count"] == 12);
+        REQUIRE(res["summary"]["container_count"] == 1);
+        // 无箱横跨膜（overlaps_obstacle 对零厚膜恰为"严格横跨"判定）
+        require_no_geom_violation(res, input["container_types"][0]);
+        // 输出自包含膜几何
+        REQUIRE(res["result"]["containers"][0]["obstacles"].size() == 1);
+        REQUIRE(res["result"]["containers"][0]["obstacles"][0]["dx"] == 0);
+        REQUIRE(res["result"]["containers"][0]["obstacles"][0]["x"] == 10);
+    }
+}
+
+// 零厚膜非法输入：两个/三个维度为 0（线/点）→ status=invalid
+TEST_CASE("obstacle 零厚膜非法输入返回 invalid", "[solver][obstacle]")
+{
+    const auto base = load_data("data/tests/test_obstacle_membrane.json");
+
+    auto has_zero_msg = [&](const json& res)
+    {
+        for (const auto& v : res["violations"])
+        {
+            if (v.get<std::string>().find("at most one zero dimension") != std::string::npos)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    // 线：两个维度为 0（dx=0 已是 0，再令 dy=0）
+    auto line = base;
+    line["container_types"][0]["obstacles"][0]["dy"] = 0;
+    auto res = run(line);
+    REQUIRE(res["status"] == "invalid");
+    REQUIRE(has_zero_msg(res));
+
+    // 点：三个维度为 0（dx=0, dy=0, dz=0）
+    auto point = base;
+    point["container_types"][0]["obstacles"][0]["dy"] = 0;
+    point["container_types"][0]["obstacles"][0]["dz"] = 0;
+    res = run(point);
+    REQUIRE(res["status"] == "invalid");
+    REQUIRE(has_zero_msg(res));
+}
+
 // test_facet_chamfer.json — 顶前 45° 斜切 {dx:-10,dz:-10}（x+z>20 为楔形禁区）
 // 物理最大/雕刻后均为 10 箱（后半 8 + 前下 2）；可用容积 = 2000 − 楔形 500 = 1500
 // 填充率（可用容积口径）= 1250/1500 ≈ 0.8333

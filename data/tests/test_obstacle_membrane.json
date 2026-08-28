@@ -1,0 +1,38 @@
+{
+  "container_types": [
+    {
+      "id": "big",
+      "sx": 20,
+      "sy": 10,
+      "sz": 10,
+      "obstacles": [{ "x": 10, "y": 0, "z": 0, "dx": 0, "dy": 10, "dz": 10 }]
+    }
+  ],
+  "box_types": [
+    {
+      "id": "cube",
+      "sx": 5,
+      "sy": 5,
+      "sz": 5,
+      "allowed_orientations": ["xyz"]
+    }
+  ],
+  "boxes": [
+    { "id": "c0", "box_type_id": "cube" },
+    { "id": "c1", "box_type_id": "cube" },
+    { "id": "c2", "box_type_id": "cube" },
+    { "id": "c3", "box_type_id": "cube" },
+    { "id": "c4", "box_type_id": "cube" },
+    { "id": "c5", "box_type_id": "cube" },
+    { "id": "c6", "box_type_id": "cube" },
+    { "id": "c7", "box_type_id": "cube" },
+    { "id": "c8", "box_type_id": "cube" },
+    { "id": "c9", "box_type_id": "cube" },
+    { "id": "c10", "box_type_id": "cube" },
+    { "id": "c11", "box_type_id": "cube" }
+  ],
+  "constraints": {
+    "support_rate": 1.0,
+    "time_limit": 60.0
+  }
+}

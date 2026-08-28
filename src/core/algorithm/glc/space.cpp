@@ -276,6 +276,11 @@ void carve_obstacles(std::vector<Space>& stack,
 {
     for (const auto& o : obstacles)
     {
+        // 零厚膜不占容积，无需雕刻（由 check_obstacle 逐箱兜底），避免退化切割
+        if (o.dx == 0 || o.dy == 0 || o.dz == 0)
+        {
+            continue;
+        }
         carve_box(stack, o.x, o.y, o.z, o.dx, o.dy, o.dz);
         if (stack.empty())
         {

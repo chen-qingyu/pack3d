@@ -104,9 +104,13 @@ PackResult solve(const GlobalContext& ctx,
     // 构建初始状态
     BSGState s0;
     s0.R.push_back({{0, 0, 0}, ctx.container_size.x, ctx.container_size.y, ctx.container_size.z});
-    // 挖掉障碍物（残差空间 cover 不含障碍物区域）
+    // 挖掉障碍物（残差空间 cover 不含障碍物区域）；零厚膜不占容积，由 can_place_block 逐叶兜底
     for (const auto& o : ctx.container_type.obstacles)
     {
+        if (o.dx == 0 || o.dy == 0 || o.dz == 0)
+        {
+            continue;
+        }
         update_residual_space(s0.R, {o.x, o.y, o.z}, {o.dx, o.dy, o.dz});
     }
     // 斜面楔形禁区默认不做阶梯雕刻（阶梯碎片会切碎残余空间、降低装载），facets

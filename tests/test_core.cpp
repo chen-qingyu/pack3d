@@ -104,6 +104,40 @@ TEST_CASE("check_support 四角支撑但面积不足被拒绝", "[core]")
     REQUIRE(check_support({0, 0, 50}, {100, 100, 100}, load, 0.03));
 }
 
+// 零厚膜（某维为 0）只拦截"严格横跨该平面"的箱子；贴面（任一侧）均放行
+TEST_CASE("check_obstacle 零厚膜只拦横跨", "[core]")
+{
+    const std::vector<Obstacle> obs = {{10, 0, 0, 0, 20, 20}}; // 垂直墙膜 x=10
+
+    // 横跨：pos.x < 10 < pos.x+dx → 拦截
+    REQUIRE(check_obstacle({0, 0, 0}, {15, 5, 5}, obs));
+    // 贴面左（右边界恰 x=10）/ 贴面右（左边界恰 x=10）→ 放行
+    REQUIRE_FALSE(check_obstacle({0, 0, 0}, {10, 5, 5}, obs));
+    REQUIRE_FALSE(check_obstacle({10, 0, 0}, {5, 5, 5}, obs));
+    // 完全位于任一侧 → 放行
+    REQUIRE_FALSE(check_obstacle({0, 0, 0}, {5, 5, 5}, obs));
+    REQUIRE_FALSE(check_obstacle({15, 0, 0}, {5, 5, 5}, obs));
+}
+
+// 零厚膜为纯穿越拦截，不参与支撑；实体障碍物顶面仍等价地板
+TEST_CASE("check_support 零厚膜不参与支撑", "[core]")
+{
+    ContainerLoad load;
+    load.type_id = "test";
+    ContainerType ct{{}, {20, 10, 10}};
+    ct.obstacles = {{0, 0, 5, 20, 10, 0}}; // 水平搁板膜 z=5（dz=0）
+    load.type = &ct;
+
+    // 搁板膜不支撑：底面 z=5 的箱无其它支撑 → 高支撑率下拒绝
+    REQUIRE_FALSE(check_support({0, 0, 5}, {5, 5, 5}, load, 1.0));
+
+    // 对比：实体台阶顶面作为支撑面可承托（证明膜被特殊跳过）
+    ContainerType ct2{{}, {20, 10, 10}};
+    ct2.obstacles = {{0, 0, 0, 20, 10, 5}}; // 实体台阶，顶面 z=5
+    load.type = &ct2;
+    REQUIRE(check_support({0, 0, 5}, {5, 5, 5}, load, 1.0));
+}
+
 TEST_CASE("平台数量限制约束", "[core]")
 {
     ContainerLoad load;

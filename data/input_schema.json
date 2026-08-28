@@ -29,9 +29,9 @@
                 "x": { "type": "integer", "minimum": 0 },
                 "y": { "type": "integer", "minimum": 0 },
                 "z": { "type": "integer", "minimum": 0 },
-                "dx": { "type": "integer", "minimum": 1 },
-                "dy": { "type": "integer", "minimum": 1 },
-                "dz": { "type": "integer", "minimum": 1 }
+                "dx": { "type": "integer", "minimum": 0 },
+                "dy": { "type": "integer", "minimum": 0 },
+                "dz": { "type": "integer", "minimum": 0 }
               }
             }
           },

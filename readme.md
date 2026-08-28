@@ -21,7 +21,7 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 - 运输委托限制：每个 tender（同 group 货物连通的容器连通分量）最多 `tender_limit` 个容器
 - 堆码层数约束：箱型 `max_stack`（标量或按朝向数组）
 - 单箱承重约束：箱型 `max_load`（标量或按朝向数组）
-- 障碍物约束：容器内轴对齐障碍物，箱体不得侵入，顶面等价地板
+- 障碍物约束：容器内轴对齐障碍物，箱体不得侵入，顶面等价地板；某维为 0 的零厚膜只拦截横跨其平面的箱子（见 [docs/constraints.md](docs/constraints.md) 1.11）
 - 斜面约束：容器斜面楔形禁入区，箱体不得侵入
 - 装托（palletizing）：`loose` 散件先装托，托盘作为装箱单元装车（见 [docs/architecture.md](docs/architecture.md) §3）
 - 中间状态续装：从已有部分放置继续装箱（见 [docs/architecture.md](docs/architecture.md) §4）
