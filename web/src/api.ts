@@ -46,6 +46,7 @@ export interface Placement {
   platform: string | null;
   group: string | null;
   weight: number | null;
+  danger: boolean;
 }
 
 export interface PalletResult {
@@ -95,6 +96,7 @@ export interface ContainerResult {
   obstacles: Obstacle[];
   facets: Facet[];
   tender: number | null;
+  danger: boolean;
   placements: Placement[];
 }
 

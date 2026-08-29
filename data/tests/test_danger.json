@@ -1,0 +1,36 @@
+{
+  "container_types": [
+    { "id": "big", "sx": 100, "sy": 100, "sz": 100, "payload": 100000.0 }
+  ],
+  "box_types": [
+    {
+      "id": "dgr",
+      "sx": 30,
+      "sy": 30,
+      "sz": 30,
+      "allowed_orientations": ["xyz"],
+      "danger": true
+    },
+    {
+      "id": "reg",
+      "sx": 20,
+      "sy": 20,
+      "sz": 20,
+      "allowed_orientations": ["xyz"],
+      "danger": false
+    }
+  ],
+  "boxes": [
+    { "id": "d1", "box_type_id": "dgr" },
+    { "id": "d2", "box_type_id": "dgr" },
+    { "id": "d3", "box_type_id": "dgr" },
+    { "id": "d4", "box_type_id": "dgr" },
+    { "id": "r1", "box_type_id": "reg" },
+    { "id": "r2", "box_type_id": "reg" },
+    { "id": "r3", "box_type_id": "reg" },
+    { "id": "r4", "box_type_id": "reg" },
+    { "id": "r5", "box_type_id": "reg" }
+  ],
+  "algorithm": "gep",
+  "constraints": { "time_limit": 30.0 }
+}

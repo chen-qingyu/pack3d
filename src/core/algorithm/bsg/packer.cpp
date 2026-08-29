@@ -133,6 +133,7 @@ ContainerLoad BsgPacker::pack_single_impl(
             load.total_weight += bx.weight.value();
         }
         pl.weight = bx.weight;
+        pl.danger = bx.danger.value_or(false);
     }
 
     return load;

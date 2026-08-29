@@ -57,6 +57,38 @@ std::vector<std::vector<Box>> split_platform_buckets(const std::vector<Box>& ite
     return buckets;
 }
 
+// 箱子是否为危险品
+bool is_danger(const Box& b) noexcept
+{
+    return b.danger.value_or(false);
+}
+
+// 容器内是否装入危险品（任一放置为危险品）
+bool container_has_danger(const ContainerLoad& load) noexcept
+{
+    for (const auto& pl : load.placements)
+    {
+        if (pl.danger)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 容器内是否装入非危险品（任一放置为非危险品）
+bool container_has_regular(const ContainerLoad& load) noexcept
+{
+    for (const auto& pl : load.placements)
+    {
+        if (!pl.danger)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 // 容器内平台按**真实排列顺序**（沿 X 纵深）排序，即**装货顺序**：最深（X 最小）
 // 的平台先装。每个平台用其箱子的最深点 min(position.x) 代表位置，升序排列
 // （越小 X 越深、越先装）；并列按平台名升序保持确定性。
@@ -205,81 +237,216 @@ Solution PackerBase::pack()
     }
     instance_counter = static_cast<int>(all_loads.size());
 
-    // ---- 阶段 B: 继续塞已有容器 ----
-    for (size_t i = 0; i < all_loads.size(); ++i)
+    // 危险品分柜：任一待装箱子或已有容器含危险品时启用
+    bool has_danger = false;
+    for (const auto& bx : problem_.boxes)
     {
-        auto& cl = all_loads[i];
-        if (remaining.empty() || !TimeChecker::check())
-        {
-            break;
-        }
+        has_danger |= is_danger(bx);
+    }
+    for (const auto& cl : all_loads)
+    {
+        has_danger |= container_has_danger(cl);
+    }
 
-        auto ct_it = ct_map.find(cl.type_id);
-        if (ct_it == ct_map.end())
+    if (has_danger)
+    {
+        pack_with_danger(all_loads, remaining, container_usage, instance_counter, ct_map);
+    }
+    else
+    {
+        // ---- 阶段 B: 继续塞已有容器 ----
+        for (size_t i = 0; i < all_loads.size(); ++i)
         {
-            continue;
-        }
-
-        // 将已有 placement 传给 pack_single 继续塞；当前容器不计入已提交 tender
-        TenderState tender = build_tender_state(all_loads, i, problem_.tender_limit.value_or(0));
-        ContainerLoad extra = pack_single(remaining, *ct_it->second, cl.placements, tender);
-        if (extra.placements.size() <= cl.placements.size())
-        {
-            continue;
-        }
-
-        // 计算新增箱子 ID
-        std::set<std::string> packed;
-        {
-            std::set<std::string> existing_ids;
-            for (const auto& pl : cl.placements)
+            auto& cl = all_loads[i];
+            if (remaining.empty() || !TimeChecker::check())
             {
-                existing_ids.insert(pl.box_id);
+                break;
             }
-            for (const auto& pl : extra.placements)
+
+            auto ct_it = ct_map.find(cl.type_id);
+            if (ct_it == ct_map.end())
             {
-                if (!existing_ids.count(pl.box_id))
+                continue;
+            }
+
+            // 将已有 placement 传给 pack_single 继续塞；当前容器不计入已提交 tender
+            TenderState tender = build_tender_state(all_loads, i, problem_.tender_limit.value_or(0));
+            ContainerLoad extra = pack_single(remaining, *ct_it->second, cl.placements, tender);
+            if (extra.placements.size() <= cl.placements.size())
+            {
+                continue;
+            }
+
+            // 计算新增箱子 ID
+            std::set<std::string> packed;
+            {
+                std::set<std::string> existing_ids;
+                for (const auto& pl : cl.placements)
                 {
-                    packed.insert(pl.box_id);
+                    existing_ids.insert(pl.box_id);
+                }
+                for (const auto& pl : extra.placements)
+                {
+                    if (!existing_ids.count(pl.box_id))
+                    {
+                        packed.insert(pl.box_id);
+                    }
                 }
             }
+
+            if (packed.empty())
+            {
+                continue;
+            }
+
+            // extra 已含 existing + new 的累计值，直接覆盖
+            cl.placements = std::move(extra.placements);
+            cl.used_volume = extra.used_volume;
+            cl.total_weight = extra.total_weight;
+            cl.platforms = std::move(extra.platforms);
+            cl.groups = std::move(extra.groups);
+            std::erase_if(remaining, [&](const Box& b)
+                          { return packed.count(b.id) != 0; });
+
+            spdlog::info("Container \"{}\": added {}, now total {}, left {}",
+                         cl.instance_id, packed.size(),
+                         cl.placements.size(), remaining.size());
         }
 
+        // ---- 阶段 C: 开新容器 ----
+        while (!remaining.empty() && TimeChecker::check())
+        {
+            const ContainerType* ct = select_largest_fitting(
+                problem_.container_types, container_usage, remaining, box_type_map_);
+            if (!ct)
+            {
+                break;
+            }
+
+            // 新容器：全部已有容器为已提交 tender，自身不计入
+            TenderState tender = build_tender_state(all_loads, all_loads.size(),
+                                                    problem_.tender_limit.value_or(0));
+            ContainerLoad load = pack_single(remaining, *ct, {}, tender);
+            load.instance_id = ct->id + "_" + std::to_string(instance_counter++);
+
+            std::set<std::string> packed;
+            for (const auto& pl : load.placements)
+            {
+                packed.insert(pl.box_id);
+            }
+            if (packed.empty())
+            {
+                // 剩余箱子被约束（如 tender）拒绝，任何容器都放不下 → 保持未装
+                break;
+            }
+            std::erase_if(remaining, [&](const Box& b)
+                          { return packed.count(b.id) != 0; });
+
+            container_usage[ct->id]++;
+
+            spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.4f}",
+                         all_loads.size() + 1, ct->id, load.placements.size(),
+                         remaining.size(), load.volume_rate());
+
+            all_loads.push_back(std::move(load));
+        }
+    }
+
+    postprocess(all_loads, *this, problem_.container_types, box_type_map_, box_map_);
+
+    return build_solution(all_loads, remaining);
+}
+
+void PackerBase::pack_with_danger(
+    std::vector<ContainerLoad>& all_loads,
+    std::vector<Box>& remaining,
+    std::map<std::string, int>& container_usage,
+    int& instance_counter,
+    const std::map<std::string, const ContainerType*>& ct_map)
+{
+    // 危险品/普货拆分
+    std::vector<Box> danger_b;
+    std::vector<Box> reg_b;
+    for (const auto& bx : remaining)
+    {
+        (is_danger(bx) ? danger_b : reg_b).push_back(bx);
+    }
+
+    // 把 extra 的新箱并入 cl 并从 pool 剔除
+    auto merge_into = [](ContainerLoad& cl,
+                         ContainerLoad&& extra,
+                         std::vector<Box>& pool)
+    {
+        std::set<std::string> existing_ids;
+        for (const auto& pl : cl.placements)
+        {
+            existing_ids.insert(pl.box_id);
+        }
+        std::set<std::string> packed;
+        for (const auto& pl : extra.placements)
+        {
+            if (!existing_ids.count(pl.box_id))
+            {
+                packed.insert(pl.box_id);
+            }
+        }
         if (packed.empty())
         {
-            continue;
+            return;
         }
-
-        // extra 已含 existing + new 的累计值，直接覆盖
         cl.placements = std::move(extra.placements);
         cl.used_volume = extra.used_volume;
         cl.total_weight = extra.total_weight;
         cl.platforms = std::move(extra.platforms);
         cl.groups = std::move(extra.groups);
-        std::erase_if(remaining, [&](const Box& b)
+        std::erase_if(pool, [&](const Box& b)
                       { return packed.count(b.id) != 0; });
+    };
 
-        spdlog::info("Container \"{}\": added {}, now total {}, left {}",
-                     cl.instance_id, packed.size(),
-                     cl.placements.size(), remaining.size());
+    // ---- 阶段 B: 已有容器（含险与否）继续塞对应类型箱子 ----
+    for (size_t i = 0; i < all_loads.size(); ++i)
+    {
+        if (!TimeChecker::check())
+        {
+            break;
+        }
+        auto& cl = all_loads[i];
+        std::vector<Box>& pool = container_has_danger(cl) ? danger_b : reg_b;
+        if (pool.empty())
+        {
+            continue;
+        }
+        auto ct_it = ct_map.find(cl.type_id);
+        if (ct_it == ct_map.end())
+        {
+            continue;
+        }
+        TenderState tender = build_tender_state(all_loads, i, problem_.tender_limit.value_or(0));
+        ContainerLoad extra = pack_single(pool, *ct_it->second, cl.placements, tender);
+        if (extra.placements.size() <= cl.placements.size())
+        {
+            continue;
+        }
+        merge_into(cl, std::move(extra), pool);
+
+        spdlog::info("Container \"{}\": now total {}, left {}",
+                     cl.instance_id, cl.placements.size(), pool.size());
     }
 
-    // ---- 阶段 C: 开新容器 ----
-    while (!remaining.empty() && TimeChecker::check())
+    // ---- 阶段 D: 新开危险品专柜 ----
+    int last_danger_index = -1;
+    while (!danger_b.empty() && TimeChecker::check())
     {
         const ContainerType* ct = select_largest_fitting(
-            problem_.container_types, container_usage, remaining, box_type_map_);
+            problem_.container_types, container_usage, danger_b, box_type_map_);
         if (!ct)
         {
             break;
         }
-
-        // 新容器：全部已有容器为已提交 tender，自身不计入
         TenderState tender = build_tender_state(all_loads, all_loads.size(),
                                                 problem_.tender_limit.value_or(0));
-        ContainerLoad load = pack_single(remaining, *ct, {}, tender);
+        ContainerLoad load = pack_single(danger_b, *ct, {}, tender);
         load.instance_id = ct->id + "_" + std::to_string(instance_counter++);
-
         std::set<std::string> packed;
         for (const auto& pl : load.placements)
         {
@@ -287,24 +454,77 @@ Solution PackerBase::pack()
         }
         if (packed.empty())
         {
-            // 剩余箱子被约束（如 tender）拒绝，任何容器都放不下 → 保持未装
             break;
         }
-        std::erase_if(remaining, [&](const Box& b)
+        std::erase_if(danger_b, [&](const Box& b)
                       { return packed.count(b.id) != 0; });
-
         container_usage[ct->id]++;
-
-        spdlog::info("Container#{} \"{}\": packed {}, left {}, volume rate: {:.4f}",
+        spdlog::info("Danger Container#{} \"{}\": packed {}, left {}, volume rate: {:.4f}",
                      all_loads.size() + 1, ct->id, load.placements.size(),
-                     remaining.size(), load.volume_rate());
+                     danger_b.size(), load.volume_rate());
+        all_loads.push_back(std::move(load));
+        last_danger_index = static_cast<int>(all_loads.size()) - 1;
+        if (danger_b.empty())
+        {
+            break;
+        }
+    }
 
+    // ---- 阶段 E: 仅最后一车回填普货（唯一混装点）----
+    if (last_danger_index >= 0 && danger_b.empty() && !reg_b.empty())
+    {
+        auto& mix = all_loads[static_cast<size_t>(last_danger_index)];
+        const ContainerType* ct = mix.type;
+        if (ct != nullptr)
+        {
+            TenderState tender = build_tender_state(
+                all_loads, last_danger_index, problem_.tender_limit.value_or(0));
+            ContainerLoad extra = pack_single(reg_b, *ct, mix.placements, tender);
+            if (extra.placements.size() > mix.placements.size())
+            {
+                const size_t added = extra.placements.size() - mix.placements.size();
+                merge_into(mix, std::move(extra), reg_b);
+                spdlog::info("Backfilled last danger container \"{}\" with {} regular",
+                             mix.instance_id, added);
+            }
+        }
+    }
+
+    // ---- 阶段 F: 新开普货车 ----
+    while (!reg_b.empty() && TimeChecker::check())
+    {
+        const ContainerType* ct = select_largest_fitting(
+            problem_.container_types, container_usage, reg_b, box_type_map_);
+        if (!ct)
+        {
+            break;
+        }
+        TenderState tender = build_tender_state(all_loads, all_loads.size(),
+                                                problem_.tender_limit.value_or(0));
+        ContainerLoad load = pack_single(reg_b, *ct, {}, tender);
+        load.instance_id = ct->id + "_" + std::to_string(instance_counter++);
+        std::set<std::string> packed;
+        for (const auto& pl : load.placements)
+        {
+            packed.insert(pl.box_id);
+        }
+        if (packed.empty())
+        {
+            break;
+        }
+        std::erase_if(reg_b, [&](const Box& b)
+                      { return packed.count(b.id) != 0; });
+        container_usage[ct->id]++;
+        spdlog::info("Regular Container#{} \"{}\": packed {}, left {}, volume rate: {:.4f}",
+                     all_loads.size() + 1, ct->id, load.placements.size(),
+                     reg_b.size(), load.volume_rate());
         all_loads.push_back(std::move(load));
     }
 
-    postprocess(all_loads, *this, problem_.container_types, box_type_map_, box_map_);
-
-    return build_solution(all_loads, remaining);
+    // 剩余未装合并回 remaining（供 build_solution 统计未装箱）
+    remaining.clear();
+    remaining.insert(remaining.end(), danger_b.begin(), danger_b.end());
+    remaining.insert(remaining.end(), reg_b.begin(), reg_b.end());
 }
 
 Solution PackerBase::build_solution(
@@ -364,6 +584,7 @@ Solution PackerBase::build_solution(
         }
         cs.platforms = ordered_container_platforms(cl);
         cs.groups = std::vector<std::string>(cl.groups.begin(), cl.groups.end());
+        cs.danger = container_has_danger(cl);
         sol.container_summaries.push_back(std::move(cs));
         sol.container_placements.push_back(cl.placements);
     }

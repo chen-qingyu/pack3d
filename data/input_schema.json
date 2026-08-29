@@ -92,6 +92,7 @@
           "loose": { "type": "boolean", "default": false },
           "group": { "type": ["string", "null"], "minLength": 1 },
           "platform": { "type": ["string", "null"], "minLength": 1 },
+          "danger": { "type": ["boolean", "null"] },
           "quantity": { "type": "integer", "minimum": 1 }
         }
       }
@@ -108,7 +109,8 @@
           "box_type_id": { "type": "string" },
           "weight": { "type": ["number", "null"], "exclusiveMinimum": 0 },
           "group": { "type": ["string", "null"], "minLength": 1 },
-          "platform": { "type": ["string", "null"], "minLength": 1 }
+          "platform": { "type": ["string", "null"], "minLength": 1 },
+          "danger": { "type": ["boolean", "null"] }
         }
       }
     },
@@ -225,7 +227,8 @@
                 "dz": { "type": "integer", "minimum": 1 },
                 "weight": { "type": ["number", "null"], "exclusiveMinimum": 0 },
                 "group": { "type": ["string", "null"], "minLength": 1 },
-                "platform": { "type": ["string", "null"], "minLength": 1 }
+                "platform": { "type": ["string", "null"], "minLength": 1 },
+                "danger": { "type": ["boolean", "null"] }
               }
             }
           }

@@ -17,6 +17,58 @@ namespace pack3d
 namespace
 {
 
+// 容器内是否存在危险品 / 非危险品放置
+bool has_danger_placement(const ContainerLoad& load) noexcept
+{
+    for (const auto& pl : load.placements)
+    {
+        if (pl.danger)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool has_regular_placement(const ContainerLoad& load) noexcept
+{
+    for (const auto& pl : load.placements)
+    {
+        if (!pl.danger)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+// 危险品分柜硬校验：混装（危险+普货）仅允许出现在最后一车（含危险品的最大容器索引）。
+// 任一其它容器混装即非法；无危险品恒合法。
+bool danger_segregation_ok(const std::vector<ContainerLoad>& loads) noexcept
+{
+    int last = -1;
+    for (size_t i = 0; i < loads.size(); ++i)
+    {
+        if (has_danger_placement(loads[i]))
+        {
+            last = static_cast<int>(i);
+        }
+    }
+    if (last < 0)
+    {
+        return true;
+    }
+    for (size_t i = 0; i < loads.size(); ++i)
+    {
+        if (has_danger_placement(loads[i]) && has_regular_placement(loads[i]) &&
+            static_cast<int>(i) != last)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 // 剔除指定平台的箱子并重建容器的聚合字段（供捐献方容器使用）
 ContainerLoad without_platform(const ContainerLoad& src,
                                const std::string& platform,
@@ -226,6 +278,12 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                     continue;
                 }
 
+                // 危险品分柜硬校验：合并不得破坏"仅最后一车混装"的不变量
+                if (!danger_segregation_ok(candidate))
+                {
+                    continue;
+                }
+
                 // 移除底层箱子后，剩余箱子的支撑/堆码/承重可能被破坏，整体复检
                 bool support_ok = true;
                 for (auto& cl : candidate)
@@ -370,6 +428,11 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
             {
                 candidate.push_back(all_loads[j]);
             }
+        }
+
+        if (!danger_segregation_ok(candidate))
+        {
+            continue;
         }
 
         auto cand_obj = compute_objective(candidate);

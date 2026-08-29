@@ -25,6 +25,7 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 - 斜面约束：容器斜面楔形禁入区，箱体不得侵入
 - 装托（palletizing）：`loose` 散件先装托，托盘作为装箱单元装车（见 [docs/architecture.md](docs/architecture.md) §3）
 - 中间状态续装：从已有部分放置继续装箱（见 [docs/architecture.md](docs/architecture.md) §4）
+- 危险品分柜：`danger` 箱型/箱子级标志，危险品优先装柜、单独装柜、仅最后一车混装普货（见 [docs/constraints.md](docs/constraints.md) §1.14）
 
 支持的算法：
 

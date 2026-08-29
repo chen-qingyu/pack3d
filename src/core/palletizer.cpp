@@ -131,7 +131,8 @@ std::vector<PalletLoad> palletize(
         std::map<std::string, std::vector<Box>> groups;
         for (const auto& bx : remaining)
         {
-            std::string key = bx.platform + "\x1f" + encode_groups(bx.groups);
+            std::string key = bx.platform + "\x1f" + encode_groups(bx.groups) +
+                              "\x1f" + (bx.danger.value_or(false) ? "1" : "0");
             groups[key].push_back(bx);
         }
         for (auto& [key, boxes] : groups)
@@ -178,9 +179,11 @@ std::vector<PalletLoad> palletize(
         std::map<std::string, std::vector<Box>> by_label;
         for (const auto& bx : remaining)
         {
-            const std::string key = problem.pallet_mix_group.value()
-                                        ? bx.platform
-                                        : bx.platform + "\x1f" + encode_groups(bx.groups);
+            const std::string key =
+                std::string(problem.pallet_mix_group.value()
+                                ? bx.platform
+                                : bx.platform + "\x1f" + encode_groups(bx.groups)) +
+                "\x1f" + (bx.danger.value_or(false) ? "1" : "0");
             by_label[key].push_back(bx);
         }
         for (const auto& pt : problem.pallet_types)

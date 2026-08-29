@@ -353,6 +353,7 @@ void commit_placement(
     pl.platform = box.platform;
     pl.groups = box.groups;
     pl.weight = box.weight;
+    pl.danger = box.danger.value_or(false);
 
     size_t idx = load.placements.size();
     load.placements.push_back(std::move(pl));

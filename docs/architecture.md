@@ -50,6 +50,7 @@ flowchart TD
 - **选车**：`select_largest_fitting` 从可用容器类型中选能装下剩余箱子的最大车型（大优先）；`quantity_limit` 限制每种类型可用数量。四算法统一采用此策略，有意不实现来源论文的多 ULD 选车启发式（如 RGS 论文 arXiv:2410.01445 §6 的"必选 ULD"规则）。
 - **单容器填充**：`pack_single(items, ct, existing, tender)` —— existing 为已有放置（续装时非空），tender 为已提交容器的运输委托分解。
 - **逐平台分桶（route 存在时）**：`pack_single` 是封装层——route 存在时把待装箱子按**装货顺序（route 深度降序，最深平台先放）**分成平台桶，逐桶调用 `pack_single_impl`，每桶只放一个平台的箱子（严格分阶段），桶间仍走共享路线约束。`self_orders_platforms()` 为 true 的算法（RGS，其 `build_ordered_list` 已按深度优先排序）豁免分桶，避免拆散其时间预算驱动的迭代搜索。
+- **危险品分柜（`has_danger` 时）**：任一箱子或已有容器含危险品时，`pack()` 在阶段 A 后改走 `pack_with_danger()`——已有容器按含险与否分别只喂危险品/普货；新开危险品专柜；对最后一车回填普货（唯一混装点）；最后新开普货车。阶段 B/C 的普通路径仅在无危险品时执行（保证既有测试与 RGS `s_call_id` 确定性不漂移）。分柜规则见 [constraints.md](constraints.md) §1.14。
 - **主循环保护**：阶段 C 若 `packed.empty()` 立即 break（tender 拒绝是几何无关的，继续开空容器只会死循环到超时）。
 - **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。`time_limit` 为软限制：超时即返回当前最优并标记 `status=timeout`（即使已全部装完）；未超时且全部装完 -> `complete`，否则 -> `partial`。
 

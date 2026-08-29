@@ -74,6 +74,7 @@ JSON，顶层四个字段：
       "platforms": ["P1"],
       "groups": ["A"],
       "tender": 1,
+      "danger": false,
       "obstacles": [],
       "facets": [],
       "placements": [
@@ -90,7 +91,8 @@ JSON，顶层四个字段：
           "weight": 10.0,
           "platform": "P1",
           "group": "A",
-          "is_pallet": true
+          "is_pallet": true,
+          "danger": false
         },
         {
           "box_id": "a1",
@@ -105,7 +107,8 @@ JSON，顶层四个字段：
           "weight": 10.0,
           "platform": "P1",
           "group": "A",
-          "is_pallet": false
+          "is_pallet": false,
+          "danger": false
         }
       ]
     }
@@ -124,6 +127,7 @@ JSON，顶层四个字段：
       "volume_rate": 0.001,
       "groups": ["A"],
       "platforms": ["P1"],
+      "danger": false,
       "placements": [
         {
           "box_id": "l1",
@@ -137,7 +141,8 @@ JSON，顶层四个字段：
           "orientation": "xyz",
           "weight": 10.0,
           "platform": "P1",
-          "group": "A"
+          "group": "A",
+          "danger": false
         }
       ]
     }
@@ -147,6 +152,8 @@ JSON，顶层四个字段：
 ```
 
 容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；有效箱子未设置站点/分组时 `platform`/`group` 为 null）。混组托盘的虚拟箱 `group` 亦为 null，其分组见对应 `pallets[].groups`（按 `box_id == pallet_id` 关联）。
+
+每个容器带 `danger` 布尔标志：`true` 表示该容器装入至少一件危险品。危险品分柜规则下（输入启用 `danger`），危险品优先装入独立容器，仅最后一车（含危险品的容器中索引最大者）允许混装普货，其余普货装入后续容器。
 
 `volume_rate_x` 为容器 X 方向口径的体积利用率，与 `volume_rate` 对齐、仅把"整个容器"换成"实际使用的 X 方向 slab"：分母 = slab [0, used_x]×[0,sy]×[0,sz] 的可用容积 = `used_x·sy·sz` − 障碍物（slab 内部分）− 斜面楔形（slab 内部分），分子 = 装箱体积（同 `volume_rate`）。其中 `used_x` = 所有箱子 `x+dx` 的最大值（含续装已有放置）；`used_x` 达容器全长时本值与 `volume_rate` 相等。容器未装任何箱时为 0。`summary.volume_rate_x` 为各容器该值的平均。
 
@@ -170,6 +177,7 @@ JSON，顶层四个字段：
 | `volume_rate`  | 体积利用率 = 货物体积 / (sx·sy·max_height)  |
 | `groups`       | 托盘内去重 group 列表                       |
 | `platforms`    | 托盘内去重 platform 列表                    |
+| `danger`       | 托盘是否装危险品（`true`/`false`）          |
 | `placements`   | 托盘内散件放置列表（同容器 placement 结构） |
 
 装托输入与行为详见 [architecture.md](architecture.md) §3。
@@ -188,7 +196,8 @@ placement 字段说明：
 | `weight`       | 箱子重量，未设置时为 null                                                                |
 | `platform`     | 有效站点 ID（配送停靠点），未设置时为 null                                               |
 | `group`        | 有效分组 ID，未设置时为 null；混组托盘的虚拟箱此处为 null，完整分组见 `pallets[].groups` |
-| `is_pallet`    | 是否为装托托盘单元：容器内虚拟箱（`box_id == pallet_id`）为 `true`，其余为 `false`        |
+| `is_pallet`    | 是否为装托托盘单元：容器内虚拟箱（`box_id == pallet_id`）为 `true`，其余为 `false`       |
+| `danger`       | 是否为危险品箱（`true`/`false`，恒存在）                                                 |
 
 ## `violations` 说明（非 `complete` 时可能出现）
 

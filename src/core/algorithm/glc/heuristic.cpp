@@ -708,6 +708,7 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
                 if (bx_it != box_map_.end())
                 {
                     pl.weight = bx_it->second.weight;
+                    pl.danger = bx_it->second.danger.value_or(false);
                 }
             }
         }

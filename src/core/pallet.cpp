@@ -61,6 +61,7 @@ Box virtual_box(const PalletLoad& p) noexcept
     bx.weight = p.type->self_weight + p.goods_weight;
     bx.platform = (p.platforms.size() == 1) ? *p.platforms.begin() : std::string();
     bx.groups = p.groups;
+    bx.danger = p.danger;
     return bx;
 }
 
@@ -87,6 +88,7 @@ PalletLoad make_pallet_load(const ContainerLoad& load, const PalletType& pt,
         {
             p.platforms.insert(pl.platform);
         }
+        p.danger |= pl.danger;
     }
     return p;
 }
@@ -113,6 +115,7 @@ void to_json(json& j, const PalletLoad& p)
     j["volume_rate"] = usable > 0 ? static_cast<double>(vol) / static_cast<double>(usable) : 0.0;
     j["groups"] = std::vector<std::string>(p.groups.begin(), p.groups.end());
     j["platforms"] = std::vector<std::string>(p.platforms.begin(), p.platforms.end());
+    j["danger"] = p.danger;
     json placements = json::array();
     for (const auto& pl : p.placements)
     {

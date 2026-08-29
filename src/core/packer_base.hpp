@@ -84,6 +84,14 @@ private:
     Solution build_solution(
         const std::vector<ContainerLoad>& all_loads,
         const std::vector<Box>& remaining);
+
+    /// 危险品分柜编排：危险品优先、单独装柜、仅最后一车混装普货、再装普货。
+    void pack_with_danger(
+        std::vector<ContainerLoad>& all_loads,
+        std::vector<Box>& remaining,
+        std::map<std::string, int>& container_usage,
+        int& instance_counter,
+        const std::map<std::string, const ContainerType*>& ct_map);
 };
 
 /// 用已有放置预填充 load 的 placements 与聚合字段（used_volume/platforms/groups/total_weight）

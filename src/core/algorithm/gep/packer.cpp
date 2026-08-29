@@ -172,6 +172,7 @@ ContainerLoad GepPacker::pack_single_impl(
                 pl.platform = box.platform;
                 pl.groups = box.groups;
                 pl.weight = box.weight;
+                pl.danger = box.danger.value_or(false);
 
                 load.placements.push_back(pl);
                 if (problem_.has_max_stack || problem_.has_max_load)

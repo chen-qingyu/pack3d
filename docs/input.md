@@ -79,18 +79,19 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段                   | 类型                     | 必填 | 说明                                              |
-| ---------------------- | ------------------------ | ---- | ------------------------------------------------- |
-| `id`                   | string                   | 是   | 唯一标识                                          |
-| `sx`/`sy`/`sz`         | int>=1                   | 是   | 原始尺寸（箱体自身坐标）                          |
-| `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下                              |
-| `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限                           |
-| `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限                       |
-| `weight`               | number>0                 |      | 箱型级重量（与箱子重量互斥，见下预校验）          |
-| `loose`                | boolean                  |      | true=散件（先装托后装车），默认 false             |
-| `group`                | string 或 null           |      | 箱型级分组 ID（与箱子级 group 三选一）            |
-| `platform`             | string 或 null           |      | 箱型级站点 ID（与箱子级 platform 三选一）         |
-| `quantity`             | int>=1                   |      | 数量展开模式（见下）；有值则顶层 `boxes` 必须省略 |
+| 字段                   | 类型                     | 必填 | 说明                                                        |
+| ---------------------- | ------------------------ | ---- | ----------------------------------------------------------- |
+| `id`                   | string                   | 是   | 唯一标识                                                    |
+| `sx`/`sy`/`sz`         | int>=1                   | 是   | 原始尺寸（箱体自身坐标）                                    |
+| `allowed_orientations` | string[]                 | 是   | 允许朝向，枚举值见下                                        |
+| `max_stack`            | int>=1 或 int[]>=1       |      | 堆码层数上限，null=不限                                     |
+| `max_load`             | number>=0 或 number[]>=0 |      | 单箱上方承重上限，null=不限                                 |
+| `weight`               | number>0                 |      | 箱型级重量（与箱子重量互斥，见下预校验）                    |
+| `loose`                | boolean                  |      | true=散件（先装托后装车），默认 false                       |
+| `group`                | string 或 null           |      | 箱型级分组 ID（与箱子级 group 三选一）                      |
+| `platform`             | string 或 null           |      | 箱型级站点 ID（与箱子级 platform 三选一）                   |
+| `danger`               | boolean 或 null          |      | 箱型级危险品标志（与箱子级 danger 三选一，true=危险品分柜） |
+| `quantity`             | int>=1                   |      | 数量展开模式（见下）；有值则顶层 `boxes` 必须省略           |
 
 ### 数量展开 `quantity`（可选）
 
@@ -99,7 +100,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 - **两模式互斥**：数量展开模式（任一/所有 `box_types` 带 `quantity`）时，顶层 `boxes` 字段**必须省略**；反之提供 `boxes` 时，任何 `box_types` **不得**带 `quantity`。
 - **全覆盖**：数量展开模式下，每个 `box_types` 都必须配置 `quantity`（`>= 1`）。
 - **自动 id**：每个箱子实例自动分配唯一 id `{box_type_id}#{n}`（`n` 从 1 递增）。
-- **字段继承**：数量展开模式下箱子没有独立的 `boxes` 条目，因此 `weight`/`group`/`platform`/`loose` 只能配置在 `box_type` 级，并自动继承到每个生成的箱子实例。
+- **字段继承**：数量展开模式下箱子没有独立的 `boxes` 条目，因此 `weight`/`group`/`platform`/`danger`/`loose` 只能配置在 `box_type` 级，并自动继承到每个生成的箱子实例。
 
 ```json
 {
@@ -126,13 +127,15 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 
 上述声明等价于生成 10 个 `box_s`（id `box_s#1`..`box_s#10`）与 4 个 `box_l`（id `box_l#1`..`box_l#4`）。可与 `existing_containers` 同时使用（已放置箱子快照独立）。
 
-`group` 和 `platform` 分别采用严格三选一模式，每个字段独立选择来源：
+`group`、`platform` 与 `danger` 分别采用严格三选一模式，每个字段独立选择来源：
 
 - **全无**：所有箱型和待装箱子都不配置该字段；已有放置也必须无值。
 - **箱型级**：所有 `box_types` 都配置该字段，待装 `boxes` 不配置；实例值按 `box_type_id` 继承。因此同一箱型不能跨不同分组或站点。已有放置可以省略该字段，也可以重复填写相同值，但不能冲突；允许重复同值是为了支持将输出中的 placement 原样 copy back 到 `existing_containers`。
 - **箱子级**：所有 `box_types` 都不配置该字段，每个待装 `boxes` 都必须配置；不同实例可以有不同值。已有放置也必须有值，但不参与来源判定。
 
-箱型与待装箱子混用、部分配置均非法；箱型级值与已有放置显式值冲突也非法。`null` 等同未配置；实际配置值必须是非空字符串。两个字段可以选择不同来源，例如 `group` 使用箱型级而 `platform` 使用箱子级。
+箱型与待装箱子混用、部分配置均非法；箱型级值与已有放置显式值冲突也非法。`null` 等同未配置；`group`/`platform` 实际配置值必须是非空字符串，`danger` 为布尔。两个字段可以选择不同来源，例如 `group` 使用箱型级而 `platform` 使用箱子级。
+
+`danger: true` 的箱子触发**危险品分柜**（规则见 [constraints.md](constraints.md) §1.14）：危险品优先装柜、单独装柜，仅当危险品装到最后一车且还有剩余空间时才混装普货，其余普货随后装柜。
 
 `max_stack` / `max_load` 为**承重约束**（机制与启用前提见 `docs/constraints.md` 1.8 / 1.9）：
 
@@ -169,13 +172,14 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 }
 ```
 
-| 字段          | 类型   | 必填 | 说明                                                             |
-| ------------- | ------ | ---- | ---------------------------------------------------------------- |
-| `id`          | string | 是   | 唯一标识                                                         |
-| `box_type_id` | string | 是   | 引用 box_types 中的 id                                           |
-| `weight`      | number |      | 单箱重量，null=无重量                                            |
-| `group`       | string |      | 箱子级分组 ID；仅在该字段选择箱子级模式时填写，用于 tender_limit |
-| `platform`    | string |      | 箱子级站点 ID；仅在该字段选择箱子级模式时填写，用于路线约束      |
+| 字段          | 类型    | 必填 | 说明                                                                |
+| ------------- | ------- | ---- | ------------------------------------------------------------------- |
+| `id`          | string  | 是   | 唯一标识                                                            |
+| `box_type_id` | string  | 是   | 引用 box_types 中的 id                                              |
+| `weight`      | number  |      | 单箱重量，null=无重量                                               |
+| `group`       | string  |      | 箱子级分组 ID；仅在该字段选择箱子级模式时填写，用于 tender_limit    |
+| `platform`    | string  |      | 箱子级站点 ID；仅在该字段选择箱子级模式时填写，用于路线约束         |
+| `danger`      | boolean |      | 箱子级危险品标志；仅在该字段选择箱子级模式时填写（true=危险品分柜） |
 
 ## 算法 `algorithm`（可选）
 

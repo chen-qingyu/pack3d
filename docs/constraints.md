@@ -158,3 +158,22 @@ $$\text{weight}(B) \le \text{weight}(S)$$
 - `platforms` 非空 → 仅当分组平台命中列表时才可用；平台标识为一般字符串，空串 `""` 也视为普通平台（与 `"default"`、`"A74"` 等价），不做特殊处理。实际装载时一托 = 单平台（同平台/同 group 分组规则），故候选托盘只在分组平台命中时参与。
 - 若存在 `route`，`platforms` 引用的每个平台必须在 `route` 中（预校验，违反 -> `invalid`）。
 - 某平台散件无任何可用托盘时，沿用既有兜底：`pallet_fallback` 控制降级散装（默认 true）或未装箱报 partial（false）。
+
+### 1.14 危险品分柜约束（danger，箱型/箱子字段）
+
+任一箱子声明 `danger: true` 即启用**危险品分柜**。`danger` 与 weight/group/platform 同用严格三选一（见 [input.md](input.md)），全无则该规则静默失效。
+
+**规则**（在容器级编排层强制，非几何约束）：
+
+1. **危险品优先装柜**：危险品箱先于普货装入，容器顺序上危险品容器在前。
+2. **单独装柜**：危险品装入专用容器；危险品箱从不与普货混入同一容器，除下述唯一混装点。
+3. **唯一混装点**：仅当危险品装到"最后一车"（含危险品的容器中索引最大者）且该车还有剩余空间时，才允许混装普货。
+4. **再装普货**：其余普货装入各自独立容器。
+
+**实现**：`PackerBase::pack()` 在 `has_danger` 时走 `pack_with_danger` 编排——已有容器按含险与否分别继续装危险品/普货；新开危险品专柜；最后一车回填普货；最后新开普货车。四种算法内核（`pack_single_impl`）不变，仅给 `Placement` 传播 `danger`。
+
+**后处理**：`reduce_platform_splits` / `repack_last_smaller` 接受候选前须通过 `danger_segregation_ok` 硬校验——混装（危险+普货）容器只能是最末含险容器；不满足则拒绝该候选。
+
+**装托**：危险品散件按 `platform(+group)+danger` 分组，不与普货同托；托盘虚拟箱带 `danger`，装车阶段沿用分柜。
+
+**预校验**：`danger` 三选一来源（全无/箱型级/箱子级）、与已有快照一致性；非布尔或混用非法 -> `invalid`。输出每容器带 `danger`、每 placement 带 `danger`（见 [output.md](output.md)）。

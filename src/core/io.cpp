@@ -326,6 +326,7 @@ void from_json(const json& j, BoxType& bt)
     bt.loose = j.value("loose", false);
     bt.group = json_opt<std::string>(j, "group");
     bt.platform = json_opt<std::string>(j, "platform");
+    bt.danger = json_opt<bool>(j, "danger");
     bt.quantity = json_opt<int>(j, "quantity");
 }
 
@@ -335,6 +336,7 @@ void from_json(const json& j, Box& bx)
     j["box_type_id"].get_to(bx.box_type_id);
     bx.weight = json_opt<double>(j, "weight");
     bx.platform = json_opt<std::string>(j, "platform").value_or(std::string());
+    bx.danger = json_opt<bool>(j, "danger");
     if (auto g = json_opt<std::string>(j, "group"); g.has_value() && !g->empty())
     {
         bx.groups.insert(*g);
@@ -351,6 +353,7 @@ void from_json(const json& j, ExistingPlacement& ep)
     ep.orientation = orientation_from_string(j["orientation"].get<std::string>());
     ep.weight = json_opt<double>(j, "weight");
     ep.platform = json_opt<std::string>(j, "platform").value_or(std::string());
+    ep.danger = json_opt<bool>(j, "danger");
     if (auto g = json_opt<std::string>(j, "group"); g.has_value() && !g->empty())
     {
         ep.groups.insert(*g);
@@ -697,6 +700,21 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
     }
 
+    // 危险品标志：与 weight/group/platform 共用的严格三选一检测
+    const auto danger_source = detect_three_way_source(
+        "danger", problem.box_types, problem.boxes,
+        [](const BoxType& bt)
+        { return bt.danger; },
+        [](const Box& bx)
+        { return bx.danger; }, out);
+    check_snapshot_consistency<bool>(
+        "danger", danger_source, bt_map, problem.existing_containers,
+        [](const BoxType& bt)
+        { return bt.danger; },
+        [](const ExistingPlacement& ep)
+        { return ep.danger; },
+        std::equal_to<bool>{}, out);
+
     // group 前提按归一化后的有效值判断（输出 tender 要么全数字要么全 null）
     bool any_group = false;
     for (const auto& bx : problem.boxes)
@@ -1042,6 +1060,12 @@ void resolve_type_fields(Problem& p) noexcept
         { return bt.weight; },
         [](const Box& bx)
         { return bx.weight; }, ignored_errors);
+    const auto danger_source = detect_three_way_source(
+        "danger", p.box_types, p.boxes,
+        [](const BoxType& bt)
+        { return bt.danger; },
+        [](const Box& bx)
+        { return bx.danger; }, ignored_errors);
     const auto label_sources = detect_label_sources(p, ignored_errors);
     std::map<std::string, const BoxType*> type_map;
     for (const auto& bt : p.box_types)
@@ -1060,6 +1084,10 @@ void resolve_type_fields(Problem& p) noexcept
                                     { return bt.platform; }, [](const Box& bx)
                                     { return optional_string(bx.platform); }, [](Box& bx, const std::string& value)
                                     { bx.platform = value; });
+    inherit_type_field<bool>(danger_source, type_map, p.boxes, [](const BoxType& bt)
+                             { return bt.danger; }, [](const Box& bx)
+                             { return bx.danger; }, [](Box& bx, bool value)
+                             { bx.danger = value; });
     for (auto& ec : p.existing_containers)
     {
         inherit_type_field<double>(weight_source, type_map, ec.placements, [](const BoxType& bt)
@@ -1074,6 +1102,10 @@ void resolve_type_fields(Problem& p) noexcept
                                         { return bt.platform; }, [](const ExistingPlacement& ep)
                                         { return optional_string(ep.platform); }, [](ExistingPlacement& ep, const std::string& value)
                                         { ep.platform = value; });
+        inherit_type_field<bool>(danger_source, type_map, ec.placements, [](const BoxType& bt)
+                                 { return bt.danger; }, [](const ExistingPlacement& ep)
+                                 { return ep.danger; }, [](ExistingPlacement& ep, bool value)
+                                 { ep.danger = value; });
     }
 }
 
@@ -1120,6 +1152,8 @@ ContainerLoad build_load_from_existing(
         {
             pl.weight = bt_it->second.weight;
         }
+        // 危险品缺省：已有放置未显式标识时取箱型危险品标志
+        pl.danger = ep.danger.value_or(bt_it->second.danger.value_or(false));
 
         // size 字段如果提供，必须与 type+朝向推导一致
         if (ep.size.has_value())
@@ -1174,6 +1208,7 @@ void to_json(json& j, const Placement& pl)
     j["group"] = group.empty() ? json(nullptr) : json(group);
     j["weight"] = opt_json(pl.weight);
     j["is_pallet"] = pl.is_pallet;
+    j["danger"] = pl.danger;
 }
 
 void to_json(json& j, const Solution& sol)
@@ -1250,6 +1285,7 @@ void to_json(json& j, const Solution& sol)
         cj["platforms"] = cs.platforms;
         cj["groups"] = cs.groups;
         cj["tender"] = opt_json(cs.tender);
+        cj["danger"] = cs.danger;
 
         json placements_json = json::array();
         if (i < sol.container_placements.size())

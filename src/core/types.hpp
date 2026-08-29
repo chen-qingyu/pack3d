@@ -165,6 +165,7 @@ struct BoxType
     std::optional<std::string> group;    // 箱型级组 ID（与 boxes.group 三选一）
     std::optional<std::string> platform; // 箱型级站点 ID（与 boxes.platform 三选一）
     std::optional<int> quantity;         // 数量展开模式：有值则顶层 boxes 省略，按此数量生成箱子实例
+    std::optional<bool> danger;          // 箱型级危险品标志（与 boxes.danger 三选一，true=危险品）
 
     /// 按朝向查堆码层数上限（无此朝向或未配置则返回 nullopt）
     [[nodiscard]] std::optional<int> max_stack_for(Orientation o) const noexcept
@@ -200,6 +201,7 @@ struct Box
     std::optional<double> weight = std::nullopt;
     std::string platform;         // 空字符串表示未设置
     std::set<std::string> groups; // 所属分组集合（空=未设置；混组托盘=完整分组集合）
+    std::optional<bool> danger;   // 危险品标志（与 box_types.danger 三选一，true=危险品）
 };
 
 // 托盘类型（用户自定义，可多种并存，由装托循环选择）
@@ -247,6 +249,7 @@ struct ExistingPlacement
     Orientation orientation = Orientation::XYZ;
     std::optional<double> weight = std::nullopt;
     std::string platform;
+    std::optional<bool> danger = std::nullopt; // 危险品标志
     std::optional<OrientedSize> size = std::nullopt;
     std::set<std::string> groups; // 所属分组集合
 };
@@ -303,6 +306,7 @@ struct Placement
     std::string platform; // 空字符串表示未设置，输出时转为 null
     std::optional<double> weight = std::nullopt;
     bool is_pallet = false; // 是否为装托托盘单元（容器内虚拟箱，box_id == pallet_id）
+    bool danger = false;    // 是否为危险品箱
 
     std::set<std::string> groups; // 所属分组集合（空=未设置；混组托盘=完整分组集合）
 
@@ -464,6 +468,7 @@ struct PalletLoad
     double goods_weight = 0.0;         // 货物总重（不含自重）
     std::set<std::string> groups;
     std::set<std::string> platforms;
+    bool danger = false; // 托盘上是否为危险品
 };
 
 // 目标向量（字典序，非加权和）
@@ -500,6 +505,7 @@ struct ContainerSummary
     std::vector<std::string> platforms;
     std::vector<std::string> groups;
     std::optional<int> tender = std::nullopt; // 所属 tender 序号（1-based），无 group 为 null
+    bool danger = false;                      // 本容器是否装入危险品
 };
 
 struct Solution
