@@ -29,6 +29,13 @@ import plotly.express.colors
 
 COLOR_MAP = {}  # 全局颜色映射表，确保同一类别在不同图中颜色一致
 
+# 障碍物 / 斜面：灰色半透明面与边框
+OBSTACLE_FILL = "#9ba0a5"
+OBSTACLE_EDGE = "#5f6a70"
+FACET_FILL = "#9ba0a5"
+FACET_EDGE = "#5f6a70"
+DANGER_EDGE = "#c62828"  # 危险品箱红色边框
+
 
 def draw_file(file_path: str):
     """绘制3D装箱图"""
@@ -60,7 +67,12 @@ def draw_file(file_path: str):
         title += f"<sub>Volume Rate: {c['volume_rate']:.2%}"
         if c["weight_rate"] is not None:
             title += f", Weight Rate: {c['weight_rate']:.2%}"
+        title += f"<br>Vol Rate X: {c.get('volume_rate_x', 0):.2%}"
         title += f"<br>Packed: {c['packed_count']}"
+        if c.get("tender") is not None:
+            title += f", Tender: {c['tender']}"
+        if c.get("danger"):
+            title += ", Danger: 是"
         platforms = c["platforms"]
         if platforms:
             title += f"<br>Route: {', '.join(platforms)}"
@@ -88,7 +100,8 @@ def draw_file(file_path: str):
         container_trace_ranges.append((trace_start, trace_end))
 
     # 添加容器选择、视图切换、颜色模式切换（按上下顺序排列）
-    add_container_selector(fig, containers, container_trace_ranges)
+    mesh_indices = [info["idx"] for info in mesh_trace_info]
+    add_container_selector(fig, containers, container_trace_ranges, mesh_indices)
     add_view_selector(fig, rows, cols)
     add_color_selector(fig, mesh_trace_info)
 
@@ -125,6 +138,12 @@ def draw(container: dict, fig: go.Figure, row: int, col: int, max_dim: int,
     # 绘制容器
     draw_container(fig, container, row, col)
 
+    # 绘制障碍物与斜面（灰色半透明，不参与上色/图例/悬浮）
+    for obstacle in container.get("obstacles", []):
+        draw_obstacle(fig, obstacle, row, col)
+    for facet in container.get("facets", []):
+        draw_facet(fig, facet, container, row, col)
+
     # 绘制箱子
     for placement in container["placements"]:
         draw_box(fig, placement, row, col, shown_legends, mesh_trace_info, seen_values, pallet_boxes)
@@ -156,6 +175,119 @@ def draw_container(fig: go.Figure, container: dict, row: int, col: int):
     draw_edges(fig, vertices, line, row, col)
 
 
+_BOX_FACES = [
+    [0, 1, 2], [0, 2, 3],  # 底面
+    [4, 5, 6], [4, 6, 7],  # 顶面
+    [0, 1, 5], [0, 5, 4],  # 前面
+    [3, 2, 6], [3, 6, 7],  # 后面
+    [0, 3, 7], [0, 7, 4],  # 左面
+    [1, 2, 6], [1, 6, 5],  # 右面
+]
+_BOX_EDGES = [
+    (0, 1), (1, 2), (2, 3), (3, 0),  # 底面
+    (4, 5), (5, 6), (6, 7), (7, 4),  # 顶面
+    (0, 4), (1, 5), (2, 6), (3, 7),  # 竖直边
+]
+
+
+def _box_vertices(x: float, y: float, z: float, dx: float, dy: float, dz: float) -> np.ndarray:
+    """返回长方体8顶点。"""
+    return np.array([
+        [x, y, z], [x + dx, y, z], [x + dx, y + dy, z], [x, y + dy, z],
+        [x, y, z + dz], [x + dx, y, z + dz], [x + dx, y + dy, z + dz], [x, y + dy, z + dz],
+    ])
+
+
+def _obstacle_quad_vertices(obstacle: dict) -> np.ndarray:
+    """零厚膜障碍物的4顶点（四边形，顺序沿周界，恰一维为0）。"""
+    x, y, z = obstacle["x"], obstacle["y"], obstacle["z"]
+    dx, dy, dz = obstacle["dx"], obstacle["dy"], obstacle["dz"]
+    if dx == 0:
+        return np.array([
+            [x, y, z], [x, y + dy, z], [x, y + dy, z + dz], [x, y, z + dz],
+        ])
+    if dy == 0:
+        return np.array([
+            [x, y, z], [x + dx, y, z], [x + dx, y, z + dz], [x, y, z + dz],
+        ])
+    return np.array([
+        [x, y, z], [x + dx, y, z], [x + dx, y + dy, z], [x, y + dy, z],
+    ])
+
+
+def _add_mesh(fig: go.Figure, vertices: np.ndarray, faces, edges,
+              surface: str, edge_line: dict, row: int, col: int):
+    """添加一个半透明 Mesh3d 面 + 边框。faces 为三角形顶点索引三元组，edges 为边顶点索引二元组。"""
+    fig.add_trace(
+        go.Mesh3d(
+            x=vertices[:, 0], y=vertices[:, 1], z=vertices[:, 2],
+            i=[f[0] for f in faces], j=[f[1] for f in faces], k=[f[2] for f in faces],
+            color=surface, opacity=0.38, showlegend=False, hoverinfo='skip',
+        ),
+        row=row, col=col,
+    )
+    for a, b in edges:
+        fig.add_trace(
+            go.Scatter3d(
+                x=[vertices[a, 0], vertices[b, 0]],
+                y=[vertices[a, 1], vertices[b, 1]],
+                z=[vertices[a, 2], vertices[b, 2]],
+                mode='lines', line=edge_line, showlegend=False, hoverinfo='skip',
+            ),
+            row=row, col=col,
+        )
+
+
+def draw_obstacle(fig: go.Figure, obstacle: dict, row: int, col: int):
+    """绘制障碍物：实体积画盒，零厚膜（恰一维为0）画扁平四边形。"""
+    x, y, z = obstacle["x"], obstacle["y"], obstacle["z"]
+    dx, dy, dz = obstacle["dx"], obstacle["dy"], obstacle["dz"]
+    n_zero = sum(1 for d in (dx, dy, dz) if d == 0)
+    if n_zero >= 2:
+        return  # 非法障碍物，跳过
+
+    if n_zero == 1:
+        vertices = _obstacle_quad_vertices(obstacle)
+        faces = [[0, 1, 2], [0, 2, 3]]
+        edges = [(0, 1), (1, 2), (2, 3), (3, 0)]
+        _add_mesh(fig, vertices, faces, edges, OBSTACLE_FILL, dict(color=OBSTACLE_EDGE, width=1.5), row, col)
+    else:
+        vertices = _box_vertices(x, y, z, dx, dy, dz)
+        _add_mesh(fig, vertices, _BOX_FACES, _BOX_EDGES, OBSTACLE_FILL, dict(color=OBSTACLE_EDGE, width=1.5), row, col)
+
+
+def draw_facet(fig: go.Figure, facet: dict, container: dict, row: int, col: int):
+    """绘制斜面：恰两个非零截距 + 一个贯穿轴(0)，画倾斜矩形面。"""
+    axes = {"dx": container["sx"], "dy": container["sy"], "dz": container["sz"]}
+    nz = [(k, axes[k]) for k in ("dx", "dy", "dz") if facet.get(k, 0) != 0]
+    if len(nz) != 2:
+        return
+    w_key = next(k for k in ("dx", "dy", "dz") if facet.get(k, 0) == 0)
+    w_ext = axes[w_key]
+    (u_key, u_ext), (v_key, v_ext) = nz[0], nz[1]
+    su, sv = facet[u_key], facet[v_key]
+    cu = 0 if su > 0 else u_ext
+    cv = 0 if sv > 0 else v_ext
+
+    def point(u: float, v: float, w: float):
+        coords = {"dx": 0, "dy": 0, "dz": 0}
+        coords[u_key] = u
+        coords[v_key] = v
+        coords[w_key] = w
+        return (coords["dx"], coords["dy"], coords["dz"])
+
+    vertices = np.array([
+        point(cu, cv + sv, 0),
+        point(cu + su, cv, 0),
+        point(cu, cv + sv, w_ext),
+        point(cu + su, cv, w_ext),
+    ])
+    # 双面渲染（薄面正反都可见）
+    faces = [[0, 1, 2], [1, 3, 2], [2, 1, 0], [2, 3, 1]]
+    edges = [(0, 1), (0, 2), (1, 3), (2, 3)]
+    _add_mesh(fig, vertices, faces, edges, FACET_FILL, dict(color=FACET_EDGE, width=1.5), row, col)
+
+
 def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
              shown_legends: set, mesh_trace_info: list[dict], seen_values: dict[str, set],
              pallet_boxes: dict):
@@ -167,10 +299,7 @@ def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
     color = get_color(box_type_id)
 
     # 定义长方体的8个顶点
-    vertices = np.array([
-        [x, y, z], [x + l, y, z], [x + l, y + w, z], [x, y + w, z],
-        [x, y, z + h], [x + l, y, z + h], [x + l, y + w, z + h], [x, y + w, z + h],
-    ])
+    vertices = _box_vertices(x, y, z, l, w, h)
 
     # 定义6个面的顶点索引（每个面由2个三角形组成）
     faces = [
@@ -214,8 +343,10 @@ def draw_box(fig: go.Figure, placement: dict, row: int, col: int,
     })
     shown_legends.add(box_type_id)
 
-    # 绘制边框
-    if placement["is_pallet"]:
+    # 绘制边框：危险品红边优先，托盘保留虚线
+    if placement.get("danger"):
+        line = dict(color=DANGER_EDGE, width=2.5, dash='longdash' if placement["is_pallet"] else 'solid')
+    elif placement["is_pallet"]:
         line = dict(color='gray', width=2, dash='longdash')
     else:
         line = dict(color='black', width=1)
@@ -257,6 +388,8 @@ def get_text(placement: dict, pallet_boxes: dict) -> str:
         text += f"group: {placement['group']}<br>"
     if placement["weight"]:
         text += f"weight: {placement['weight']}<br>"
+    if placement.get("danger"):
+        text += "danger: yes<br>"
     if placement["is_pallet"]:
         loose_ids = pallet_boxes[placement["box_id"]]
         text += f"<b>loose boxes:</b><br>{'<br>'.join(loose_ids)}<br>"
@@ -344,13 +477,17 @@ def add_color_selector(fig: go.Figure, mesh_trace_info: list[dict]):
     fig.update_layout(updatemenus=menus)
 
 
-def _build_showlegend_for_traces(fig: go.Figure, trace_indices: list[int]) -> list[bool]:
-    """为指定 trace 列表生成 showlegend 数组：只对 Mesh3d 显示图例，重复 group 只显示一次。"""
+def _build_showlegend_for_traces(fig: go.Figure, trace_indices: list[int], mesh_indices: list[int]) -> list[bool]:
+    """为指定 trace 列表生成 showlegend 数组：只对箱体 Mesh3d 显示图例，重复 group 只显示一次。
+
+    mesh_indices 是箱体 Mesh3d 的 trace 索引；障碍物/斜面等结构面不参与图例。
+    """
     showlegend = [False] * len(fig.data)  # type: ignore
     seen_groups = set()
+    mesh_set = set(mesh_indices)
     for i in trace_indices:
         t = fig.data[i]
-        if isinstance(t, go.Mesh3d):
+        if isinstance(t, go.Mesh3d) and i in mesh_set:
             group = t.legendgroup or ""
             if group not in seen_groups:
                 showlegend[i] = True
@@ -358,7 +495,7 @@ def _build_showlegend_for_traces(fig: go.Figure, trace_indices: list[int]) -> li
     return showlegend
 
 
-def add_container_selector(fig: go.Figure, containers: list[dict], trace_ranges: list[tuple[int, int]]):
+def add_container_selector(fig: go.Figure, containers: list[dict], trace_ranges: list[tuple[int, int]], mesh_indices: list[int]):
     """添加容器选择下拉菜单（全部 / 指定容器）
 
     选择单容器时将该场景 domain 扩至全屏，实现放大效果。
@@ -389,7 +526,7 @@ def add_container_selector(fig: go.Figure, containers: list[dict], trace_ranges:
 
     buttons = []
     all_indices = list(range(total_traces))
-    all_showlegend = _build_showlegend_for_traces(fig, all_indices)
+    all_showlegend = _build_showlegend_for_traces(fig, all_indices, mesh_indices)
 
     # "全部容器"：恢复原始场景布局、标题
     restore_layout = dict(original_domains)
@@ -410,7 +547,7 @@ def add_container_selector(fig: go.Figure, containers: list[dict], trace_ranges:
         vis = [False] * total_traces
         for i in container_indices:
             vis[i] = True
-        showlegend = _build_showlegend_for_traces(fig, container_indices)
+        showlegend = _build_showlegend_for_traces(fig, container_indices, mesh_indices)
 
         # 将该场景 domain 扩至全屏，标题居中，其余标题隐藏
         single_layout = {
