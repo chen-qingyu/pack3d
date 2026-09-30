@@ -136,6 +136,9 @@ TEST_CASE("check_support 零厚膜不参与支撑", "[core]")
     ct2.obstacles = {{0, 0, 0, 20, 10, 5}}; // 实体台阶，顶面 z=5
     load.type = &ct2;
     REQUIRE(check_support({0, 0, 5}, {5, 5, 5}, load, 1.0));
+
+    ct2.obstacles[0].supports_load = false;
+    REQUIRE_FALSE(check_support({0, 0, 5}, {5, 5, 5}, load, 1.0));
 }
 
 TEST_CASE("平台数量限制约束", "[core]")

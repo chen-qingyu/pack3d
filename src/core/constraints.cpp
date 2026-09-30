@@ -306,8 +306,8 @@ bool check_support(const Position& pos, const OrientedSize& osize,
     {
         for (const auto& o : load.type->obstacles)
         {
-            // 零厚膜为纯穿越拦截，不参与支撑
-            if (o.dx == 0 || o.dy == 0 || o.dz == 0)
+            // 零厚膜为纯穿越拦截；非承重障碍物同样不参与支撑。
+            if (!o.supports_load || o.dx == 0 || o.dy == 0 || o.dz == 0)
             {
                 continue;
             }

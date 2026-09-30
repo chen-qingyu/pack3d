@@ -75,6 +75,7 @@ export interface Obstacle {
   dx: number;
   dy: number;
   dz: number;
+  supports_load: boolean;
 }
 
 export interface Facet {

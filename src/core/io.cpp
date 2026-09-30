@@ -283,6 +283,7 @@ void from_json(const json& j, Obstacle& o)
     j["dx"].get_to(o.dx);
     j["dy"].get_to(o.dy);
     j["dz"].get_to(o.dz);
+    o.supports_load = j.value("supports_load", true);
 }
 
 void from_json(const json& j, Facet& f)
@@ -1268,6 +1269,7 @@ void to_json(json& j, const Solution& sol)
             oj["dx"] = o.dx;
             oj["dy"] = o.dy;
             oj["dz"] = o.dz;
+            oj["supports_load"] = o.supports_load;
             obs_json.push_back(std::move(oj));
         }
         cj["obstacles"] = std::move(obs_json);

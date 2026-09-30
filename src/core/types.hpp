@@ -80,7 +80,7 @@ struct Position
     auto operator<=>(const Position&) const = default;
 };
 
-// 容器内障碍物（轴对齐长方体，实体，顶面等价地板可承托箱子）
+// 容器内障碍物（轴对齐长方体，顶面可选承托箱子）
 struct Obstacle
 {
     int32_t x = 0;
@@ -89,6 +89,7 @@ struct Obstacle
     int32_t dx = 0;
     int32_t dy = 0;
     int32_t dz = 0;
+    bool supports_load = true;
 };
 
 // 斜面（斜切角）：恰好两个带符号轴名截距非零，缺失轴 = 斜面平行贯穿轴；
