@@ -153,7 +153,8 @@ function App() {
     let input: Record<string, unknown>;
     try {
       input = JSON.parse(form.inputText) as Record<string, unknown>;
-    } catch {
+    } catch (reason) {
+      setError(reason instanceof Error ? `输入 JSON 格式错误：${reason.message}` : '输入 JSON 格式错误');
       return;
     }
 
