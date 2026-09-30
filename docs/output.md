@@ -151,7 +151,7 @@ JSON，顶层四个字段：
 }
 ```
 
-容器数组顺序即装车顺序。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；有效箱子未设置站点/分组时 `platform`/`group` 为 null）。混组托盘的虚拟箱 `group` 亦为 null，其分组见对应 `pallets[].groups`（按 `box_id == pallet_id` 关联）。
+容器数组顺序即装车顺序。`container.packed_count` 为容器内放置单元数，普通箱计 1、托盘也计 1；它与按散箱计数的 `summary.packed_box_count` 不同。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；有效箱子未设置站点/分组时 `platform`/`group` 为 null）。混组托盘的虚拟箱 `group` 亦为 null，其分组见对应 `pallets[].groups`（按 `box_id == pallet_id` 关联）。
 
 每个容器带 `danger` 布尔标志：`true` 表示该容器装入至少一件危险品。危险品分柜规则下（输入启用 `danger`），危险品优先装入独立容器，仅最后一车（含危险品的容器中索引最大者）允许混装普货，其余普货装入后续容器。
 

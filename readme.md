@@ -81,7 +81,7 @@ result = pack3d.run({...})   # 输入为与 JSON 同构的 dict
 ```
 
 ```bash
-python run.py data/demo.json
+python scripts/run.py data/demo.json
 ```
 
 安装与完整用法见 [python/README.md](python/README.md)

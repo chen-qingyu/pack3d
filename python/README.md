@@ -41,6 +41,6 @@ result = pack3d.run({
 ## 命令行脚本
 
 ```bash
-python run.py data/demo.json
-python run.py data/demo.json -a glc -t 30 -s 0.6
+python scripts/run.py data/demo.json
+python scripts/run.py data/demo.json -a glc -t 30 -s 0.6
 ```

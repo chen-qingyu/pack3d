@@ -130,7 +130,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 `group`、`platform` 与 `danger` 分别采用严格三选一模式，每个字段独立选择来源：
 
 - **全无**：所有箱型和待装箱子都不配置该字段；已有放置也必须无值。
-- **箱型级**：所有 `box_types` 都配置该字段，待装 `boxes` 不配置；实例值按 `box_type_id` 继承。因此同一箱型不能跨不同分组或站点。已有放置可以省略该字段，也可以重复填写相同值，但不能冲突；允许重复同值是为了支持将输出中的 placement 原样 copy back 到 `existing_containers`。
+- **箱型级**：所有 `box_types` 都配置该字段，待装 `boxes` 不配置；实例值按 `box_type_id` 继承。因此同一箱型不能跨不同分组或站点。已有放置可以省略该字段，也可以重复填写相同值，但不能冲突；允许重复同值以便将普通箱输出 placement 的业务字段回填到 `existing_containers`。
 - **箱子级**：所有 `box_types` 都不配置该字段，每个待装 `boxes` 都必须配置；不同实例可以有不同值。已有放置也必须有值，但不参与来源判定。
 
 箱型与待装箱子混用、部分配置均非法；箱型级值与已有放置显式值冲突也非法。`null` 等同未配置；`group`/`platform` 实际配置值必须是非空字符串，`danger` 为布尔。两个字段可以选择不同来源，例如 `group` 使用箱型级而 `platform` 使用箱子级。
@@ -140,7 +140,7 @@ JSON，schema 见 `data/input_schema.json`。必填顶层字段：`container_typ
 `max_stack` / `max_load` 为**承重约束**（机制与启用前提见 `docs/constraints.md` 1.8 / 1.9）：
 
 - 标量：应用到全部朝向。
-- 数组：长度必须等于 `allowed_orientations` 长度，按朝向分别取值（如平放堆 3 层、立放只能堆 2 层）。
+- 数组：长度必须等于 `allowed_orientations` 长度，按朝向分别取值（如平放堆 3 层、立放只能堆 2 层）；每项必须为数值，不允许 `null`。
 - 任一箱型有非空值即启用对应约束（presence-based）。
 - `max_stack` 声明时必须在**同一朝向**同时配置 `max_load`（预校验强制，报 `max_stack requires max_load`）：同箱型连续 run 只限同型层数，异型箱压上的承压由 `max_load`（整柱累计）兜底，缺省会漏算"同型堆满后异构压坏"。
 
@@ -305,19 +305,22 @@ Schema 校验后，代码还会检查：
 }
 ```
 
-| 字段                       | 类型   | 必填 | 说明                                           |
-| -------------------------- | ------ | ---- | ---------------------------------------------- |
-| `type_id`                  | string | 是   | 引用 container_types 中的 id                   |
-| `placements[].box_id`      | string | 是   | 箱子标识                                       |
-| `placements[].box_type_id` | string | 是   | 引用 box_types 中的 id                         |
-| `placements[].x/y/z`       | int>=0 | 是   | 放置位置（min corner）                         |
-| `placements[].orientation` | string | 是   | 朝向，同 box_types 朝向枚举                    |
-| `placements[].dx/dy/dz`    | int>=1 |      | 朝向后的实际尺寸（可从 type+朝向推导，可省略） |
-| `placements[].weight`      | number |      | 箱子重量，未设置时为 null                      |
-| `placements[].platform`    | string |      | 站点 ID（配送停靠点），未设置时为 null         |
-| `placements[].group`       | string |      | 分组 ID，未设置时为 null                       |
+| 字段                       | 类型    | 必填 | 说明                                                               |
+| -------------------------- | ------- | ---- | ------------------------------------------------------------------ |
+| `type_id`                  | string  | 是   | 引用 container_types 中的 id                                       |
+| `placements[].box_id`      | string  | 是   | 箱子标识                                                           |
+| `placements[].box_type_id` | string  | 是   | 引用 box_types 中的 id                                             |
+| `placements[].x/y/z`       | int>=0  | 是   | 放置位置（min corner）                                             |
+| `placements[].orientation` | string  | 是   | 朝向，同 box_types 朝向枚举                                        |
+| `placements[].dx/dy/dz`    | int>=1  |      | 朝向后的实际尺寸；三项必须同时提供，或全部省略（由 type+朝向推导） |
+| `placements[].weight`      | number  |      | 箱子重量，未设置时为 null                                          |
+| `placements[].platform`    | string  |      | 站点 ID（配送停靠点），未设置时为 null                             |
+| `placements[].group`       | string  |      | 分组 ID，未设置时为 null                                           |
+| `placements[].danger`      | boolean |      | 危险品标志，未设置时为 null                                        |
 
 `placements[].group` 和 `placements[].platform` 是已有快照中的有效值，字段类型为 `string|null`；它们不参与新输入的三选一来源判断，但必须遵守对应模式：无值模式不得填写，箱型级模式下可省略或填写所属箱型的相同值，箱子级模式下必须填写。
+
+`existing_containers` 是续装输入快照，不是完整输出容器的直接副本。回填普通箱 placement 时须保留原始 `box_types`，删除输出专用的 `is_pallet`；托盘虚拟 placement 不能回填。
 
 已有容器中的箱子不会出现在 `boxes` 列表中。求解器会先尝试在已有容器中继续塞入剩余箱子（未满则继续），再开新容器。已有放置被锁定，后处理不会移动它们。
 

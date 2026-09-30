@@ -94,6 +94,7 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
         "container_count": 2,
         "platform_split": 0,
         "volume_rate": 0.468,
+        "volume_rate_x": 0.512,
         "group_split": 0,
         "pallet_count": 0,
         "palletized_box_count": 0,
@@ -181,7 +182,7 @@ pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例�
 
 | status      | 说明                                |
 | ----------- | ----------------------------------- |
-| `running`   | 求解执行中，`summary` 为 null       |
+| `running`   | 求解执行中，省略 `summary` 字段     |
 | `completed` | 正常完成，`summary` 包含装箱结果    |
 | `invalid`   | 输入非法，`violations` 包含错误详情 |
 | `failed`    | 异常中断（如服务重启）              |

@@ -41,9 +41,9 @@
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "dx": { "type": "integer", "not": { "const": 0 } },
-                "dy": { "type": "integer", "not": { "const": 0 } },
-                "dz": { "type": "integer", "not": { "const": 0 } }
+                "dx": { "type": "integer" },
+                "dy": { "type": "integer" },
+                "dz": { "type": "integer" }
               }
             }
           }
@@ -72,19 +72,21 @@
           },
           "max_stack": {
             "oneOf": [
+              { "type": "null" },
               { "type": "integer", "minimum": 1 },
               {
                 "type": "array",
-                "items": { "type": ["integer", "null"], "minimum": 1 }
+                "items": { "type": "integer", "minimum": 1 }
               }
             ]
           },
           "max_load": {
             "oneOf": [
+              { "type": "null" },
               { "type": "number", "minimum": 0 },
               {
                 "type": "array",
-                "items": { "type": ["number", "null"], "minimum": 0 }
+                "items": { "type": "number", "minimum": 0 }
               }
             ]
           },
@@ -212,6 +214,11 @@
                 "orientation"
               ],
               "additionalProperties": false,
+              "dependencies": {
+                "dx": ["dy", "dz"],
+                "dy": ["dx", "dz"],
+                "dz": ["dx", "dy"]
+              },
               "properties": {
                 "box_id": { "type": "string" },
                 "box_type_id": { "type": "string" },

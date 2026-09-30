@@ -7,6 +7,7 @@ export interface Summary {
   container_count: number;
   platform_split: number;
   volume_rate: number;
+  volume_rate_x: number;
   group_split: number;
   pallet_count: number;
   palletized_box_count: number;
@@ -46,6 +47,7 @@ export interface Placement {
   platform: string | null;
   group: string | null;
   weight: number | null;
+  is_pallet: boolean;
   danger: boolean;
 }
 
@@ -62,6 +64,7 @@ export interface PalletResult {
   volume_rate: number;
   groups: string[];
   platforms: string[];
+  danger: boolean;
   placements: Placement[];
 }
 
