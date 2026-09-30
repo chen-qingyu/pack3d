@@ -727,6 +727,15 @@ void recompute_stack_state(ContainerLoad& load,
         }
         return pa.position.x < pb.position.x; });
 
+    // 保持原 placement 下标顺序，避免改变支撑顺序和浮点累计顺序。
+    std::map<int32_t, std::vector<size_t>> supports_by_top;
+    for (size_t i = 0; i < n; ++i)
+    {
+        const auto& pl = load.placements[i];
+        supports_by_top[pl.position.z + pl.osize.dz].push_back(i);
+    }
+    const std::vector<size_t> empty_indices;
+
     for (auto& pl : load.placements)
     {
         pl.stack_level = 1;
@@ -741,8 +750,12 @@ void recompute_stack_state(ContainerLoad& load,
         auto& pl = load.placements[order[k]];
         const double weight = pl.weight.value_or(0.0);
 
-        // 直接支撑箱顶面 == 本箱底面 z，其 z 严格更小，z 序中必已处理
-        const SupportInfo info = collect_supports(pl.position, pl.osize, load.placements);
+        // 直接支撑箱顶面 == 本箱底面 z，按该高度索引后仍做精确 XY 过滤。
+        const auto support_it = supports_by_top.find(pl.position.z);
+        const auto& support_indices =
+            (support_it != supports_by_top.end()) ? support_it->second : empty_indices;
+        const SupportInfo info = collect_supports(pl.position, pl.osize,
+                                                  load.placements, &support_indices);
         pl.supports = info.supports;
         pl.stack_level = info.supports.empty() ? 1 : info.max_level + 1;
         if (info.supports.empty())
@@ -790,12 +803,16 @@ void recompute_stack_state(ContainerLoad& load,
         ContainerLoad prefix;
         prefix.type = load.type;
         prefix.placements.reserve(n);
+        std::map<int32_t, std::vector<size_t>> prefix_supports_by_top;
         for (const size_t index : order)
         {
             const auto& pl = load.placements[index];
+            const auto support_it = prefix_supports_by_top.find(pl.position.z);
+            const auto& support_indices =
+                (support_it != prefix_supports_by_top.end()) ? support_it->second : empty_indices;
             if (!check_stack_constraints(pl.position, pl.osize, pl.box_type_id,
                                          pl.orientation, pl.weight.value_or(0.0),
-                                         prefix, box_type_map))
+                                         prefix, box_type_map, &support_indices))
             {
                 errors->push_back("violates max_stack/max_load for box " + pl.box_id);
             }
@@ -806,7 +823,10 @@ void recompute_stack_state(ContainerLoad& load,
             replayed.has_cross_above = false;
             replayed.supports.clear();
             prefix.placements.push_back(std::move(replayed));
-            apply_stack_state(pl.position, pl.osize, pl.weight.value_or(0.0), prefix);
+            prefix_supports_by_top[pl.position.z + pl.osize.dz].push_back(
+                prefix.placements.size() - 1);
+            apply_stack_state(pl.position, pl.osize, pl.weight.value_or(0.0),
+                              prefix, &support_indices);
         }
     }
 }

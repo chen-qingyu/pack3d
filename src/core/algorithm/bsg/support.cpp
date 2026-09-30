@@ -49,19 +49,26 @@ void add_block_support(const GeneralBlock& block,
     if (block.merge_axis == GeneralBlock::MergeAxis::None)
     {
         OrientedSize box_size = ctx.box_types[block.type_idx].size.orient(block.orientation);
-        for (int z = 0; z < block.nz; ++z)
+        const int32_t height_to_target = state.target_z - position.z;
+        if (height_to_target <= 0 || height_to_target % box_size.dz != 0)
         {
-            for (int y = 0; y < block.ny; ++y)
+            return;
+        }
+        const int z = height_to_target / box_size.dz - 1;
+        if (z < 0 || z >= block.nz)
+        {
+            return;
+        }
+        for (int y = 0; y < block.ny; ++y)
+        {
+            for (int x = 0; x < block.nx; ++x)
             {
-                for (int x = 0; x < block.nx; ++x)
-                {
-                    Position box_position{
-                        position.x + x * box_size.dx,
-                        position.y + y * box_size.dy,
-                        position.z + z * box_size.dz,
-                    };
-                    add_support(box_position, box_size, state);
-                }
+                Position box_position{
+                    position.x + x * box_size.dx,
+                    position.y + y * box_size.dy,
+                    position.z + z * box_size.dz,
+                };
+                add_support(box_position, box_size, state);
             }
         }
         return;
