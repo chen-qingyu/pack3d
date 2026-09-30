@@ -2,31 +2,31 @@
 
 ## 概述
 
-pack3d-api 是一个 RESTful HTTP 服务，提供三维装箱求解的多实例管理。
+pack3d-api 是三维装箱求解的 RESTful 服务。
 
-- **Instance**：命名的项目身份，可多次运行（每次运行输入/参数可不同）
+- **Instance**：组织多次运行的项目
 - **Run**：一次求解执行，产生 JSON 结果
 
 所有请求/响应为 `application/json`，结果下载为 `application/json`。
 
 ## 端点总览
 
-| 方法     | 路径                                             | 说明                |
-| -------- | ------------------------------------------------ | ------------------- |
-| `POST`   | `/api/instances`                                 | 创建实例            |
-| `GET`    | `/api/instances`                                 | 实例列表            |
-| `GET`    | `/api/instances/{id}`                            | 实例详情（含 runs） |
-| `PATCH`  | `/api/instances/{id}`                            | 重命名实例          |
-| `DELETE` | `/api/instances/{id}`                            | 删实例 + 全部 runs  |
-| `POST`   | `/api/instances/{id}/runs`                       | 创建运行            |
-| `GET`    | `/api/instances/{id}/runs`                       | 运行列表            |
-| `GET`    | `/api/instances/{id}/runs/{rid}`                 | 运行状态            |
-| `PATCH`  | `/api/instances/{id}/runs/{rid}`                 | 重命名运行          |
-| `GET`    | `/api/instances/{id}/runs/{rid}/result`          | 获取结果 JSON       |
-| `GET`    | `/api/instances/{id}/runs/{rid}/result/download` | 下载结果文件        |
-| `GET`    | `/api/instances/{id}/runs/{rid}/input`           | 查看输入 JSON       |
-| `POST`   | `/api/instances/{id}/runs/{rid}/cancel`          | 终止运行            |
-| `DELETE` | `/api/instances/{id}/runs/{rid}`                 | 删除运行            |
+| 方法     | 路径                                                         | 说明                |
+| -------- | ------------------------------------------------------------ | ------------------- |
+| `POST`   | `/api/instances`                                             | 创建实例            |
+| `GET`    | `/api/instances`                                             | 实例列表            |
+| `GET`    | `/api/instances/{instance_id}`                               | 实例详情（含 runs） |
+| `PATCH`  | `/api/instances/{instance_id}`                               | 重命名实例          |
+| `DELETE` | `/api/instances/{instance_id}`                               | 删实例 + 全部 runs  |
+| `POST`   | `/api/instances/{instance_id}/runs`                          | 创建运行            |
+| `GET`    | `/api/instances/{instance_id}/runs`                          | 运行列表            |
+| `GET`    | `/api/instances/{instance_id}/runs/{run_id}`                 | 运行状态            |
+| `PATCH`  | `/api/instances/{instance_id}/runs/{run_id}`                 | 重命名运行          |
+| `GET`    | `/api/instances/{instance_id}/runs/{run_id}/result`          | 获取结果 JSON       |
+| `GET`    | `/api/instances/{instance_id}/runs/{run_id}/result/download` | 下载结果文件        |
+| `GET`    | `/api/instances/{instance_id}/runs/{run_id}/input`           | 查看输入 JSON       |
+| `POST`   | `/api/instances/{instance_id}/runs/{run_id}/cancel`          | 终止运行            |
+| `DELETE` | `/api/instances/{instance_id}/runs/{run_id}`                 | 删除运行            |
 
 ## Instance 端点
 
@@ -242,11 +242,11 @@ py -m uvicorn server.main:app --host 127.0.0.1 --port 8000
 xh :8000/api/instances name=demo
 
 # 提交求解
-xh :8000/api/instances/{id}/runs input_json:=@data/demo.json
+xh :8000/api/instances/{instance_id}/runs input_json:=@data/demo.json
 
 # 查看结果
-xh :8000/api/instances/{id}/runs/{rid}
+xh :8000/api/instances/{instance_id}/runs/{run_id}
 
 # 获取结果
-xh :8000/api/instances/{id}/runs/{rid}/result
+xh :8000/api/instances/{instance_id}/runs/{run_id}/result
 ```

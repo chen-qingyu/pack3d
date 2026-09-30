@@ -33,11 +33,11 @@ Web 工作台由两个服务组成：
 
 ### 2.2 安装依赖
 
-在仓库根目录执行：
+在仓库根目录构建并安装 Python 模块，再安装后端和前端依赖：
 
 ```bash
 python -m build python
-pip install ./python/dist/xxx.whl
+pip install python/dist/pack3d-<version>-<tag>.whl
 pip install fastapi uvicorn
 cd web
 npm install
@@ -45,7 +45,7 @@ npm install
 
 ## 3. 本地启动
 
-本地开发需要分别启动后端和前端。两个命令都应从仓库根目录对应位置执行。
+本地开发需要分别启动后端和前端。
 
 ### 3.1 启动后端
 
@@ -84,7 +84,7 @@ http://127.0.0.1:5173
 
 ## 4. 生产部署
 
-生产部署分为两部分：启动 FastAPI，构建并托管前端静态文件。
+生产部署需要运行 FastAPI、托管 `web/dist`，并将 `/api/` 转发到后端。
 
 ### 4.1 启动 FastAPI
 
@@ -145,7 +145,7 @@ server {
 http://pack3d.example.com
 ```
 
-前端请求使用相对路径 `/api/...`，因此前端和 API 必须由同一个站点提供，或者由网关将 `/api/` 正确转发到 FastAPI。若前端和后端使用不同域名，需要额外配置 CORS 和前端 API 地址；当前版本没有提供这个配置项。
+前端使用相对路径 `/api/...`。因此前端和 API 必须同源，或由网关完成 `/api/` 转发；当前版本不提供跨域 API 地址配置。
 
 ### 4.4 不使用 Nginx 的预览方式
 
@@ -156,7 +156,7 @@ cd web
 npm run preview -- --host 127.0.0.1 --port 4173
 ```
 
-该命令只托管前端静态文件。生产环境仍需要单独运行 FastAPI，并确保 Web 服务器能把 `/api/` 转发到后端。
+该命令只托管前端静态文件；API 仍需通过同源网关转发。
 
 ## 5. 页面使用
 
@@ -237,7 +237,7 @@ http://127.0.0.1:8000/api/instances
 
 本地开发时确认后端端口是 `8000`。如果修改了端口，需要同步修改 [web/vite.config.ts](../web/vite.config.ts) 中的代理地址。
 
-生产环境确认网关的 `/api/` location 已转发到 FastAPI，而不是只托管了 `web/dist`。
+生产环境确认网关的 `/api/` 已按 [Nginx 配置](#43-使用-nginx-同源部署)转发到 FastAPI。
 
 ### 页面能打开，但刷新子路径后出现 404
 

@@ -10,7 +10,7 @@
 flowchart LR
   A[JSON 输入] --> B[schema 校验]
   B --> C[pre_validate 预校验]
-  C --> D[resolve_type_weights]
+  C --> D[resolve_type_fields]
   D --> E{有 pallet_types?}
   E -->|否| F[make_packer -> pack]
   E -->|是| G[装托流水线<br/>见 §3]
@@ -20,7 +20,7 @@ flowchart LR
 ```
 
 - **schema 校验**：编译时嵌入的 JSON Schema（`data/input_schema.json` -> `input_schema.h`），保证结构合法。
-- **预校验**：`pre_validate_input()` 检查引用完整性、重量/group/platform 各自的三选一来源（只看 `box_types` 与待装 `boxes`）、已有快照的模式一致性、路线/站点、障碍物/斜面合法性，以及约束之间的**级联前提**（如 `max_stack`/`max_load`/装托要求 `support_rate > 0`、`tender_limit` 要求 `group`）。已有放置作为已解析快照：箱型级模式下可无值或重复同值，冲突即拒绝；箱子级模式下必须有值；无值模式下不得有值，缺失属性按箱型继承。
+- **预校验**：`pre_validate_input()` 检查引用、重量/group/platform/danger 的来源模式、已有快照、路线、障碍物和斜面，以及约束前提（如堆码、装托要求 `support_rate > 0`，`tender_limit` 要求 `group`）。已有放置在箱型级模式可省略或重复同值，箱子级模式必须有值，无值模式不得填写；缺失值按箱型继承。
 - **异常兜底**：任何未预见异常返回 `status=invalid`（带 `internal error`），任意输入都有完整 JSON 输出。
 
 ### 1.1 目标向量
@@ -56,8 +56,7 @@ flowchart TD
 
 ## 3. 装托（Palletizing）
 
-> 两级流水线：**散件（`loose:true`）-> 装托 -> 装车**；普通箱子直接散装上车。
-> 核心思想：**托盘即装箱单元**。装托阶段把托盘当小容器，用与装车完全相同的算法与约束链（`pack_single`）把散件码上托盘；随后每个托盘改写成一个"不可再叠放、可 90° 平面旋转"的虚拟箱，交给现有求解器装车——**装车零改动**，路线/重量/支撑/tender/后处理等既有约束全部免费生效。
+> 两级流水线：**散件（`loose:true`）-> 装托 -> 装车**；普通箱子直接装车。装托阶段把托盘当小容器，复用 `pack_single`；随后把托盘改写为不可承压、可平面旋转的虚拟箱，再交给同一求解器装车。
 
 ### 3.1 流程
 
@@ -73,16 +72,7 @@ flowchart LR
 
 ### 3.2 输入与校验
 
-| 配置       | 位置                              | 默认  | 说明                                                                                          |
-| ---------- | --------------------------------- | ----- | --------------------------------------------------------------------------------------------- |
-| 启用装托   | 顶层 `pallet_types`               | 无    | 任一存在即启用；`id`/`sx`/`sy`/`sz`/`payload`/`max_height` 必填，`self_weight` 默认 0         |
-| 散件标记   | `box_types.loose`                 | false | true = 散件（装托）；false = 普通箱子（直接装车）                                             |
-| 装托支撑率 | `constraints.pallet_support_rate` | 1.0   | 托盘上箱子底面支撑率下限（装托专用，与装车 `support_rate` 独立）                              |
-| 装托兜底   | `constraints.pallet_fallback`     | true  | 散件装不进任何托盘（默认开启降级散装）：false = 未装箱报错（partial）；true = 降级散装上车    |
-| 混合分组   | `constraints.pallet_mix_group`    | 无    | 装托模式必填；true 允许同一 platform 混合 group，false 保持 group 隔离，不允许跨 platform     |
-| 平台限制   | `pallet_types[].platforms`        | 空    | 该托盘仅在列出的平台可用于装托；缺省/空（含 `[]`/`null`）= 全平台可用；空串 `""` 视为普通平台 |
-
-预校验：装托模式强制显式配置 `pallet_mix_group`、有重量信息、全部容器带 `payload`、装车 `support_rate > 0`；`loose: true` 但无 `pallet_types` -> `invalid`；有 `pallet_types` 但无散件 -> 等价普通装箱；若声明了 `route`，`platforms` 引用的每个平台必须在 `route` 中，否则 `invalid`。
+字段定义见 [input.md](input.md)。`pallet_types` 启用装托，`box_types.loose` 标记散件；`pallet_support_rate`、`pallet_fallback` 和 `pallet_mix_group` 控制托盘内支撑、散装兜底和分组混装。装托要求显式配置 `pallet_mix_group`、重量信息、容器 `payload` 与装车 `support_rate > 0`；`route` 存在时，`pallet_types[].platforms` 必须引用其中的站点。
 
 ### 3.3 行为
 
@@ -105,17 +95,9 @@ flowchart LR
 - `result.pallets`：每托含 `pallet_id` / `used_height` / `used_weight` / `volume_rate` / `groups` / `platforms` / `placements`；容器中托盘单元 `box_id` = `pallet_id`，可在 `pallets` 展开内部明细。
 - 装不进托的散件（fallback=false）：`partial` + violations 说明。
 
-### 3.5 实现关键点（维护者）
+### 3.5 维护边界
 
-- **代码**：`pallet.hpp/cpp`（类型 io + 虚拟容器/箱型生成）、`palletizer.hpp/cpp`（装托循环 / 问题改写 / 输出展开）；入口 `app.cpp` 两级流水线；`io.cpp` 与 `input_schema.json` 负责解析/校验。
-- **关键点**：
-  1. 装托 packer 绑定 problem 副本：`support_rate = pallet_support_rate`，**清除 `route`/`platform_limit`**——否则小托盘内被强加车厢卸货顺序/站点数约束。
-  2. 改写后**重建 `has_max_stack`/`has_max_load`**——虚拟箱自带 `max_stack`/`max_load`，解析时算出的标志不含它，"不叠托/不压托"会失效。
-  3. `pack_single` 返回的 `load.type` 指向传入的临时容器，须在析构前消费。
-  4. 无 `pallet_types` 分支**零新增求解调用**（RGS `s_call_id` 静态计数，防既有测试漂移）。
-  5. 装托候选按 `pallet_types[].platforms` 与分组平台过滤（`pallet_available_for`）：空集=全平台可用；非空需命中列表，空串也算普通平台。
-
-- **限制**：托盘数量上限未实现；托盘装不进车厢则该托未装箱。
+装托使用问题副本，托盘内求解必须清除 `route` 与 `platform_limit`。改写为虚拟托盘箱后需重建堆码约束标记；托盘数量不设上限，装不进车厢的托盘保留为未装箱。
 
 ## 4. 中间状态续装（Resume Packing）
 
@@ -125,7 +107,7 @@ flowchart LR
 
 - **已有放置不可移动**：`ContainerLoad::locked = true`，后处理跳过 locked 容器。
 - **剩余箱子独立输入**：`boxes` 列表只列待装箱子，已放置箱子完全由 `existing_containers` 描述，两不相交。
-- **输入输出格式对齐**：`existing_containers` 的 placement 字段与输出 placement 完全一致，上轮输出可直接 copy-paste 为下轮输入。
+- **续装快照**：`existing_containers` 复用普通箱 placement 的核心字段。回填时保留原始 `box_types`、删除输出专用的 `is_pallet`；托盘虚拟 placement 不能回填。
 
 ### 4.2 三阶段主循环
 

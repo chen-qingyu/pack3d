@@ -1,6 +1,6 @@
 # 算法（Algorithms）
 
-> 本文只讲四种算法的**单容器装载核心**——`PackerBase::pack_single()` 的职责：给定一个容器和一批待装箱子，决定如何摆放。多容器选车调度、装托流水线、续装调度、共享后处理等整体流程见 [architecture.md](architecture.md)。四种算法通过 `make_packer()` 按 `problem.algorithm` 选择，统一接入 `PackerBase::pack()` 模板方法，只实现各自的 `pack_single()`。
+> 本文只讲四种算法的**单容器装载核心**：给定容器和待装箱子，决定如何摆放。`PackerBase::pack_single()` 负责路线分桶等通用调度；各算法只实现 `pack_single_impl()`。多容器选车、装托、续装和后处理见 [architecture.md](architecture.md)。
 >
 > 硬约束实现集中在 `constraints.hpp`（见 [constraints.md](constraints.md)），四种算法在放置检查点复用同一批纯函数，差异只在**检查粒度**（单箱 vs 逐叶）与性能门控。
 
@@ -38,9 +38,9 @@
 
 ### 代码地图
 
-| 文件                                | 责任                                  |
-| ----------------------------------- | ------------------------------------- |
-| `src/core/algorithm/gep/packer.cpp` | `GepPacker::pack_single()` 单容器填充 |
+| 文件                                | 责任                                       |
+| ----------------------------------- | ------------------------------------------ |
+| `src/core/algorithm/gep/packer.cpp` | `GepPacker::pack_single_impl()` 单容器填充 |
 
 ### 算法流程
 
@@ -116,7 +116,7 @@ flowchart TD
 ### 关键机制
 
 - **简单块**：同箱型同朝向的 nx×ny×nz 致密长方体；块内所有箱子的 platform、group 必须一致。仅实现简单块，未做论文的复合块（复杂约束下复合块生成/评估成本高，简单块已够用）。
-- **空间栈**：放置一个块后，未填充空间确定性切成至多 3 个子空间（上方、右方、后方）入栈。`parent_id` 追踪来源，支持 `TransferSpace` 碎片回收——栈顶无可行块时尝试合并给同次划分的兄弟空间。**空间引导（2026-08）**：栈为 LIFO，Z（上方堆叠）最后入栈先处理，其次 Y（后方）、最后 X（右方）——优先 z 方向堆叠、再 y 方向装满、最后 x 方向装（对齐 GEP 的 z→y→x 建造顺序），避免先平铺横放导致多平台场景装载率下降；X/Y 的相对入栈顺序仍按剩余尺寸保留主条/碎片关系（碎片在栈顶，供 `TransferSpace` 回收）。
+- **空间栈**：放置一个块后，未填充空间最多切成上方、右方、后方三个子空间。`parent_id` 用于 `TransferSpace` 回收同次划分的碎片。栈按 Z、Y、X 的优先级处理，优先堆高，再填满 Y 和 X；X/Y 的相对顺序仍保留主条与碎片关系。
 - **障碍物雕刻**：初始空间用 6-slab 完整分解挖掉障碍物，保证周边空间可达。**零厚膜不雕刻**（无体积，雕刻退化为无意义），改由 `check_block_feasible` 的 `check_obstacle` 逐箱兜底，同斜面模式。**斜面不雕刻**——阶梯碎片会切碎空间栈、降低装载，楔形禁区由 `check_block_feasible` 的 `check_facet` 逐箱兜底（过挖为 0）；**例外**：某斜面禁区覆盖原点（两正截距）时对贴角楔形做阶梯雕刻，否则初始空间 min corner 在禁区、块全部被拒而零装载。
 - **beam 精炼**（`pack_beam`）：每步对候选块做多轮精炼——模拟放置 + 贪心完成评估 + 多目标排序，裁半保留。前瞻分两级：`greedy_complete` 对前几个候选做一步前瞻选最优（`pick_best_block`，eval_width=4）；`complete_largest` 纯贪心填到底，用于最终得分。
 - **多目标评分**：`compare_local_scores` 按 (体积率, 箱数, 站点数, 组数) 字典序比较候选——装载优先（对齐全局目标 min_container_count 优先），站点聚拢仅在装载相同时作平局裁决。若把站点数排前，跨站点续装（分桶/续装场景）会被"多目标提前停止"误判为更差而整桶放弃；装载优先 + `reduce_platform_splits` 后处理收敛站点（见 [architecture.md](architecture.md) §6），与 GEP/BSG 架构一致。
@@ -143,7 +143,7 @@ GLC 的核心难点：已有放置可能不在任何 Space 的角落，无法直
 
 ### 难点与易错点
 
-- **空间切割必须完整覆盖**：初始/续装挖空用 6-slab 完整分解，不能用十字形启发式切割——会丢对角空间（历史 bug，已回归测试保护）。
+- **空间切割必须完整覆盖**：初始和续装挖空都使用 6-slab 分解，避免丢失对角空间。
 - 块内 platform/group 一致性：不一致会破坏站点/组约束，生成块时即过滤。
 - beam 精炼的 fitness 依赖 `greedy_complete` 的质量，改动贪心完成策略会影响最终选块。
 
@@ -163,13 +163,13 @@ GLC 的核心难点：已有放置可能不在任何 Space 的角落，无法直
 
 ### 代码地图
 
-| 文件                                | 责任                                         |
-| ----------------------------------- | -------------------------------------------- |
-| `src/core/algorithm/rgs/packer.cpp` | `RgsPacker::pack_single()`：策略×迭代主循环  |
-| `src/core/algorithm/rgs/order.cpp`  | `build_ordered_list` 排序 + 组级 Shaw        |
-| `src/core/algorithm/rgs/insert.cpp` | `insertion_heuristic` EP 插入 + 四道门检查   |
-| `src/core/algorithm/rgs/grid.cpp`   | 3D 网格加速碰撞/支撑/堆叠/路线四查           |
-| `src/core/algorithm/rgs/state.hpp`  | `EpContext` 状态（头文件内联，无 state.cpp） |
+| 文件                                | 责任                                             |
+| ----------------------------------- | ------------------------------------------------ |
+| `src/core/algorithm/rgs/packer.cpp` | `RgsPacker::pack_single_impl()`：策略×迭代主循环 |
+| `src/core/algorithm/rgs/order.cpp`  | `build_ordered_list` 排序 + 组级 Shaw            |
+| `src/core/algorithm/rgs/insert.cpp` | `insertion_heuristic` EP 插入 + 四道门检查       |
+| `src/core/algorithm/rgs/grid.cpp`   | 3D 网格加速碰撞/支撑/堆叠/路线四查               |
+| `src/core/algorithm/rgs/state.hpp`  | `EpContext` 状态（头文件内联，无 state.cpp）     |
 
 ### 算法流程
 
@@ -226,8 +226,8 @@ flowchart TD
 
 ### 难点与易错点
 
-- **`s_call_id` 红线**：进程级静态原子计数，每次求解调用递增，参与随机种子。任何无 pallet_types 分支的**零新增求解调用**约束都不能打破（新增 pack_single 调用会改变 RGS 行为、扰动既有测试确定性）。
-- **网格注册完整性**：`insertion_heuristic` 开头必须把已有放置逐条注册进碰撞网格，否则旧箱查不到、可能重叠（历史 bug，tender 功能落地时修复）。
+- **调用计数**：每次求解调用都会推进随机种子；未启用装托的路径不要新增 `pack_single` 调用。
+- **网格注册**：`insertion_heuristic` 必须先注册已有放置，否则可能与旧箱重叠。
 - 续装 `stop_when_complete` 完成判定必须是 `existing.size() + items.size()`（`load.placements` 含已有放置），否则后处理合并会被错误拒绝。
 
 ---
@@ -284,7 +284,7 @@ flowchart TD
 - **块预处理**：先枚举致密 simple block，再迭代合并（X/Y/Z 方向，外包取 max），最多 `max_bl` 个。合并要求外包不超容器、成员需求不超库存、填充率 ≥ `max_fr`。BR 分组：BR0–7（1–20 箱型）`max_fr=1.00`，BR8–15（30–100 箱型）`max_fr=0.98`。
 - **障碍物雕刻**：初始空间/残差 cover 挖掉障碍物；`support_rate > 0` 时障碍物强制逐叶（快路径 `is_supported` 不认障碍物顶面支撑），`support_rate = 0` 时雕刻已保证空间无禁区、走快路径。**斜面不雕刻**——`facets` 存在即强制逐叶（`needs_leaf_validation`），由 `can_place_block` 的 `check_facet` 逐叶兜底（过挖为 0）；**例外**：某斜面禁区覆盖原点（两正截距）时对贴角楔形做阶梯雕刻，否则残余空间 anchor 落在原点会被拒而零装载。
 - **残余空间**：overlapping cover，**不能改成互不重叠 partition**。一个块放入后，对所有与其重叠的残余 cuboid 各做 6-slab（左右前后下上）分解挖除，删除被完全包含的 non-maximal cuboid。互不重叠的碎片化表达会严重损害强异构实例。
-- **anchor 与评分（2026-08 多 cuboid 化）**：每个残余 cuboid 的 8 角与容器对应角算 Manhattan 距离，取最小者为该 cuboid 的 anchor（`best_anchor_for`）；`route` 存在时把 X 分量固定为 min-X（深角，使平台从深往门装）。展开/贪心**遍历按体积取 top-12 的残差空间**（`top_cuboids_by_volume`）而非只挑一个——多平台 route 场景中单个 Manhattan 最优空间常是装不下下一平台箱的小碎片，全量遍历又过慢，故按体积上限筛出能装下块的大空间。候选块用 $f(b,r)=V_{\text{box}}(b)-V_{\text{loss}}(b,r)$ 排序，`V_loss` 由三轴 KPA 估计块边缘可继续填补的最大范围。KPA 对每件箱建模"至多选一个允许朝向尺寸"的多选背包——不能只取该轴最大尺寸，否则最大尺寸不适配而较小朝向可适配时会错误排除可用箱。
+- **anchor 与评分**：每个残余 cuboid 从 8 角中选 Manhattan 距离最小者为 anchor（`best_anchor_for`）；`route` 存在时固定到 min-X 深角。展开和贪心遍历体积最大的 12 个残差空间（`top_cuboids_by_volume`），在质量与搜索成本间取平衡。候选块按 $f(b,r)=V_{\text{box}}(b)-V_{\text{loss}}(b,r)$ 排序；KPA 为每件箱选择一个可用朝向尺寸，不能只取轴向最大值。
 - **beam search**：根层最多扩展 $\min(w^2,|B|)$ 个块，后续层每状态最多 w 个；每个后继做一次 greedy rollout 评分；用 rollout 最终装入的箱型计数去相似状态（相似时保留已装体积更小者）；保留评分最高 w 个。外层从 w=1 开始，每次结束后 $w \leftarrow \lceil\sqrt{2}\,w\rceil$（相邻轮次搜索投入约翻倍），根层候选数自然限制并做 int 溢出保护。
 
 ### 约束集成
@@ -314,40 +314,13 @@ beam 宽度由 double search effort 动态增长。
 - **vector 扩容使块引用失效**：`generate_blocks()` 中不能在保存 `const auto& a = blocks[i]` 后立刻追加新块再继续用 a——先算完所有合并候选再追加。
 - **KPA 的 1D 放松不可当作实际可行装载**：三轴 KPA 只用于启发式评分，三个轴的最大长度不能组合成保证可行的三维装载。
 
-### 已修复问题（维护者）
+### 维护注意
 
-| 问题                           | 症状                                             | 修复                                                                      |
-| ------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------- |
-| 复合块生成中 `vector` 引用失效 | 同一 BR 输入偶发 Windows 访问冲突 `0xC0000005`。 | 先计算 X/Y/Z 三个合并候选，再调用 `add_block()`，避免扩容后继续读取引用。 |
-| 残余空间被误实现为 partition   | 强异构 BR15 利用率约 49%。                       | 恢复 overlapping cover 与 non-maximal 删除。                              |
-| 通用块被错误限制为齐边满填     | `max_fr=0.98` 基本无效，强异构退化。             | 非拼接轴取最大值并由填充率筛选。                                          |
-| KPA 只取最大允许轴向尺寸       | 允许旋转的箱子在较小朝向可放入时被判不可用。     | 使用每件箱子的允许轴向尺寸集合进行多选背包。                              |
-
-这些修复使 BR15#1 在本机固定 30 秒测试中从约 48.87% 提升到约 79.27%。
-
-### KPA 试验记录（维护者）
-
-曾实现过候选块库存扣减后的精确 KPA（以 $C' = C - \mathrm{members}(b)$ 重建三轴 DP，允许恰好填满剩余长度），语义上避免候选块库存被重复用于预测，但显著增加每个 rollout 的 DP 数量，在三个强异构 BR15 固定 30 秒试验中均降低装载率 1~5%，已 reset。若重新尝试：作为可配置实验模式、限制每 state 候选数与缓存、以 BR8–15 全部 800 例组均值比较、同时记录每例耗时。
-
-### 网格索引试验记录（维护者）
-
-曾把 RGS 的 3D 网格加速（`grid_support_neighbors`/`grid_neighbors`/`grid_route_neighbors` + 共享约束的 `indices` 参数）抽到共享层并接入 BSG/GLC 的逐叶重叠/支撑/堆码/承重/重不压轻检查（BSG `can_place_block` 每块评估建一次网格；GLC `check_block_feasible` 按多 cell 块门控 + 惰性构建），实测无稳健收益，已 reset。数据（`-t 60` 吞吐）：GLC 同质 2 型 + `support_rate=1.0` 从 9 箱升到 60 箱（+6.7×），但强异构 5 型下从 60 箱降到 12 箱（−5×，与支撑率无关，由箱型多 → 候选块多决定）；BSG 强异构 300 箱从 31~33s 装完退化到 60s 超时只装 190。根因：每 (block,space) 调用独立构建 O(n) map 网格，常数压过省下的全量扫描，仅同质场景候选块少时才占优。若重新尝试：把网格构建提升到每 space 一次跨块复用、用扁平单元数组替代 `std::map`，并先做同质/异构 × 支撑率的跨场景矩阵验证再谈收益。
+- 残余空间必须保持 overlapping cover，通用块按 `max_fr` 筛选；把两者改成互不重叠的满填结构会降低强异构实例的质量。
+- KPA 只用于评分，并为每件箱保留可用朝向集合。共享网格若在每个 `(block, space)` 组合中重建，通常得不偿失；重试前应先验证可复用的索引方案。
 
 ---
 
 ## 基准方法（BR）
 
-`data/br/`（被 .gitignore）由 `data/convert_br.py` 从 `data/br-origin/` 生成，每个 BR 实例转换为数量限制为 1 的单容器输入。首次运行前先执行：
-
-```powershell
-python data/convert_br.py   # 生成 data/br/br00_001.json ~ br15_100.json
-```
-
-使用 Release 构建，单例命令：
-
-```powershell
-xmake f -m release
-xmake run cli .\data\br\br15_001.json -a bsg -t 30
-```
-
-论文表 2 的可比基线为 BSG-CLP 的 30/150/500 秒列。只有在相同 BR 分组、无支撑约束、Release 构建和每组 100 例统计下，结果才有解释价值。
+原始 BR 数据位于 `data/br-origin/`，仓库保留的基准结果见 `report/report.txt` 和 `report/report-gep.csv`。比较算法时应使用 Release 构建、相同的 BR 分组和时间限制，并按完整分组汇总结果；单个实例的装载率不足以说明优劣。

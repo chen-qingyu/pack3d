@@ -6,13 +6,12 @@ pack3d 求解器的 Python 绑定，输入输出与 JSON 格式一致。
 
 ```bash
 python -m build python
-pip install python/dist/xxx.whl
 ```
 
-若需跨机器安装，可使用 `.tar.gz`：
+构建产物位于 `python/dist/`。安装其中生成的 wheel：
 
 ```bash
-pip install python/dist/xxx.tar.gz
+pip install python/dist/pack3d-<version>-<tag>.whl
 ```
 
 ## 使用
@@ -32,11 +31,7 @@ result = pack3d.run({
 })
 ```
 
-| 参数    | 类型 | 说明                       |
-| ------- | ---- | -------------------------- |
-| `input` | dict | 输入数据，格式与 JSON 一致 |
-
-返回值是一个 dict，顶层包含 `status`、`summary`、`result`、`violations` 四个字段（`violations` 恒存在，非 `complete` 时可能非空）。`run()` 不抛异常——非法输入或内部错误返回 `status=invalid` 的 dict，调用方按 `status` 判断成败。详见 [docs/output.md](../docs/output.md)。
+`run(input: dict) -> dict` 的输入与 JSON 格式一致。返回值恒含 `status`、`summary`、`result`、`violations`；`run()` 不抛异常，非法输入或内部错误返回 `status=invalid`。完整字段见 [docs/output.md](../docs/output.md)。
 
 ## 命令行脚本
 

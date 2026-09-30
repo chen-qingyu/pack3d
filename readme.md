@@ -2,8 +2,6 @@
 
 pack3d 是一个 C++20 三维装箱求解器，采用多种启发式算法求解 3D bin packing 问题。
 
-pack3d 寓意将三维物体"打包"进容器空间，同时暗示将多种算法策略打包进统一求解框架。
-
 ## 架构概览
 
 ```
@@ -12,20 +10,7 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 
 ## 支持范围
 
-支持的功能（约束定义见 [docs/constraints.md](docs/constraints.md)）：
-
-- 重量约束：容器内总重不超过容器限重
-- 支撑率约束：箱子底面被支撑的比例
-- 路线顺序约束：站点（配送停靠点）按装卸货通道的 X 轴位置约束
-- 站点数量限制：单容器最多 `platform_limit` 个不同站点
-- 运输委托限制：每个 tender（同 group 货物连通的容器连通分量）最多 `tender_limit` 个容器
-- 堆码层数约束：箱型 `max_stack`（标量或按朝向数组）
-- 单箱承重约束：箱型 `max_load`（标量或按朝向数组）
-- 障碍物约束：容器内轴对齐障碍物，箱体不得侵入，顶面等价地板；某维为 0 的零厚膜只拦截横跨其平面的箱子（见 [docs/constraints.md](docs/constraints.md) 1.11）
-- 斜面约束：容器斜面楔形禁入区，箱体不得侵入
-- 装托（palletizing）：`loose` 散件先装托，托盘作为装箱单元装车（见 [docs/architecture.md](docs/architecture.md) §3）
-- 中间状态续装：从已有部分放置继续装箱（见 [docs/architecture.md](docs/architecture.md) §4）
-- 危险品分柜：`danger` 箱型/箱子级标志，危险品优先装柜、单独装柜、仅最后一车混装普货（见 [docs/constraints.md](docs/constraints.md) §1.14）
+核心能力包括重量、支撑、路线、站点、运输委托、堆码、障碍物、斜面、危险品分柜、装托和续装。字段与约束定义见 [docs/input.md](docs/input.md) 和 [docs/constraints.md](docs/constraints.md)。
 
 支持的算法：
 
@@ -34,7 +19,7 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 - `RGS`：随机贪心搜索 — 多策略排序 + Shaw 随机化 + 多起点采样
 - `BSG`：束搜索 — 宽度限制的启发式树搜索 + KPA 块合并
 
-每种算法均支持全部的功能，且可通过配置启用/禁用部分约束。
+四种算法复用同一约束层；具体策略与适用场景见 [docs/algorithms.md](docs/algorithms.md)。
 
 目标字典序：`min_container_count -> min_platform_split -> max_volume_rate -> min_group_split`
 
@@ -125,9 +110,9 @@ cd web && npm install && npm run dev
 
 输出的详细定义见 [docs/output.md](docs/output.md)。
 
-## 最小示例
+## 演示输入
 
-仓库里的 [demo.json](data/demo.json) 是一个可直接运行的完整例子。该例子定义 2 种容器（small 100×100×100、large 200×100×100）、2 种箱子（box_s 30×20×20、box_l 100×100×90），共 5 个箱子。约束为时间限制 30 秒、支撑率 0.6。
+[demo.json](data/demo.json) 是可直接运行的完整示例，包含两种容器、两种箱子和五个待装实例。
 
 ## 文档索引
 

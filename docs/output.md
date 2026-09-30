@@ -11,7 +11,7 @@ JSON，顶层四个字段：
 }
 ```
 
-> **字段恒存在（消费契约）**：所有字段无论对应功能是否启用都会输出，未启用时给合理默认值——`null`（`payload`/`used_weight`/`weight_rate`/`tender`/`weight`/`group`/`platform`）、空数组（`violations`/`obstacles`/`facets`/`pallets`/`unpacked_boxes`/`platforms`/`groups`）。下游（web/server/SDK）**依赖此契约**，不再对缺失字段做防御（如 `?.`/`?? []`/`.get("x", [])`）。输出**不含** `box_types`（箱子类型仅在输入中出现；放置信息自带 `box_type_id` 与朝向尺寸 `dx/dy/dz`）。
+> **字段恒存在（消费契约）**：未适用的标量为 `null`（如 `payload`、`weight`、`group`），集合为 `[]`，布尔值为 `false`，计数为 `0`。下游（Web、Server、SDK）可直接读取这些键。输出不含 `box_types`；placement 自带 `box_type_id` 与朝向后的尺寸。
 
 ## `status` 状态枚举
 
@@ -153,9 +153,9 @@ JSON，顶层四个字段：
 
 容器数组顺序即装车顺序。`container.packed_count` 为容器内放置单元数，普通箱计 1、托盘也计 1；它与按散箱计数的 `summary.packed_box_count` 不同。`null` 表示该维度不适用（如重量未配置时 `used_weight`/`weight_rate` 为 null；有效箱子未设置站点/分组时 `platform`/`group` 为 null）。混组托盘的虚拟箱 `group` 亦为 null，其分组见对应 `pallets[].groups`（按 `box_id == pallet_id` 关联）。
 
-每个容器带 `danger` 布尔标志：`true` 表示该容器装入至少一件危险品。危险品分柜规则下（输入启用 `danger`），危险品优先装入独立容器，仅最后一车（含危险品的容器中索引最大者）允许混装普货，其余普货装入后续容器。
+每个容器带 `danger`：`true` 表示至少装入一件危险品。分柜规则见 [constraints.md](constraints.md) §1.14。
 
-`volume_rate_x` 为容器 X 方向口径的体积利用率，与 `volume_rate` 对齐、仅把"整个容器"换成"实际使用的 X 方向 slab"：分母 = slab [0, used_x]×[0,sy]×[0,sz] 的可用容积 = `used_x·sy·sz` − 障碍物（slab 内部分）− 斜面楔形（slab 内部分），分子 = 装箱体积（同 `volume_rate`）。其中 `used_x` = 所有箱子 `x+dx` 的最大值（含续装已有放置）；`used_x` 达容器全长时本值与 `volume_rate` 相等。容器未装任何箱时为 0。`summary.volume_rate_x` 为各容器该值的平均。
+`volume_rate_x` 使用实际占用的 X 向区段：分子与 `volume_rate` 相同，分母为 `[0, used_x]×[0,sy]×[0,sz]` 的可用容积（扣除其中的障碍物和斜面楔形）。`used_x` 是所有箱子 `x+dx` 的最大值，包含续装快照；空容器为 0，到达容器全长时与 `volume_rate` 相同。`summary.volume_rate_x` 是各容器的平均值。
 
 `obstacles` 为本容器实例的障碍物（从容器类型继承，自包含），结构与输入一致；未配置时为 `[]`。
 
