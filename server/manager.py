@@ -20,7 +20,7 @@ class RunState:
     run_id: str
     instance_id: str
     run_name: str
-    status: str          # running | completed | failed | cancelled
+    status: str          # running | completed | invalid | failed | cancelled
     process: mp.Process | None
     run_dir: Path
     created_at: str
@@ -29,6 +29,8 @@ class RunState:
     result: dict | None = None
 
     def to_dict(self, instance_name: str = "") -> dict:
+        # 结果可能只在 output.json 里（进程重启后从 DB 恢复的 run）
+        result = self.result if self.result is not None else self.get_result()
         d = {
             "run_id": self.run_id,
             "instance_id": self.instance_id,
@@ -38,10 +40,10 @@ class RunState:
             "error": self.error,
             "created_at": self.created_at,
         }
-        if self.status in ("completed", "invalid") and self.result is not None:
-            d["summary"] = self.result["summary"]
-        if self.status == "invalid" and self.result is not None:
-            d["violations"] = self.result["violations"]
+        if result is not None:
+            d["summary"] = result["summary"]
+            if self.status == "invalid":
+                d["violations"] = result["violations"]
         return d
 
     def get_result(self) -> dict | None:
