@@ -360,7 +360,8 @@ void commit_placement(
 
     if (problem.has_max_stack || problem.has_max_load)
     {
-        apply_stack_state(ep, osize, box.weight.value_or(0.0), load);
+        const auto support_cands = grid_support_neighbors(ctx, ep, osize);
+        apply_stack_state(ep, osize, box.weight.value_or(0.0), load, &support_cands);
     }
 
     load.used_volume += osize.volume();

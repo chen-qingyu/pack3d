@@ -93,8 +93,10 @@ inline constexpr int FACET_STAIR_STEPS = 2;
 /// 放置提交后的堆叠状态副作用：新箱（load.placements.back()）的
 /// stack_level/same_run/cum_load/supports，及沿支撑链传播 cum_load += 各路径份额、
 /// 异型压上时置链上箱 has_cross_above = true。
+/// indices 非空时只检查这些 placement 下标（支撑箱候选超集）。
 void apply_stack_state(const Position& pos, const OrientedSize& osize, double weight,
-                       ContainerLoad& load) noexcept;
+                       ContainerLoad& load,
+                       const std::vector<size_t>* indices = nullptr) noexcept;
 
 /// 按 z 排序重建全部放置的堆叠状态；errors 非空时同时校验 max_stack（同型A）/max_load。
 /// 用于 resume、后处理合并、预校验等任意顺序构造的装载。

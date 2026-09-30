@@ -106,8 +106,9 @@ bool can_place_block(
 
     // tender 约束：逐叶按 group 去重检查（复合块可能含多个 group），
     // 通过后把 group 记入 next_load.groups，供后续块判定连通
-    // 全支撑（support_rate>=1）下不存在"下方留空隙、后放下方箱"的乱序放置，可跳过检测
-    const bool need_recompute_check = ctx.support_rate < 1.0;
+    // 全支撑下不会乱序；未启用堆码/承重时重建也不会影响可行性。
+    const bool need_recompute_check =
+        ctx.support_rate < 1.0 && (ctx.has_max_stack || ctx.has_max_load);
     bool need_recompute = false;
     for (const auto& leaf : leaves)
     {

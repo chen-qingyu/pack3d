@@ -450,16 +450,14 @@ bool walk_same_run(const std::vector<size_t>& start_supports, int run_height,
                    const std::string& box_type_id,
                    const std::vector<Placement>& placements,
                    const std::map<std::string, BoxType>& box_type_map,
-                   std::vector<size_t>& run_boxes, bool& pure) noexcept
+                   bool& pure) noexcept
 {
-    run_boxes.clear();
     std::vector<size_t> stack(start_supports.begin(), start_supports.end());
     while (!stack.empty())
     {
         const size_t x = stack.back();
         stack.pop_back();
         const auto& X = placements[x];
-        run_boxes.push_back(x);
         const auto& bt = box_type_map.at(X.box_type_id);
         if (const auto ms = bt.max_stack_for(X.orientation);
             ms.has_value() && run_height > ms.value())
@@ -498,13 +496,6 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
         return true;
     }
 
-    // 为所有直接支撑计算份额（D 整柱累计仍需要完整份额向下传播）
-    std::vector<double> shares(info.supports.size());
-    for (size_t i = 0; i < info.supports.size(); ++i)
-    {
-        shares[i] = load_share(weight, info.areas[i], info.total_area);
-    }
-
     // max_stack（同箱型连续层数）：候选 B 的同型 run 高度；仅同型直接支撑计入 run
     int run = 1;
     std::vector<size_t> same_supports;
@@ -532,15 +523,13 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
             return false;
         }
     }
-    std::vector<size_t> run_boxes;
     if (!walk_same_run(same_supports, run, box_type_id, load.placements,
-                       box_type_map, run_boxes, pure))
+                       box_type_map, pure))
     {
         return false;
     }
 
-    // max_load A3 面积分摊：跨型直接支撑对，或同型但该箱型未声明 max_stack（无快速路径），都强制。
-    // 同型 + 声明了 max_stack → 属同型连续 run，由 max_stack 快速路径保证，免承重分摊。
+    bool needs_a3 = false;
     for (size_t i = 0; i < info.supports.size(); ++i)
     {
         const auto& S = load.placements[info.supports[i]];
@@ -557,26 +546,57 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
         }
         if (ml.has_value())
         {
-            const double footprint = static_cast<double>(S.osize.dx) * S.osize.dy;
-            const double alloc = ml.value() * static_cast<double>(info.areas[i]) / footprint;
-            if (shares[i] > alloc + 1e-9)
-            {
-                return false;
-            }
+            needs_a3 = true;
         }
     }
 
-    // max_load D 整柱累计：只对"承重仍相关"的链上箱检查（上方存在异型箱，或该箱型未声明 max_stack）。
-    // 纯同型柱且该箱型声明了 max_stack → 快速路径，跳过。
     bool b_has_stack = false;
     if (const auto itB = box_type_map.find(box_type_id); itB != box_type_map.end())
     {
         b_has_stack = itB->second.max_stack_for(orientation).has_value();
     }
-    if (pure && b_has_stack)
+    const bool needs_d = !pure || !b_has_stack;
+    if (!needs_a3 && !needs_d)
     {
         return true;
     }
+
+    // 仅在 A3 或整柱累计需要时计算分摊份额。
+    std::vector<double> shares(info.supports.size());
+    for (size_t i = 0; i < info.supports.size(); ++i)
+    {
+        shares[i] = load_share(weight, info.areas[i], info.total_area);
+    }
+
+    if (needs_a3)
+    {
+        for (size_t i = 0; i < info.supports.size(); ++i)
+        {
+            const auto& S = load.placements[info.supports[i]];
+            const auto& bt = box_type_map.at(S.box_type_id);
+            if (S.box_type_id == box_type_id &&
+                bt.max_stack_for(S.orientation).has_value())
+            {
+                continue;
+            }
+            const auto ml = bt.max_load_for(S.orientation);
+            if (ml.has_value())
+            {
+                const double footprint = static_cast<double>(S.osize.dx) * S.osize.dy;
+                const double alloc = ml.value() * static_cast<double>(info.areas[i]) / footprint;
+                if (shares[i] > alloc + 1e-9)
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    if (!needs_d)
+    {
+        return true;
+    }
+
     std::vector<size_t> boxes;
     std::vector<double> delta;
     aggregate_chain(load.placements, info.supports, shares, boxes, delta);
@@ -630,7 +650,8 @@ bool check_heavy_not_on_light(const Position& pos, const OrientedSize& osize,
 }
 
 void apply_stack_state(const Position& pos, const OrientedSize& osize, double weight,
-                       ContainerLoad& load) noexcept
+                       ContainerLoad& load,
+                       const std::vector<size_t>* indices) noexcept
 {
     if (load.placements.empty())
     {
@@ -638,8 +659,8 @@ void apply_stack_state(const Position& pos, const OrientedSize& osize, double we
     }
     Placement& pl = load.placements.back();
 
-    // 新箱顶面在 pos.z + dz，不会被 collect_supports 识别为支撑，可安全全量扫描
-    const SupportInfo info = collect_supports(pos, osize, load.placements);
+    // 新箱顶面不会被识别为自身支撑；indices 为候选超集时可避免全量扫描。
+    const SupportInfo info = collect_supports(pos, osize, load.placements, indices);
     pl.stack_level = info.supports.empty() ? 1 : info.max_level + 1;
     pl.cum_load = 0.0;
     pl.supports = info.supports;
