@@ -90,6 +90,10 @@ inline constexpr int FACET_STAIR_STEPS = 2;
                                             double box_weight, const ContainerLoad& load,
                                             const std::vector<size_t>* indices = nullptr) noexcept;
 
+/// 危险品分柜：混装（危险品与普货）仅允许出现在最后一个含危险品的容器。
+[[nodiscard]] bool check_danger_segregation(
+    const std::vector<ContainerLoad>& loads) noexcept;
+
 /// 放置提交后的堆叠状态副作用：新箱（load.placements.back()）的
 /// stack_level/same_run/cum_load/supports，及沿支撑链传播 cum_load += 各路径份额、
 /// 异型压上时置链上箱 has_cross_above = true。

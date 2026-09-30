@@ -937,7 +937,13 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
         }
 
         std::set<std::string> placed_ids;
+        for (const auto& bx : problem.boxes)
+        {
+            placed_ids.insert(bx.id);
+        }
         std::map<std::string, int> ct_usage;
+        std::vector<ContainerLoad> existing_loads;
+        existing_loads.reserve(problem.existing_containers.size());
 
         for (size_t ei = 0; ei < problem.existing_containers.size(); ++ei)
         {
@@ -979,6 +985,11 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
             if (ct.quantity_limit.has_value() && ct_usage[ec.type_id] > ct.quantity_limit.value())
             {
                 out.push_back(prefix + ": exceeds quantity_limit for container type " + ec.type_id);
+            }
+            if (problem.platform_limit.has_value() &&
+                static_cast<int>(load.platforms.size()) > problem.platform_limit.value())
+            {
+                out.push_back(prefix + ": exceeds platform_limit");
             }
 
             for (size_t pi = 0; pi < load.placements.size(); ++pi)
@@ -1028,16 +1039,6 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                     out.push_back(pfx + " (" + pl.box_id + "): violates heavy_not_on_light");
                 }
 
-                if (problem.platform_limit.has_value() && !pl.platform.empty())
-                {
-                    // 检查当前放置加入后的平台数
-                    auto test_load = load;
-                    if (!check_platform_limit(test_load, pl.platform, problem.platform_limit.value()))
-                    {
-                        out.push_back(pfx + " (" + pl.box_id + "): exceeds platform_limit");
-                    }
-                }
-
                 if (problem.route.has_value() && !pl.platform.empty())
                 {
                     if (!check_route_order(load, pl.platform, pl.position, pl.osize, problem.route.value()))
@@ -1053,6 +1054,12 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                 out.push_back(prefix + ": total weight " + std::to_string(load.total_weight) +
                               " exceeds payload " + std::to_string(ct.payload.value()));
             }
+            existing_loads.push_back(std::move(load));
+        }
+
+        if (!check_danger_segregation(existing_loads))
+        {
+            out.push_back("existing_containers: violates danger segregation");
         }
     }
 
@@ -1142,6 +1149,14 @@ ContainerLoad build_load_from_existing(
             errors.push_back("existing placement box_type_id '" + ep.box_type_id + "' not found");
             continue;
         }
+        if (std::find(bt_it->second.allowed_orientations.begin(),
+                      bt_it->second.allowed_orientations.end(), ep.orientation) ==
+            bt_it->second.allowed_orientations.end())
+        {
+            errors.push_back("existing placement orientation is not allowed for box_type '" +
+                             ep.box_type_id + "'");
+            continue;
+        }
         Placement pl;
         pl.box_id = ep.box_id;
         pl.box_type_id = ep.box_type_id;
@@ -1180,9 +1195,9 @@ ContainerLoad build_load_from_existing(
 
         load.placements.push_back(pl);
         load.used_volume += pl.osize.volume();
-        if (!ep.platform.empty())
+        if (!pl.platform.empty())
         {
-            load.platforms.insert(ep.platform);
+            load.platforms.insert(pl.platform);
         }
         for (const auto& group : pl.groups)
         {

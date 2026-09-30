@@ -649,6 +649,41 @@ bool check_heavy_not_on_light(const Position& pos, const OrientedSize& osize,
     return true;
 }
 
+bool check_danger_segregation(const std::vector<ContainerLoad>& loads) noexcept
+{
+    int last_danger = -1;
+    for (size_t i = 0; i < loads.size(); ++i)
+    {
+        for (const auto& pl : loads[i].placements)
+        {
+            if (pl.danger)
+            {
+                last_danger = static_cast<int>(i);
+                break;
+            }
+        }
+    }
+    if (last_danger < 0)
+    {
+        return true;
+    }
+    for (size_t i = 0; i < loads.size(); ++i)
+    {
+        bool has_danger = false;
+        bool has_regular = false;
+        for (const auto& pl : loads[i].placements)
+        {
+            has_danger |= pl.danger;
+            has_regular |= !pl.danger;
+        }
+        if (has_danger && has_regular && static_cast<int>(i) != last_danger)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 void apply_stack_state(const Position& pos, const OrientedSize& osize, double weight,
                        ContainerLoad& load,
                        const std::vector<size_t>* indices) noexcept

@@ -464,6 +464,105 @@ TEST_CASE("pre_validate_input group/platform 箱型级模式并归一化", "[val
     REQUIRE(found_none_weight);
 }
 
+TEST_CASE("pre_validate_input 续装继承站点计入 platform_limit", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {300, 100, 100}, std::nullopt, std::nullopt});
+    BoxType p1;
+    p1.id = "p1";
+    p1.size = {100, 100, 100};
+    p1.allowed_orientations = {Orientation::XYZ};
+    p1.platform = "P1";
+    BoxType p2 = p1;
+    p2.id = "p2";
+    p2.platform = "P2";
+    p.box_types = {p1, p2};
+    p.boxes.push_back({"pending", "p1", std::nullopt, "", {}});
+    p.route = RouteOrder{{"P1", "P2"}, {{"P1", 0}, {"P2", 1}}};
+    p.platform_limit = 1;
+    p.existing_containers.push_back({"ct1", {
+                                                {"e1", "p1", {0, 0, 0}, Orientation::XYZ},
+                                                {"e2", "p2", {100, 0, 0}, Orientation::XYZ},
+                                            }});
+
+    const auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& violation : violations)
+    {
+        found |= violation.find("exceeds platform_limit") != std::string::npos;
+    }
+    REQUIRE(found);
+}
+
+TEST_CASE("pre_validate_input 续装拒绝待装箱与快照重复 ID", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {100, 100, 100}, std::nullopt, std::nullopt});
+    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
+    p.boxes.push_back({"duplicate", "bt1", std::nullopt, "", {}});
+    p.existing_containers.push_back({"ct1", {
+                                                {"duplicate", "bt1", {0, 0, 0}, Orientation::XYZ},
+                                            }});
+
+    const auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& violation : violations)
+    {
+        found |= violation.find("duplicate box_id") != std::string::npos;
+    }
+    REQUIRE(found);
+}
+
+TEST_CASE("pre_validate_input 续装拒绝箱型未允许的朝向", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {100, 100, 100}, std::nullopt, std::nullopt});
+    p.box_types.push_back({"bt1", {100, 100, 100}, {Orientation::XYZ}});
+    p.boxes.push_back({"pending", "bt1", std::nullopt, "", {}});
+    p.existing_containers.push_back({"ct1", {
+                                                {"e1", "bt1", {0, 0, 0}, Orientation::XZY},
+                                            }});
+
+    const auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& violation : violations)
+    {
+        found |= violation.find("orientation is not allowed") != std::string::npos;
+    }
+    REQUIRE(found);
+}
+
+TEST_CASE("pre_validate_input 续装拒绝非最后危险品容器的混装", "[validation][danger]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {300, 100, 100}, std::nullopt, std::nullopt});
+    BoxType danger;
+    danger.id = "danger";
+    danger.size = {100, 100, 100};
+    danger.allowed_orientations = {Orientation::XYZ};
+    danger.danger = true;
+    BoxType regular = danger;
+    regular.id = "regular";
+    regular.danger = false;
+    p.box_types = {danger, regular};
+    p.boxes.push_back({"pending", "regular", std::nullopt, "", {}});
+    p.existing_containers = {
+        {"ct1", {
+                    {"d1", "danger", {0, 0, 0}, Orientation::XYZ},
+                    {"r1", "regular", {100, 0, 0}, Orientation::XYZ},
+                }},
+        {"ct1", {{"d2", "danger", {0, 0, 0}, Orientation::XYZ}}},
+    };
+
+    const auto violations = pre_validate_input(p);
+    bool found = false;
+    for (const auto& violation : violations)
+    {
+        found |= violation.find("violates danger segregation") != std::string::npos;
+    }
+    REQUIRE(found);
+}
+
 TEST_CASE("pre_validate_input group/platform 箱子级模式允许实例不同", "[validation]")
 {
     Problem p;
