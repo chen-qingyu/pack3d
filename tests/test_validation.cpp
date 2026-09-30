@@ -227,6 +227,32 @@ TEST_CASE("pre_validate_input 检测 heavy_not_on_light 需要 support_rate", "[
     }
 }
 
+TEST_CASE("pre_validate_input 检测已有放置上重下轻", "[validation]")
+{
+    Problem p;
+    p.container_types.push_back({"ct1", {100, 100, 200}, 1000.0, std::nullopt});
+    BoxType bt;
+    bt.id = "bt1";
+    bt.size = {100, 100, 100};
+    bt.allowed_orientations = {Orientation::XYZ};
+    p.box_types.push_back(bt);
+    p.boxes.push_back({"new", "bt1", 10.0, "", {}});
+    p.support_rate = 1.0;
+    p.heavy_not_on_light = true;
+
+    ExistingContainer existing;
+    existing.type_id = "ct1";
+    existing.placements = {
+        {"lower", "bt1", {0, 0, 0}, Orientation::XYZ, 20.0},
+        {"upper", "bt1", {0, 0, 100}, Orientation::XYZ, 30.0},
+    };
+    p.existing_containers.push_back(std::move(existing));
+
+    const auto violations = pre_validate_input(p);
+    REQUIRE(std::any_of(violations.begin(), violations.end(), [](const std::string& violation)
+                        { return violation.find("heavy_not_on_light") != std::string::npos; }));
+}
+
 // 箱型级重量：箱型与箱子不能同时有重量
 TEST_CASE("pre_validate_input 重量三选一：箱型与箱子重量互斥", "[validation]")
 {

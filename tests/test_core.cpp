@@ -478,6 +478,19 @@ TEST_CASE("max_load: 整柱累计承重（D）", "[core][stack]")
     REQUIRE(check_stack_constraints({0, 0, 200}, {100, 100, 100}, "plain", Orientation::XYZ, 5.0, load, btm2));
 }
 
+TEST_CASE("max_load: 0 阻止同型箱压上", "[core][stack]")
+{
+    auto bt = make_stack_bt("bt", 2, 0.0);
+    std::map<std::string, BoxType> btm = {{"bt", bt}};
+    auto load = make_stack_load();
+
+    load.placements.push_back({"base", "bt", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}});
+    apply_stack_state({0, 0, 0}, {100, 100, 100}, 10.0, load);
+
+    REQUIRE_FALSE(check_stack_constraints({0, 0, 100}, {100, 100, 100}, "bt",
+                                          Orientation::XYZ, 10.0, load, btm));
+}
+
 TEST_CASE("max_stack: 跨不同高度支撑，同型按 run 计数", "[core][stack]")
 {
     // S1 弱箱 max_stack=2 在地板（z 顶=100）；强柱 A->B2->S2（max_stack=5）顶面同为 z=100。
@@ -639,6 +652,46 @@ TEST_CASE("recompute_stack_state: 检测违例", "[core][stack]")
         }
     }
     REQUIRE(found);
+}
+
+TEST_CASE("recompute_stack_state: 检测 A3 与同型整柱承重违例", "[core][stack]")
+{
+    BoxType base;
+    base.id = "base";
+    base.size = {200, 200, 100};
+    base.allowed_orientations = {Orientation::XYZ};
+    base.max_load = {100.0};
+    BoxType top;
+    top.id = "top";
+    top.size = {100, 100, 100};
+    top.allowed_orientations = {Orientation::XYZ};
+    top.max_load = {100.0};
+    std::map<std::string, BoxType> btm = {{"base", base}, {"top", top}};
+
+    auto a3_load = make_stack_load();
+    a3_load.placements = {
+        {"base", "base", "", {0, 0, 0}, Orientation::XYZ, {200, 200, 100}, "", 0.0},
+        {"top", "top", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}, "", 80.0},
+    };
+    std::vector<std::string> a3_errors;
+    recompute_stack_state(a3_load, btm, &a3_errors);
+    REQUIRE_FALSE(a3_errors.empty());
+
+    BoxType column;
+    column.id = "column";
+    column.size = {100, 100, 100};
+    column.allowed_orientations = {Orientation::XYZ};
+    column.max_load = {100.0};
+    std::map<std::string, BoxType> column_map = {{"column", column}};
+    auto column_load = make_stack_load();
+    column_load.placements = {
+        {"b1", "column", "", {0, 0, 0}, Orientation::XYZ, {100, 100, 100}, "", 0.0},
+        {"b2", "column", "", {0, 0, 100}, Orientation::XYZ, {100, 100, 100}, "", 60.0},
+        {"b3", "column", "", {0, 0, 200}, Orientation::XYZ, {100, 100, 100}, "", 60.0},
+    };
+    std::vector<std::string> column_errors;
+    recompute_stack_state(column_load, column_map, &column_errors);
+    REQUIRE_FALSE(column_errors.empty());
 }
 
 // 续装兜底路径：地板正中间放箱后，剩余空间必须完整覆盖（旧十字形切割会丢对角空间）

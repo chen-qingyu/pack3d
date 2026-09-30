@@ -546,17 +546,17 @@ bool check_stack_chain(const ContainerLoad& load, const SupportInfo& info, doubl
         const auto& S = load.placements[info.supports[i]];
         const auto& bt = box_type_map.at(S.box_type_id);
         const bool same_type = (S.box_type_id == box_type_id);
+        const auto ml = bt.max_load_for(S.orientation);
+        if (ml.has_value() && ml.value() <= 0.0)
+        {
+            return false; // max_load<=0：任何箱都不能压上（同型快路径也不例外）
+        }
         if (same_type && bt.max_stack_for(S.orientation).has_value())
         {
             continue;
         }
-        const auto ml = bt.max_load_for(S.orientation);
         if (ml.has_value())
         {
-            if (ml.value() <= 0.0)
-            {
-                return false; // max_load<=0：任何箱都不能压上（其上不可放箱）
-            }
             const double footprint = static_cast<double>(S.osize.dx) * S.osize.dy;
             const double alloc = ml.value() * static_cast<double>(info.areas[i]) / footprint;
             if (shares[i] > alloc + 1e-9)
@@ -761,46 +761,31 @@ void recompute_stack_state(ContainerLoad& load,
                 X.has_cross_above = true; // 本箱异型压上 → X 进入跨型接口
             }
         }
-
-        if (errors)
-        {
-            const auto& bt = box_type_map.at(pl.box_type_id);
-            const auto ms = bt.max_stack_for(pl.orientation);
-            if (ms.has_value() && pl.same_run > ms.value())
-            {
-                errors->push_back("stack " + std::to_string(pl.same_run) +
-                                  " > max_stack " + std::to_string(ms.value()) +
-                                  " for box " + pl.box_id);
-            }
-            bool dummy_pure = true;
-            std::vector<size_t> dummy_run;
-            if (!walk_same_run(same_supports, run, pl.box_type_id,
-                               load.placements, box_type_map, dummy_run, dummy_pure))
-            {
-                errors->push_back("stack run exceeds max_stack under box " + pl.box_id);
-            }
-        }
     }
 
-    // max_load 整柱累计校验：后置遍历，只对"上方存在异型箱"的箱检查（跨型接口）。
-    // has_cross_above 在 z 序主循环中由各箱上方箱传播得到，主循环结束后即为最终值。
     if (errors)
     {
-        for (const auto& pl : load.placements)
+        // 用与增量放置相同的检查链复验任意顺序快照，覆盖 A3、整柱累计和同型 run。
+        ContainerLoad prefix;
+        prefix.type = load.type;
+        prefix.placements.reserve(n);
+        for (const size_t index : order)
         {
-            if (!pl.has_cross_above)
+            const auto& pl = load.placements[index];
+            if (!check_stack_constraints(pl.position, pl.osize, pl.box_type_id,
+                                         pl.orientation, pl.weight.value_or(0.0),
+                                         prefix, box_type_map))
             {
-                continue;
+                errors->push_back("violates max_stack/max_load for box " + pl.box_id);
             }
-            const auto& bt = box_type_map.at(pl.box_type_id);
-            const auto ml = bt.max_load_for(pl.orientation);
-            if (ml.has_value() &&
-                (ml.value() <= 0.0 || pl.cum_load > ml.value() + 1e-9))
-            {
-                errors->push_back("load " + std::to_string(pl.cum_load) +
-                                  " > max_load " + std::to_string(ml.value()) +
-                                  " for box " + pl.box_id);
-            }
+            Placement replayed = pl;
+            replayed.stack_level = 1;
+            replayed.same_run = 1;
+            replayed.cum_load = 0.0;
+            replayed.has_cross_above = false;
+            replayed.supports.clear();
+            prefix.placements.push_back(std::move(replayed));
+            apply_stack_state(pl.position, pl.osize, pl.weight.value_or(0.0), prefix);
         }
     }
 }

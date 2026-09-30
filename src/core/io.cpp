@@ -1020,6 +1020,13 @@ std::vector<std::string> pre_validate_input(const Problem& problem) noexcept
                     out.push_back(pfx + " (" + pl.box_id + "): insufficient support");
                 }
 
+                if (problem.heavy_not_on_light &&
+                    !check_heavy_not_on_light(pl.position, pl.osize,
+                                              pl.weight.value_or(0.0), load))
+                {
+                    out.push_back(pfx + " (" + pl.box_id + "): violates heavy_not_on_light");
+                }
+
                 if (problem.platform_limit.has_value() && !pl.platform.empty())
                 {
                     // 检查当前放置加入后的平台数
