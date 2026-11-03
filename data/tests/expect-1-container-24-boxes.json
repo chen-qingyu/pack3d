@@ -1,0 +1,261 @@
+{
+  "container_types": [
+    {
+      "id": "45HQ",
+      "sx": 13500,
+      "sy": 2330,
+      "sz": 2680,
+      "payload": 16300.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "40HQ",
+      "sx": 11850,
+      "sy": 2330,
+      "sz": 2680,
+      "payload": 16300.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "10TON",
+      "sx": 8000,
+      "sy": 2300,
+      "sz": 2300,
+      "payload": 6400.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "8TON",
+      "sx": 6200,
+      "sy": 2300,
+      "sz": 2300,
+      "payload": 5500.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "40GP",
+      "sx": 11850,
+      "sy": 2330,
+      "sz": 2350,
+      "payload": 16300.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "20GP",
+      "sx": 5925,
+      "sy": 2330,
+      "sz": 2350,
+      "payload": 8150.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "3TON",
+      "sx": 3500,
+      "sy": 1800,
+      "sz": 1800,
+      "payload": 1500.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "8TD",
+      "sx": 6200,
+      "sy": 2300,
+      "sz": 2300,
+      "payload": 5500.0,
+      "quantity_limit": null
+    },
+    {
+      "id": "12TD",
+      "sx": 8000,
+      "sy": 2350,
+      "sz": 2600,
+      "payload": 10000.0,
+      "quantity_limit": null
+    }
+  ],
+  "box_types": [
+    {
+      "id": "t1",
+      "sx": 1200,
+      "sy": 1000,
+      "sz": 800,
+      "allowed_orientations": ["xyz", "yxz"],
+      "max_stack": 1,
+      "max_load": 0.0
+    }
+  ],
+  "boxes": [
+    {
+      "id": "b1",
+      "box_type_id": "t1",
+      "weight": 25.0,
+      "group": "g1",
+      "platform": "p8"
+    },
+    {
+      "id": "b2",
+      "box_type_id": "t1",
+      "weight": 17.0,
+      "group": "g1",
+      "platform": "p4"
+    },
+    {
+      "id": "b3",
+      "box_type_id": "t1",
+      "weight": 16.0,
+      "group": "g1",
+      "platform": "p7"
+    },
+    {
+      "id": "b4",
+      "box_type_id": "t1",
+      "weight": 160.0,
+      "group": "g1",
+      "platform": "p7"
+    },
+    {
+      "id": "b5",
+      "box_type_id": "t1",
+      "weight": 154.0,
+      "group": "g1",
+      "platform": "p7"
+    },
+    {
+      "id": "b6",
+      "box_type_id": "t1",
+      "weight": 19.0,
+      "group": "g1",
+      "platform": "p6"
+    },
+    {
+      "id": "b7",
+      "box_type_id": "t1",
+      "weight": 31.0,
+      "group": "g1",
+      "platform": "p2"
+    },
+    {
+      "id": "b8",
+      "box_type_id": "t1",
+      "weight": 21.0,
+      "group": "g1",
+      "platform": "p2"
+    },
+    {
+      "id": "b9",
+      "box_type_id": "t1",
+      "weight": 46.0,
+      "group": "g1",
+      "platform": "p3"
+    },
+    {
+      "id": "b10",
+      "box_type_id": "t1",
+      "weight": 25.0,
+      "group": "g1",
+      "platform": "p3"
+    },
+    {
+      "id": "b11",
+      "box_type_id": "t1",
+      "weight": 165.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b12",
+      "box_type_id": "t1",
+      "weight": 45.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b13",
+      "box_type_id": "t1",
+      "weight": 24.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b14",
+      "box_type_id": "t1",
+      "weight": 405.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b15",
+      "box_type_id": "t1",
+      "weight": 409.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b16",
+      "box_type_id": "t1",
+      "weight": 93.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b17",
+      "box_type_id": "t1",
+      "weight": 41.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b18",
+      "box_type_id": "t1",
+      "weight": 31.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b19",
+      "box_type_id": "t1",
+      "weight": 25.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b20",
+      "box_type_id": "t1",
+      "weight": 167.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b21",
+      "box_type_id": "t1",
+      "weight": 19.0,
+      "group": "g1",
+      "platform": "p1"
+    },
+    {
+      "id": "b22",
+      "box_type_id": "t1",
+      "weight": 16.0,
+      "group": "g1",
+      "platform": "p5"
+    },
+    {
+      "id": "b23",
+      "box_type_id": "t1",
+      "weight": 255.0,
+      "group": "g1",
+      "platform": "p5"
+    },
+    {
+      "id": "b24",
+      "box_type_id": "t1",
+      "weight": 35.0,
+      "group": "g1",
+      "platform": "p5"
+    }
+  ],
+  "route": ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"],
+  "constraints": {
+    "support_rate": 1.0
+  }
+}
