@@ -306,6 +306,64 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
 
     int64_t cur_vol = cl.type->inner_size.volume();
 
+    // 换柜型前的两道下界剪枝，都取乐观值，只会漏判可行、不会误杀可行：
+    // 1) 体积下界：全部箱子体积和超过候选柜容积，任何摆法都装不下；
+    // 2) 底面积下界：所需底面积 ≥ 各箱最小底面积之和 ÷ 可堆层数（层数按候选柜
+    //    高度与各箱 max_stack 取小）。带形状信息，比体积下界紧得多，多层场景也适用。
+    // 没有它们，每个更小的柜型都要完整重跑一次求解，大实例上会吃光时间预算。
+    int64_t total_box_volume = 0;
+    int64_t total_min_area = 0;
+    int32_t min_box_dz = 0; // 0 = 尚未确定
+    int32_t stack_cap = 0;  // 0 = 不限层数
+    bool shape_bounds_ok = true;
+
+    for (const auto& bx : items)
+    {
+        auto bt_it = box_type_map.find(bx.box_type_id);
+        if (bt_it == box_type_map.end())
+        {
+            shape_bounds_ok = false;
+            break;
+        }
+        const auto& bt = bt_it->second;
+        int64_t best_area = -1;
+        int32_t best_dz = 0;
+        int32_t box_cap = 0; // 该箱全部朝向下最严格的 max_stack，0 = 不限
+        for (auto o : bt.allowed_orientations)
+        {
+            const auto os = bt.size.orient(o);
+            const int64_t area = static_cast<int64_t>(os.dx) * os.dy;
+            if (best_area < 0 || area < best_area)
+            {
+                best_area = area;
+            }
+            if (best_dz == 0 || os.dz < best_dz)
+            {
+                best_dz = os.dz;
+            }
+            const auto ms = bt.max_stack_for(o);
+            if (ms.has_value() && (box_cap == 0 || ms.value() < box_cap))
+            {
+                box_cap = ms.value();
+            }
+        }
+        if (best_area <= 0 || best_dz <= 0)
+        {
+            shape_bounds_ok = false;
+            break;
+        }
+        total_min_area += best_area;
+        total_box_volume += bt.size.volume();
+        if (min_box_dz == 0 || best_dz < min_box_dz)
+        {
+            min_box_dz = best_dz;
+        }
+        if (box_cap > 0 && (stack_cap == 0 || box_cap < stack_cap))
+        {
+            stack_cap = box_cap;
+        }
+    }
+
     std::vector<size_t> ct_indices;
     ct_indices.reserve(container_types.size());
     for (size_t ci = 0; ci < container_types.size(); ++ci)
@@ -319,10 +377,40 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
 
     for (size_t ci : ct_indices)
     {
+        // 每个候选柜型都要完整重跑一次单容器求解，大实例上单次就可能是数秒；
+        // 逐个试完会吃光时间预算并把结果打成 timeout，超时即停，保留当前解。
+        if (!TimeChecker::check())
+        {
+            break;
+        }
+
         const auto& ct = container_types[ci];
         if (ct.inner_size.volume() >= cur_vol)
         {
             continue;
+        }
+        // 体积下界：箱子总体积就超过候选柜容积
+        if (ct.inner_size.volume() < total_box_volume)
+        {
+            continue;
+        }
+        // 底面积下界：各箱最小底面积之和 ÷ 按柜高与 max_stack 算出的可堆层数
+        if (shape_bounds_ok && min_box_dz > 0)
+        {
+            int64_t layers = ct.inner_size.z / min_box_dz;
+            if (stack_cap > 0 && layers > stack_cap)
+            {
+                layers = stack_cap;
+            }
+            if (layers < 1)
+            {
+                layers = 1;
+            }
+            const int64_t required_area = (total_min_area + layers - 1) / layers;
+            if (static_cast<int64_t>(ct.inner_size.x) * ct.inner_size.y < required_area)
+            {
+                continue;
+            }
         }
 
         bool all_fit = true;
