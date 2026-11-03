@@ -532,6 +532,24 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
 
     sort_blocks_by_volume_desc(all_blocks);
 
+    // 路线优先：同容器内先装深处（route 末尾）平台的块，近门平台（route 首）后装。
+    // 纯体积排序在箱型尺寸一致时会退化成按平台字典序，让 p1 这类"最先卸"的货先
+    // 占住柜底最深处，后卸平台反而无处可放，被迫多开一柜。约束层虽会拒绝明显
+    // 违规的放置，但"深处已被占"属于合法却浪费的布局，只能靠装填顺序避免。
+    if (problem_.route.has_value())
+    {
+        const auto& route_index = problem_.route->index_of;
+        std::stable_sort(all_blocks.begin(), all_blocks.end(),
+                         [&](const SimpleBlock& a, const SimpleBlock& b) noexcept
+                         {
+                             auto ia = route_index.find(a.platform);
+                             auto ib = route_index.find(b.platform);
+                             const int da = ia != route_index.end() ? static_cast<int>(ia->second) : -1;
+                             const int db = ib != route_index.end() ? static_cast<int>(ib->second) : -1;
+                             return da > db;
+                         });
+    }
+
     // 构建 dx 维度索引：按块 dx 升序排列，避免 filter_viable_blocks 中 O(B) 全量扫描
     dx_index_.clear();
     dx_index_.reserve(all_blocks.size());

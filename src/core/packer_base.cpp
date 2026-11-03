@@ -166,6 +166,18 @@ ContainerLoad PackerBase::pack_single(
         last = std::move(extra);
         acc = last.placements;
     }
+
+    // 全局候选：不分桶一次性装填，允许跨平台混排（路线顺序由逐箱约束检查兜底）。
+    // 逐桶串行在"先卸平台箱数占大头"时，会把该桶挤到门侧残余空间而溢出到新柜，
+    // 即使整柜本可装完。这里额外跑一次全局装填，与分桶结果取装得多者。
+    if (!stop_when_complete)
+    {
+        ContainerLoad whole = pack_single_impl(items, ct, existing, tender, stop_when_complete);
+        if (whole.placements.size() > last.placements.size())
+        {
+            return whole;
+        }
+    }
     return last;
 }
 

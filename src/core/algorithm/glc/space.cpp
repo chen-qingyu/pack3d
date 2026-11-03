@@ -144,6 +144,8 @@ bool transfer_space(std::vector<Space>& stack) noexcept
 
     // 合并：栈顶碎片并入次栈顶主条
     // 入栈顺序保证了碎片总是在栈顶（split_space 将较窄的碎条最后压入）
+    // 合并只沿一个维度扩展，碎片在另一维度溢出主条的部分此前会被直接吞掉，
+    // 造成"带尾/带头明明空着却无空间可用"。这里把差额拆成独立空间保留。
     if (top.kind == SpaceKind::X && next.kind == SpaceKind::Y)
     {
         // 仅当两者在 Y 方向有交集时才合并；否则为对角空间，保留各自独立
@@ -154,11 +156,35 @@ bool transfer_space(std::vector<Space>& stack) noexcept
             std::swap(top, next); // 对角空间：交换顺序，让大概率可用的空间先处理
             return true;
         }
-        // X 碎片并入 Y 主条：扩展 Y 的 x 范围
-        int32_t new_lx = std::max(next.pos.x + next.lx, top.pos.x + top.lx) - next.pos.x;
-        next.lx = new_lx;
-        next.parent_id = -1; // 标记已合并，防止后续误匹配
-        stack.pop_back();
+        // 值拷贝：push_back 可能扩容，之后 top/next 引用不再有效
+        const Space x_space = top;
+        const int32_t new_lx =
+            std::max(next.pos.x + next.lx, x_space.pos.x + x_space.lx) - next.pos.x;
+        const int32_t cov_y0 = next.pos.y;
+        const int32_t cov_y1 = next.pos.y + next.ly;
+
+        stack.pop_back(); // 移除 X 碎片，栈顶变为 Y 主条
+        stack.back().lx = new_lx;
+        stack.back().parent_id = -1; // 标记已合并，防止后续误匹配
+
+        // 差额：X 在 y 方向未被主条覆盖的下段/上段
+        const int32_t x_y0 = x_space.pos.y;
+        const int32_t x_y1 = x_space.pos.y + x_space.ly;
+        if (x_y0 < std::min(x_y1, cov_y0))
+        {
+            Space rest = x_space;
+            rest.ly = std::min(x_y1, cov_y0) - x_y0;
+            rest.parent_id = -1;
+            stack.push_back(rest);
+        }
+        if (std::max(x_y0, cov_y1) < x_y1)
+        {
+            Space rest = x_space;
+            rest.pos.y = std::max(x_y0, cov_y1);
+            rest.ly = x_y1 - rest.pos.y;
+            rest.parent_id = -1;
+            stack.push_back(rest);
+        }
         return true;
     }
     if (top.kind == SpaceKind::Y && next.kind == SpaceKind::X)
@@ -171,11 +197,34 @@ bool transfer_space(std::vector<Space>& stack) noexcept
             std::swap(top, next); // 对角空间：交换顺序
             return true;
         }
-        // Y 碎片并入 X 主条：扩展 X 的 y 范围
-        int32_t new_ly = std::max(next.pos.y + next.ly, top.pos.y + top.ly) - next.pos.y;
-        next.ly = new_ly;
-        next.parent_id = -1;
-        stack.pop_back();
+        const Space y_space = top;
+        const int32_t new_ly =
+            std::max(next.pos.y + next.ly, y_space.pos.y + y_space.ly) - next.pos.y;
+        const int32_t cov_x0 = next.pos.x;
+        const int32_t cov_x1 = next.pos.x + next.lx;
+
+        stack.pop_back(); // 移除 Y 碎片，栈顶变为 X 主条
+        stack.back().ly = new_ly;
+        stack.back().parent_id = -1;
+
+        // 差额：Y 在 x 方向未被主条覆盖的前段/后段
+        const int32_t y_x0 = y_space.pos.x;
+        const int32_t y_x1 = y_space.pos.x + y_space.lx;
+        if (y_x0 < std::min(y_x1, cov_x0))
+        {
+            Space rest = y_space;
+            rest.lx = std::min(y_x1, cov_x0) - y_x0;
+            rest.parent_id = -1;
+            stack.push_back(rest);
+        }
+        if (std::max(y_x0, cov_x1) < y_x1)
+        {
+            Space rest = y_space;
+            rest.pos.x = std::max(y_x0, cov_x1);
+            rest.lx = y_x1 - rest.pos.x;
+            rest.parent_id = -1;
+            stack.push_back(rest);
+        }
         return true;
     }
 
