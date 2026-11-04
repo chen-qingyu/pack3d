@@ -693,6 +693,15 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
             LocalPackScore current_score = score_state(state);
             LocalPackScore new_score = greedy_complete(
                 std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks, true);
+
+            // 超时后 greedy_complete 返回的是残缺分数，拿它跟当前状态比会得出
+            // "再放不如现在"的假结论并提前结束，导致时间给得越多装得反而越少。
+            // 这里直接跳出，保留已经放置的结果。
+            if (!TimeChecker::check())
+            {
+                break;
+            }
+
             if (compare_local_scores(current_score, new_score) <= 0)
             {
                 break;

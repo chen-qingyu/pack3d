@@ -64,8 +64,11 @@ void split_space(const Space& space, const OrientedSize& block_osize,
     // 主条/碎片关系（碎片在栈顶，供 transfer_space 回收合并）。
     if (mx >= my)
     {
-        spaceX.ly = space.ly;
-        spaceY.lx = dx;
+        // 与 mx < my 分支统一几何：X 剩余只占块宽（带内沿柜长延伸），Y 剩余拿全长
+        // （另一条完整的带）。若这里让 X 剩余保留全宽，后续块可以在任意 y 落位，
+        // 带与带之间串味，带宽被反复切碎，两条带末端都留出放不下箱子的空位。
+        spaceX.ly = dy;
+        spaceY.lx = space.lx;
         spaceY.ly = my;
 
         if (spaceX.lx > 0 && spaceX.ly > 0 && spaceX.lz > 0)
