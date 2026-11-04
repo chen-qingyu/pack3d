@@ -53,6 +53,14 @@ std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
             return lx < p.first;
         });
 
+    // dx_index_ 只用于剪枝，不能让它决定输出顺序：调用方取 viable 前 N 个作为
+    // 候选，而 all_blocks 是体积降序（有路线时再按深度稳定排序），旧版语义是
+    // "体积最大的前 N 个可行块"。若按 dx 升序输出，候选会变成"最短的前 N 个"，
+    // 大块被挤出候选，选块偏好从堆叠变成平铺（实测 br1-001 少装 3 个大箱）。
+    // 因此先记下块在 all_blocks 中的下标，输出前按原顺序还原。
+    std::vector<size_t> order;
+    order.reserve(static_cast<size_t>(std::distance(dx_index_.begin(), end_it)));
+
     for (auto it = dx_index_.begin(); it != end_it; ++it)
     {
         const SimpleBlock& block = all_blocks[it->second];
@@ -78,6 +86,13 @@ std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
         }
 
         viable.push_back(&block);
+        order.push_back(it->second);
+    }
+
+    std::sort(order.begin(), order.end());
+    for (size_t i = 0; i < order.size(); ++i)
+    {
+        viable[i] = &all_blocks[order[i]];
     }
 
     return viable;
@@ -661,11 +676,11 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
                 auto sim_stack = stack;
                 place_block(*block, space, sim, sim_avail, sim_stack);
 
-                // 精炼阶段用纯贪心前瞻即可区分候选优劣。带 pick_best 的版本会在
-                // 内部再套一层完整前瞻，单次成本高一个数量级，在箱子多、块表大的
-                // 数据上直接吃光时间预算（实测单步 10 秒以上）。
+                // 深度前瞻（内部再套一层纯贪心填满）。单次成本曾高一个数量级，
+                // check_block_feasible 的内循环开销修复后（17μs → 1μs），
+                // 深度评估重新变得划算，选块质量明显优于纯贪心。
                 LocalPackScore fitness = greedy_complete(
-                    std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks, false);
+                    std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks, true);
                 scored.push_back({block, fitness});
             }
 

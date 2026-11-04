@@ -10,7 +10,7 @@ static constexpr int RANDOM_SEED = 42;
 // GLC
 static constexpr int GLC_WIDTH = 9;
 static constexpr int GLC_KEEP_TOP_N_CAP = 4;
-static constexpr int GLC_MAX_REFINE_ROUNDS = 1;
+static constexpr int GLC_MAX_REFINE_ROUNDS = 2;
 static constexpr int GLC_EVAL_WIDTH = 4;
 // 单步参与精炼的候选块数上限。每个候选都要跑一次完整前瞻模拟（内部还套一层），
 // 候选数一旦随 avg_block_size 膨胀到几十个，单步就是十几秒的量级。
