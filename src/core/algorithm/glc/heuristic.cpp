@@ -72,7 +72,7 @@ std::vector<const SimpleBlock*> Heuristic::filter_viable_blocks(
         }
 
         // 约束检查
-        if (!check_block_feasible(block, space, state, available))
+        if (!check_block_feasible(block, space, state, avail_it->second))
         {
             continue;
         }
@@ -87,9 +87,10 @@ bool Heuristic::check_block_feasible(
     const SimpleBlock& block,
     const Space& space,
     const ContainerLoad& state,
-    const std::map<std::string, std::vector<double>>& available) const
+    const std::vector<double>& weights) const
 {
-    auto single = box_type_map_.at(block.box_type_id).size.orient(block.orientation);
+    const OrientedSize single{block.osize.dx / block.nx, block.osize.dy / block.ny,
+                              block.osize.dz / block.nz};
 
     // ---- per-block 检查 ----
 
@@ -114,19 +115,24 @@ bool Heuristic::check_block_feasible(
     }
 
     // ---- 逐箱检查：边界、重叠、支撑、路线 ----
-    ContainerLoad sim = state;
-    if (!block.platform.empty())
+    // 只有会写入模拟状态时才拷贝 state：拷贝含上百个 Placement 及其 groups 集合，
+    // 而本函数在搜索内循环被调用数百万次，无条件拷贝是数量级的浪费。
+    const bool need_stack_write = problem_.has_max_stack || problem_.has_max_load;
+    const bool use_sim = need_stack_write || problem_.heavy_not_on_light || need_route;
+    ContainerLoad sim_storage;
+    if (use_sim)
     {
-        sim.platforms.insert(block.platform);
+        sim_storage = state;
+        if (!block.platform.empty())
+        {
+            sim_storage.platforms.insert(block.platform);
+        }
     }
+    // use_sim 为 false 时只做只读检查，所有写入点都在 use_sim 条件下
+    ContainerLoad& sim = use_sim ? sim_storage : const_cast<ContainerLoad&>(state);
 
     // 该块消耗的精确单箱重量（队首 box_count 件，与 place_block / 末尾回填一致）
-    auto avail_it = available.find(block.key);
-    if (avail_it == available.end())
-    {
-        return false;
-    }
-    const auto* w = &avail_it->second;
+    const auto* w = &weights;
 
     // 重量：块总重量按精确单箱重量（队首 box_count 件，与 place_block 一致）
     if (has_weight_info_ && container_.payload.has_value())
@@ -208,19 +214,26 @@ bool Heuristic::check_block_feasible(
                     }
                 }
 
-                Placement pl;
-                pl.box_id = "simulated";
-                pl.box_type_id = block.box_type_id;
-                pl.position = pos;
-                pl.orientation = block.orientation;
-                pl.osize = single;
-                pl.platform = block.platform;
-                pl.groups = block.groups;
-                if (has_weight_info_ && (problem_.has_max_load || problem_.heavy_not_on_light))
+                // 仅在需要写入模拟状态时才构造 Placement：它含 4 个字符串和一个
+                // groups 集合，本函数被调用数百万次，无条件构造会产生千万级堆分配
+                // （实测占该函数 93% 的耗时）。
+                if (use_sim)
                 {
-                    pl.weight = box_weight;
+                    Placement pl;
+                    pl.box_id = "simulated";
+                    pl.box_type_id = block.box_type_id;
+                    pl.position = pos;
+                    pl.orientation = block.orientation;
+                    pl.osize = single;
+                    pl.platform = block.platform;
+                    pl.groups = block.groups;
+                    if (has_weight_info_ &&
+                        (problem_.has_max_load || problem_.heavy_not_on_light))
+                    {
+                        pl.weight = box_weight;
+                    }
+                    sim.placements.push_back(std::move(pl));
                 }
-                sim.placements.push_back(std::move(pl));
                 if (problem_.has_max_stack || problem_.has_max_load)
                 {
                     apply_stack_state(pos, single, box_weight, sim);
@@ -621,8 +634,9 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
 
         // 自适应候选数：块包含箱子越多（大块），候选数越多
         // avg_block_size 小时（多小块场景）取 width 下限以控制开销
-        int eval_limit = std::min(static_cast<int>(viable.size()),
-                                  std::max(width, static_cast<int>(kKeepTopN * avg_block_size)));
+        int eval_limit = std::min({static_cast<int>(viable.size()),
+                                   std::max(width, static_cast<int>(kKeepTopN * avg_block_size)),
+                                   config::GLC_EVAL_LIMIT_CAP});
         std::vector<const SimpleBlock*> candidates(viable.begin(), viable.begin() + eval_limit);
 
         for (int round = 0; round < kMaxRefineRounds && candidates.size() > 1; ++round)
@@ -647,8 +661,11 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
                 auto sim_stack = stack;
                 place_block(*block, space, sim, sim_avail, sim_stack);
 
+                // 精炼阶段用纯贪心前瞻即可区分候选优劣。带 pick_best 的版本会在
+                // 内部再套一层完整前瞻，单次成本高一个数量级，在箱子多、块表大的
+                // 数据上直接吃光时间预算（实测单步 10 秒以上）。
                 LocalPackScore fitness = greedy_complete(
-                    std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks, true);
+                    std::move(sim), std::move(sim_avail), std::move(sim_stack), all_blocks, false);
                 scored.push_back({block, fitness});
             }
 

@@ -80,11 +80,13 @@ private:
         const ContainerLoad& state) const;
 
     /// 检查块是否满足所有硬约束
+    /// weights 由调用方从库存表查好后传入：本函数是搜索内循环里调用最频繁的点，
+    /// 在函数内再做一次 std::map 字符串查找属于纯重复开销。
     [[nodiscard]] bool check_block_feasible(
         const SimpleBlock& block,
         const Space& space,
         const ContainerLoad& state,
-        const std::map<std::string, std::vector<double>>& available) const;
+        const std::vector<double>& weights) const;
 
     /// 放置块并更新状态
     void place_block(const SimpleBlock& block, const Space& space,
