@@ -177,6 +177,10 @@ PackResult solve(const GlobalContext& ctx,
     {
         total_boxes += c;
     }
+    // 束宽上限按待装箱数分档：小实例值得深搜，大实例深搜只会烧光预算
+    const int w_max = total_boxes <= config::BSG_SMALL_BOXES
+                          ? config::BSG_MAX_W_SMALL
+                          : config::BSG_MAX_W;
     int64_t total_box_volume = 0;
     for (size_t ti = 0; ti < ctx.box_types.size(); ++ti)
     {
@@ -199,6 +203,14 @@ PackResult solve(const GlobalContext& ctx,
         spdlog::debug("Beam round done: w={}, best={}, s_best_vol={}, placements={}",
                       w, round_best, s_best_volume, s_best.placements.size());
 
+        // 全部箱子已放入：不存在更优解，立即收工。否则会继续加大束宽空转到超时，
+        // 结果虽然对，但状态被打成 timeout，也白白吃掉整个时间预算。
+        if (static_cast<int>(s_best.item_class_indices.size()) >= total_boxes)
+        {
+            spdlog::debug("BSG-CLP: all {} boxes packed, stopping early", total_boxes);
+            break;
+        }
+
         // 已达理论上界 → 提前停止
         if (s_best_volume >= volume_upper_bound)
         {
@@ -207,7 +219,7 @@ PackResult solve(const GlobalContext& ctx,
             break;
         }
 
-        if (w >= config::BSG_MAX_W)
+        if (w >= w_max)
         {
             spdlog::debug("BSG-CLP: reached maximum beam width {}, stopping", w);
             break;
