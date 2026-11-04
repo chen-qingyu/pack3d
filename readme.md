@@ -19,7 +19,7 @@ JSON Input -> Parser -> Solver (GEP / GLC / RGS / BSG) -> Post-process -> JSON O
 - `RGS`：随机贪心搜索 — 多策略排序 + Shaw 随机化 + 多起点采样
 - `BSG`：束搜索 — 宽度限制的启发式树搜索 + KPA 块合并
 
-四种算法复用同一约束层；具体策略与适用场景见 [docs/algorithms.md](docs/algorithms.md)。
+四种算法复用同一约束层；具体策略见 [docs/algorithms.md](docs/algorithms.md)，按场景选算法与实测数据见 [docs/algorithm-selection.md](docs/algorithm-selection.md)。
 
 目标字典序：`min_container_count -> min_platform_split -> max_volume_rate -> min_group_split`
 
@@ -120,6 +120,7 @@ cd web && npm install && npm run dev
 | -------------- | -------------------------------------------------------------- |
 | 整体架构与流程 | [docs/architecture.md](docs/architecture.md)                   |
 | 算法细节       | [docs/algorithms.md](docs/algorithms.md)                       |
+| 场景选型与实测 | [docs/algorithm-selection.md](docs/algorithm-selection.md)     |
 | 输入格式       | [docs/input.md](docs/input.md)                                 |
 | 输出格式       | [docs/output.md](docs/output.md)                               |
 | 约束条件       | [docs/constraints.md](docs/constraints.md)                     |
