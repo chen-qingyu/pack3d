@@ -170,6 +170,7 @@ PackResult solve(const GlobalContext& ctx,
 
     int w = 1;
     int64_t s_best_volume = 0;
+    double last_round_sec = 0.0; // 最近一轮束搜索耗时，用于超时预测
     BSGState s_best;
 
     int total_boxes = 0;
@@ -198,8 +199,23 @@ PackResult solve(const GlobalContext& ctx,
 
     while (TimeChecker::check())
     {
+        // 超时预测：束宽按 √2 递增，但单轮成本实测约 2.5 倍增长
+        // （br08 w=8 用 2.5s、w=12 用 6.4s），超时总发生在大束宽单轮内部，
+        // 轮间的停滞判断根本轮不到触发。若按上一轮耗时的 1.5 倍估算已放不进
+        // 剩余预算，开新轮只会被中途截断，超时点漂移还会让结果不可复现，
+        // 不如带着当前最优收工。
+        if (last_round_sec > 0.0 &&
+            TimeChecker::elapsed() + 1.5 * last_round_sec > TimeChecker::limit())
+        {
+            spdlog::debug("BSG-CLP: next round (w={}) predicted to exceed budget, stopping", w);
+            break;
+        }
+
         spdlog::debug("Beam round: w={}", w);
+        const double round_start_sec = TimeChecker::elapsed();
         int64_t round_best = beam_search(s0, w, s_best_volume, s_best, ctx);
+        const double round_sec = TimeChecker::elapsed() - round_start_sec;
+        last_round_sec = std::max(last_round_sec, round_sec);
         spdlog::debug("Beam round done: w={}, best={}, s_best_vol={}, placements={}",
                       w, round_best, s_best_volume, s_best.placements.size());
 

@@ -11,6 +11,7 @@ public:
     static void init(double limit_sec) noexcept;
     static bool check();
     static double elapsed() noexcept;
+    static double limit() noexcept;
 
 private:
     static std::chrono::steady_clock::time_point start_time_;

@@ -23,4 +23,9 @@ double TimeChecker::elapsed() noexcept
     return std::chrono::duration<double>(now - start_time_).count();
 }
 
+double TimeChecker::limit() noexcept
+{
+    return time_limit_;
+}
+
 } // namespace pack3d
