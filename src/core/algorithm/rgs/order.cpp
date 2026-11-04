@@ -79,7 +79,13 @@ std::vector<OrderEntry> build_ordered_list(
         }
         const auto& bt = bt_it->second;
 
-        auto& ig = ig_map[bx.box_type_id];
+        // identical group 的键：route 存在时必须带上平台。否则同箱型不同站点的箱子
+        // 全落进同一组，route_depth 取组内最大值（全部并列），下面按深度排序形同虚设，
+        // 深处平台根本排不到前面（实测 24 箱用例装填顺序变成 p8,p4,p7,...，p5 被挤到最后）。
+        const std::string ig_key = route.has_value()
+                                       ? bx.box_type_id + "\t" + bx.platform
+                                       : bx.box_type_id;
+        auto& ig = ig_map[ig_key];
         if (ig.boxes.empty())
         {
             ig.box_type_id = bx.box_type_id;

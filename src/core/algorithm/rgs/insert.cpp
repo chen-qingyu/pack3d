@@ -500,11 +500,38 @@ void insertion_heuristic(
         }
 
         bool placed = false;
-        for (const auto& ep : out_ctx.extreme_points)
+        // 极点遍历顺序决定带式排布：集合默认按 (x,y,z) 升序，会让 (0,1000,0) 排在
+        // (1200,0,0) 前面，第二个箱子就去开了第二条带，两条带交替生长、末端各留空位。
+        // 改成先比 y 再比 x，先把当前带沿柜长填满，再开下一条带。
+        std::vector<Position> ordered_eps(out_ctx.extreme_points.begin(),
+                                         out_ctx.extreme_points.end());
+        std::sort(ordered_eps.begin(), ordered_eps.end(),
+                  [](const Position& a, const Position& b) noexcept
+                  {
+                      if (a.y != b.y)
+                      {
+                          return a.y < b.y;
+                      }
+                      if (a.x != b.x)
+                      {
+                          return a.x < b.x;
+                      }
+                      return a.z < b.z;
+                  });
+        for (const auto& ep : ordered_eps)
         {
-            for (uint8_t k = 0; k < entry.orient_count; ++k)
+            // 同一极点上优先试占柜宽更大的朝向：窄柜里若先选窄朝向，柜宽方向会
+            // 留下无法利用的缝隙，另一条带就排不满（实测 24 箱用例两条带都用
+            // 1000 宽，白扔 330，本该 13+11 变成 11+10）。
+            std::vector<Orientation> orients(entry.orients.begin(),
+                                             entry.orients.begin() + entry.orient_count);
+            std::sort(orients.begin(), orients.end(),
+                      [&bt](Orientation a, Orientation b) noexcept
+                      {
+                          return bt.size.orient(a).dy > bt.size.orient(b).dy;
+                      });
+            for (Orientation orient : orients)
             {
-                const Orientation orient = entry.orients[k];
                 if (can_place(box, bt, orient, ep, out_load, out_ctx, box_type_map, problem))
                 {
                     commit_placement(out_load, out_ctx, box, bt, orient, ep, problem);
