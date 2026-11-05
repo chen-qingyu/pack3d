@@ -16,6 +16,11 @@ namespace pack3d
 namespace
 {
 
+// 全局候选（不分桶重跑一次）的规模上限。它只为"单柜本可装完、但逐桶串行把
+// 先卸平台挤到门侧"的小实例兜底；几十上百箱的大实例不分桶重跑几乎必然超时，
+// 单次就能吃光整柜预算，主循环再也开不出第二个柜。
+constexpr size_t kGlobalCandidateMaxBoxes = 32;
+
 // 按 route 深度降序（装货顺序：最深平台先放）分平台桶；无平台箱为最后一桶。
 // 深度 = 平台在 route 中的索引（越靠后 = 越深 = 先装）。
 std::vector<std::vector<Box>> split_platform_buckets(const std::vector<Box>& items,
@@ -156,13 +161,27 @@ ContainerLoad PackerBase::pack_single(
     last.type = &ct;
     prefill_load(last, existing, box_map_);
     std::vector<Placement> acc = last.placements;
+    int empty_buckets = 0;
     for (const auto& bucket : buckets)
     {
+        // 超时后不再启动新的桶求解。此前会继续把剩余桶逐个跑完，而每次求解在
+        // 预算耗尽后只会立刻退出，纯属空转（30s / 120s 时限下结果完全相同）。
+        if (!TimeChecker::check())
+        {
+            break;
+        }
         ContainerLoad extra = pack_single_impl(bucket, ct, acc, tender, stop_when_complete);
         if (extra.placements.size() <= acc.size())
         {
+            // 连续两个桶一个箱子都放不进，说明当前柜的空间或约束已经封死，
+            // 后续桶同样放不进，没必要再逐个跑完整搜索（实测单个空桶耗 1~5 秒）。
+            if (++empty_buckets >= 2)
+            {
+                break;
+            }
             continue; // 该桶没有放入任何箱（空间/约束不允许）
         }
+        empty_buckets = 0;
         last = std::move(extra);
         acc = last.placements;
     }
@@ -170,9 +189,12 @@ ContainerLoad PackerBase::pack_single(
     // 全局候选：不分桶一次性装填，允许跨平台混排（路线顺序由逐箱约束检查兜底）。
     // 逐桶串行在"先卸平台箱数占大头"时，会把该桶挤到门侧残余空间而溢出到新柜，
     // 即使整柜本可装完。这里额外跑一次全局装填，与分桶结果取装得多者。
-    // 分桶已全部装完时跳过：不可能更优，再跑一遍等于白烧一倍时间。
+    // 分桶已装完、或规模超过 kGlobalCandidateMaxBoxes 时跳过。后者尤其关键：
+    // 实测 expect-2-containers 分桶 0.74s 装 39 个放置，全局候选独吃 9.2s
+    // 只产出 1 个并被丢弃，整柜预算就此耗尽，主循环无法再开第二柜。
     const size_t target_count = items.size() + existing.size();
-    if (!stop_when_complete && last.placements.size() < target_count)
+    if (!stop_when_complete && items.size() <= kGlobalCandidateMaxBoxes &&
+        last.placements.size() < target_count && TimeChecker::check())
     {
         ContainerLoad whole = pack_single_impl(items, ct, existing, tender, stop_when_complete);
         if (whole.placements.size() > last.placements.size())

@@ -96,13 +96,25 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                   return *plat_containers[a].rbegin() > *plat_containers[b].rbegin();
               });
 
+    // 后处理只做优化，不该把时间预算耗到超时：实测多平台多柜场景里，一轮
+    // 合并尝试就会反复调用 pack_single 重求解，累计 7 秒以上且毫无改进，
+    // 最终把"全部装完"的结果也标成 timeout。给这一步单独的预算上限，
+    // 用完即收工，不改变任何优化判据（目标字典序保持原样）。
+    const double reduce_start = TimeChecker::elapsed();
+    const double reduce_budget = std::min(2.0, TimeChecker::limit() * 0.2);
+    const auto within_budget = [&]() noexcept
+    {
+        return TimeChecker::check() &&
+               TimeChecker::elapsed() - reduce_start < reduce_budget;
+    };
+
     bool improved = true;
-    while (improved && TimeChecker::check())
+    while (improved && within_budget())
     {
         improved = false;
         for (const auto& p : cands)
         {
-            if (!TimeChecker::check())
+            if (!within_budget())
             {
                 return;
             }
@@ -375,11 +387,21 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
               { return container_types[a].inner_size.volume() <
                        container_types[b].inner_size.volume(); });
 
+    // 与 reduce_platform_splits 同理：换柜型重求解每一步都很贵，给这一步
+    // 独立预算，用完就收工，避免把"已装完"的结果拖成 timeout。
+    const double repack_start = TimeChecker::elapsed();
+    const double repack_budget = std::min(2.0, TimeChecker::limit() * 0.2);
+    const auto within_budget = [&]() noexcept
+    {
+        return TimeChecker::check() &&
+               TimeChecker::elapsed() - repack_start < repack_budget;
+    };
+
     for (size_t ci : ct_indices)
     {
         // 每个候选柜型都要完整重跑一次单容器求解，大实例上单次就可能是数秒；
-        // 逐个试完会吃光时间预算并把结果打成 timeout，超时即停，保留当前解。
-        if (!TimeChecker::check())
+        // 逐个试完会吃光时间预算并把结果打成 timeout，预算用尽即停，保留当前解。
+        if (!within_budget())
         {
             break;
         }
