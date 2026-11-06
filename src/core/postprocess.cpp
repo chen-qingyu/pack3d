@@ -96,16 +96,11 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
                   return *plat_containers[a].rbegin() > *plat_containers[b].rbegin();
               });
 
-    // 后处理只做优化，不该把时间预算耗到超时：实测多平台多柜场景里，一轮
-    // 合并尝试就会反复调用 pack_single 重求解，累计 7 秒以上且毫无改进，
-    // 最终把"全部装完"的结果也标成 timeout。给这一步单独的预算上限，
-    // 用完即收工，不改变任何优化判据（目标字典序保持原样）。
-    const double reduce_start = TimeChecker::elapsed();
-    const double reduce_budget = std::min(2.0, TimeChecker::limit() * 0.2);
-    const auto within_budget = [&]() noexcept
+    // 总预算由 postprocess 的 ScopedLimit 硬约束；内部也检查，避免每轮
+    // 之间继续启动新尝试。单次 pack_single 同样会看到收紧后的截止时间。
+    const auto within_budget = []() noexcept
     {
-        return TimeChecker::check() &&
-               TimeChecker::elapsed() - reduce_start < reduce_budget;
+        return TimeChecker::check();
     };
 
     bool improved = true;
@@ -290,15 +285,15 @@ void reduce_platform_splits(std::vector<ContainerLoad>& all_loads,
     }
 }
 
-void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
-                         ObjectiveVector& best_obj,
-                         PackerBase& packer,
-                         const std::vector<ContainerType>& container_types,
-                         const std::map<std::string, BoxType>& box_type_map,
-                         const std::map<std::string, Box>& box_map,
-                         int tender_limit)
+void repack_smaller(std::vector<ContainerLoad>& all_loads,
+                    ObjectiveVector& best_obj,
+                    size_t i,
+                    PackerBase& packer,
+                    const std::vector<ContainerType>& container_types,
+                    const std::map<std::string, BoxType>& box_type_map,
+                    const std::map<std::string, Box>& box_map,
+                    int tender_limit)
 {
-    size_t i = all_loads.size() - 1;
     const auto& cl = all_loads[i];
     if (cl.placements.empty() || cl.locked)
     {
@@ -387,14 +382,11 @@ void repack_last_smaller(std::vector<ContainerLoad>& all_loads,
               { return container_types[a].inner_size.volume() <
                        container_types[b].inner_size.volume(); });
 
-    // 与 reduce_platform_splits 同理：换柜型重求解每一步都很贵，给这一步
-    // 独立预算，用完就收工，避免把"已装完"的结果拖成 timeout。
-    const double repack_start = TimeChecker::elapsed();
-    const double repack_budget = std::min(2.0, TimeChecker::limit() * 0.2);
-    const auto within_budget = [&]() noexcept
+    // 与平台合并共用 ScopedLimit 的硬约束方式：每次重排都继承该柜型
+    // 优化阶段的总截止时间，不能因单次困难实例越过预算。
+    const auto within_budget = []() noexcept
     {
-        return TimeChecker::check() &&
-               TimeChecker::elapsed() - repack_start < repack_budget;
+        return TimeChecker::check();
     };
 
     for (size_t ci : ct_indices)
@@ -595,6 +587,7 @@ void postprocess(std::vector<ContainerLoad>& all_loads,
 
     if (TimeChecker::check())
     {
+        TimeChecker::ScopedLimit budget(std::min(2.0, TimeChecker::limit() * 0.2));
         reduce_platform_splits(all_loads, best_obj, packer, box_type_map, box_map,
                                packer.support_rate(), packer.has_max_stack(),
                                packer.has_max_load(), packer.tender_limit());
@@ -602,8 +595,14 @@ void postprocess(std::vector<ContainerLoad>& all_loads,
 
     if (TimeChecker::check())
     {
-        repack_last_smaller(all_loads, best_obj, packer, container_types,
-                            box_type_map, box_map, packer.tender_limit());
+        // 尾柜优先，其余柜也不能漏掉：多平台分桶可能让中间柜同样严重欠载。
+        // 柜数和平台拆分不变时，换入能装下同批箱子的较小柜型会直接提高平均体积率。
+        TimeChecker::ScopedLimit budget(std::min(4.0, TimeChecker::limit() * 0.15));
+        for (size_t i = all_loads.size(); i-- > 0 && TimeChecker::check();)
+        {
+            repack_smaller(all_loads, best_obj, i, packer, container_types,
+                           box_type_map, box_map, packer.tender_limit());
+        }
     }
 
     if (TimeChecker::check())

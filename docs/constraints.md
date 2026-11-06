@@ -169,7 +169,7 @@ $$\text{weight}(B) \le \text{weight}(S)$$
 
 **实现**：`PackerBase::pack()` 在 `has_danger` 时走 `pack_with_danger` 编排——已有容器按含险与否分别继续装危险品/普货；新开危险品专柜；最后一车回填普货；最后新开普货车。四种算法内核（`pack_single_impl`）不变，仅给 `Placement` 传播 `danger`。
 
-**后处理**：`reduce_platform_splits` / `repack_last_smaller` 接受候选前须通过 `danger_segregation_ok` 硬校验——混装（危险+普货）容器只能是最末含险容器；不满足则拒绝该候选。
+**后处理**：`reduce_platform_splits` / `repack_smaller` 接受候选前须通过 `danger_segregation_ok` 硬校验——混装（危险+普货）容器只能是最末含险容器；不满足则拒绝该候选。
 
 **装托**：危险品散件按 `platform(+group)+danger` 分组，不与普货同托；托盘虚拟箱带 `danger`，装车阶段沿用分柜。
 

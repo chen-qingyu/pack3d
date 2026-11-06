@@ -1,10 +1,24 @@
 #include "tool.hpp"
 
+#include <algorithm>
+
 namespace pack3d
 {
 
 std::chrono::steady_clock::time_point TimeChecker::start_time_{};
 double TimeChecker::time_limit_ = 0.0;
+
+TimeChecker::ScopedLimit::ScopedLimit(double seconds) noexcept
+    : original_(TimeChecker::limit())
+{
+    TimeChecker::time_limit_ =
+        std::min(original_, TimeChecker::elapsed() + std::max(0.0, seconds));
+}
+
+TimeChecker::ScopedLimit::~ScopedLimit()
+{
+    TimeChecker::time_limit_ = original_;
+}
 
 void TimeChecker::init(double limit_sec) noexcept
 {

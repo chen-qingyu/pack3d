@@ -162,6 +162,7 @@ ContainerLoad PackerBase::pack_single(
     prefill_load(last, existing, box_map_);
     std::vector<Placement> acc = last.placements;
     int empty_buckets = 0;
+    double empty_cost_sec = 0.0;
     for (const auto& bucket : buckets)
     {
         // 超时后不再启动新的桶求解。此前会继续把剩余桶逐个跑完，而每次求解在
@@ -170,18 +171,26 @@ ContainerLoad PackerBase::pack_single(
         {
             break;
         }
+        const double bucket_start = TimeChecker::elapsed();
         ContainerLoad extra = pack_single_impl(bucket, ct, acc, tender, stop_when_complete);
+        const double bucket_cost = TimeChecker::elapsed() - bucket_start;
         if (extra.placements.size() <= acc.size())
         {
-            // 连续两个桶一个箱子都放不进，说明当前柜的空间或约束已经封死，
-            // 后续桶同样放不进，没必要再逐个跑完整搜索（实测单个空桶耗 1~5 秒）。
-            if (++empty_buckets >= 2)
+            // 空桶成本决定还要不要继续：块搜索类算法重跑一次空桶可能耗数秒
+            // （BSG 实测 4.5s），此时应尽早收工；而 GLC 空桶约 0.001s，
+            // 后面的平台桶往往还能装，提前 break 会白白多开一个柜
+            // （expect-2-containers：固定 2 个空桶就 break 是 7 柜，试完是 6 柜）。
+            empty_cost_sec += bucket_cost;
+            // 只有"连续空桶"且"这些空桶确实很贵"才收工：GLC 空桶几乎免费，
+            // 继续试后面的桶能少开一柜；BSG 空桶数秒一次，两个就够判定封死。
+            if (++empty_buckets >= 2 && empty_cost_sec > 1.0)
             {
                 break;
             }
             continue; // 该桶没有放入任何箱（空间/约束不允许）
         }
         empty_buckets = 0;
+        empty_cost_sec = 0.0;
         last = std::move(extra);
         acc = last.placements;
     }
