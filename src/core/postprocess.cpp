@@ -500,11 +500,12 @@ void repack_smaller(std::vector<ContainerLoad>& all_loads,
 
 // 同型连续柱按重量稳定排序（更重在下）：只重排"同箱型、同朝向、同一底面(x,y)、连续堆叠"的
 // 规则柱；同型同朝向 → 各层 footprint 相同，仅改 z 顺序，几何与容积不变，让输出更合理。非约束。
+// locked 容器来自续装快照，已有放置不可移动，因此同样跳过。
 void sort_stack_weights(std::vector<ContainerLoad>& all_loads)
 {
     for (auto& cl : all_loads)
     {
-        if (cl.placements.size() < 2)
+        if (cl.locked || cl.placements.size() < 2)
         {
             continue;
         }

@@ -52,7 +52,7 @@ flowchart TD
 - **逐平台分桶（route 存在时）**：`pack_single` 是封装层——route 存在时把待装箱子按**装货顺序（route 深度降序，最深平台先放）**分成平台桶，逐桶调用 `pack_single_impl`，每桶只放一个平台的箱子（严格分阶段），桶间仍走共享路线约束。`self_orders_platforms()` 为 true 的算法（RGS，其 `build_ordered_list` 已按深度优先排序）豁免分桶，避免拆散其时间预算驱动的迭代搜索。
 - **危险品分柜（`has_danger` 时）**：任一箱子或已有容器含危险品时，`pack()` 在阶段 A 后改走 `pack_with_danger()`——已有容器按含险与否分别只喂危险品/普货；新开危险品专柜；对最后一车回填普货（唯一混装点）；最后新开普货车。阶段 B/C 的普通路径仅在无危险品时执行（保证既有测试与 RGS `s_call_id` 确定性不漂移）。分柜规则见 [constraints.md](constraints.md) §1.14。
 - **主循环保护**：阶段 C 若 `packed.empty()` 立即 break（tender 拒绝是几何无关的，继续开空容器只会死循环到超时）。
-- **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。`time_limit` 为软限制：超时即返回当前最优并标记 `status=timeout`（即使已全部装完）；未超时且全部装完 -> `complete`，否则 -> `partial`。
+- **时间限制**：`TimeChecker` 全局计时，主循环与算法内部双重检查。全局 `time_limit` 为软限制：超时即返回当前最优并标记 `status=timeout`（即使已全部装完）；未超时且全部装完 -> `complete`，否则 -> `partial`。
 
 ## 3. 装托（Palletizing）
 
@@ -135,14 +135,16 @@ pack()
 
 ### 4.5 后处理兼容
 
-两个后处理步骤均跳过 locked 容器：`reduce_platform_splits` 不会从已有容器移动站点；`repack_smaller` 不会把已有容器换到更小车型（内部 `pack_single` 传空 `existing`，只涉及新容器）。
+两个优化阶段都只处理非 locked 容器：`reduce_platform_splits` 不从已有容器移动站点；`repack_smaller` 跳过 `locked` 容器，并把该柜同批箱子从空 `existing` 重装来尝试更小车型。已有容器均带 `locked`，因此不会被移动或换型。
 
 ## 5. 共享后处理
 
-`postprocess.cpp` 提供两个后处理阶段，所有算法共享，通过 `pack_single()` 回调重装：
+`postprocess.cpp` 提供两个目标优化阶段和一个不改变目标向量的收尾步骤，所有步骤都跳过 locked 容器；优化阶段通过 `pack_single()` 回调重装：
 
 1. **`reduce_platform_splits`**：把分散在多个容器中的同站点箱子并入某个已有容器（不新增容器，优先并入剩余空间最大的尾车），减少站点拆分。合并 trial 先尝试把捐献箱插入目标现有布局，失败则重排整个目标容器（目标自身箱子 + 捐献箱一起重新装载，碎片化布局也能容纳）。
 2. **`repack_smaller`**：从尾柜向前，依次尝试把每个欠载容器换成能装下同批箱子的更小柜型；柜数和平台拆分不变，平均体积率因此提高。候选仍受体积、底面积和单箱朝向两组下界剪枝。
+
+另有不改变目标向量的收尾 `sort_stack_weights`：只重排非 locked 容器内同型连续柱的重量顺序，几何与容积不变，不参与 `compare_objectives`。
 
 后处理在 `PackerBase::pack()` 末尾统一调用，目标必为非锁定容器（锁定容器已在候选排除）。两个阶段分别用 `TimeChecker::ScopedLimit` 收紧截止时间，30 秒时限下为 `min(2, 20%)` 秒和 `min(4, 15%)` 秒；离开作用域恢复全局时限，单次困难重排不会把已装完的结果拖成 timeout。
 

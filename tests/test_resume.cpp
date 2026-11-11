@@ -48,3 +48,50 @@ TEST_CASE("resume 地板中间放箱不丢对角空间", "[solver][resume]")
         REQUIRE(res["summary"]["unpacked_box_count"] == 0);
     }
 }
+
+// 续装快照是 locked 容器，sort_stack_weights 不得重排其已有放置。
+// 这里刻意放成轻下重上：若跳过 locked 失效，后处理会把两个 z 位置对调。
+TEST_CASE("resume locked 容器不被重量排序后处理改动", "[solver][resume]")
+{
+    auto base = load_data("data/tests/test_resume.json");
+    base["container_types"][0]["sz"] = 100;
+    // JSON schema 要求 boxes 至少一项，保留 b1；它只用来产生一次完整求解，
+    // 断言只检查 locked 柱的已有放置。
+    json one_box = base["boxes"][0];
+    base["boxes"] = json::array({one_box});
+
+    json lower = base["existing_containers"][0]["placements"][0];
+    lower["weight"] = 5.0;
+    json upper = lower;
+    upper["box_id"] = "a2";
+    upper["z"] = 50;
+    upper["weight"] = 20.0;
+    base["existing_containers"][0]["placements"] = json::array({lower, upper});
+
+    for (auto algo : {"gep", "glc", "rgs", "bsg"})
+    {
+        base["algorithm"] = algo;
+        auto res = run(base);
+        INFO("algo=" << algo);
+        REQUIRE(res["status"] == "complete");
+        const auto& placements = res["result"]["containers"][0]["placements"];
+        REQUIRE(placements.size() == 3);
+
+        int a1_z = -1;
+        int a2_z = -1;
+        for (const auto& pl : placements)
+        {
+            const auto id = pl["box_id"].get<std::string>();
+            if (id == "a1")
+            {
+                a1_z = pl["z"].get<int>();
+            }
+            else if (id == "a2")
+            {
+                a2_z = pl["z"].get<int>();
+            }
+        }
+        REQUIRE(a1_z == 0);
+        REQUIRE(a2_z == 50);
+    }
+}

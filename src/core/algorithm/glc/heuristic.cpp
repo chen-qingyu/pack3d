@@ -679,11 +679,10 @@ PackResult Heuristic::pack_beam(const std::vector<Box>& boxes,
 
                 // 深度前瞻（内部再套一层纯贪心填满）的适用性按主循环预估步数判断：
                 // est_steps = 箱数 / 平均块容量。深度评估单次成本 ∝ 剩余箱数，
-                // 步数一多（强异构：每型仅一两个箱子，块小而多）总开销直接超时，
-                // 且超时截断点漂移导致结果不可复现（同二进制 br08_001 两次跑
-                // 分别 30/46 箱）。实测 est_steps<=29（br07，8.98s）能按时完成、
-                // >=38（br08）必然超时，阈值取 32；超阈值时降级纯贪心，
-                // 牺牲选块质量换搜索跑完（br08: 122 箱/1.4s 对比深度超时 30 箱）。
+                // 步数一多（强异构：每型仅一两个箱子，块小而多）会超时，且超时
+                // 截断点漂移会让结果不可复现。阈值 32 由 BR 弱/强异构实测标定，
+                // 超阈值降级纯贪心，保证搜索按时跑完；实测数据见
+                // docs/algorithm-selection.md。
                 const double est_steps =
                     static_cast<double>(boxes.size()) / avg_block_size;
                 const bool deep = est_steps <= 32.0;
